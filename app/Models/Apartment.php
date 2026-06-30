@@ -17,7 +17,20 @@ class Apartment extends Model
         'sido',
         'sigungu',
         'eupmyeondong',
+        'source',
+        'source_key',
+        'normalized_name',
+        'is_active',
+        'synced_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'synced_at' => 'datetime',
+        ];
+    }
 
     public function boardCategories(): HasMany
     {
@@ -37,5 +50,10 @@ class Apartment extends Model
     public function userRoles(): HasMany
     {
         return $this->hasMany(UserRole::class);
+    }
+
+    public function aliases(): HasMany
+    {
+        return $this->hasMany(ApartmentAlias::class);
     }
 }
