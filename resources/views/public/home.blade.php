@@ -156,13 +156,35 @@
             border-top: 1px solid #d6e0ea;
             padding-top: 14px;
             display: flex;
-            gap: 9px;
-            flex-wrap: wrap;
-            justify-content: space-between;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
             color: var(--muted);
         }
-        .footer-links { display: flex; gap: 8px; flex-wrap: wrap; }
-        .footer-links a { color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; background: #fff; }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .footer-links a {
+            color: var(--muted);
+            text-decoration: none;
+            padding: 0 6px;
+        }
+        .footer-links a + a::before {
+            content: '|';
+            color: #95a5b8;
+            margin-right: 12px;
+        }
+        .footer-copy {
+            font-size: 0.78rem;
+            color: #7a8a9f;
+            text-align: center;
+        }
         .danger-text { color: var(--danger); font-size: 0.86rem; margin: 8px 0 0; }
 
         @media (min-width: 900px) {
@@ -201,44 +223,7 @@
                 </form>
                 <a class="btn btn-soft" style="width:100%; margin-top:8px;" href="/register">회원가입 하고 전체 글 보기</a>
             </aside>
-        @else
-            <aside class="quick-login">
-                <h3>바로가기</h3>
-                <p class="help">입주민 커뮤니티에서 게시글 작성/댓글/첨부파일 기능을 사용할 수 있습니다.</p>
-                <a class="btn btn-primary" style="width:100%;" href="/community?apartment_id={{ $apartment->id }}">입주민 커뮤니티로 이동</a>
-            </aside>
         @endguest
-    </section>
-
-    <section class="section">
-        <h2 class="section-title">🧭 사이트맵</h2>
-        <div class="grid">
-            <article class="card">
-                <h4>비회원 공개 메뉴</h4>
-                <p class="meta">로그인 없이 열람 가능한 게시판</p>
-                <div style="margin-top:10px; display:grid; gap:8px;">
-                    @forelse($publicBoards as $board)
-                        <a class="title-link" href="/boards/{{ $board->slug }}?apartment_id={{ $apartment->id }}">{{ $board->name }}</a>
-                    @empty
-                        <p class="meta">현재 공개 게시판이 없습니다. 관리자에서 read_role=guest 게시판을 추가해 주세요.</p>
-                    @endforelse
-                </div>
-            </article>
-            <article class="card">
-                <h4>주민/회원 전용 메뉴</h4>
-                <p class="meta">제목은 보이지만 상세는 회원가입 후 확인</p>
-                <div style="margin-top:10px; display:grid; gap:8px;">
-                    @forelse($lockedBoards as $board)
-                        <div>
-                            <a class="title-link" href="/boards/{{ $board->slug }}?apartment_id={{ $apartment->id }}">{{ $board->name }}</a>
-                            <span class="status status-lock">🔒 가입 후 열람</span>
-                        </div>
-                    @empty
-                        <p class="meta">전용 메뉴가 없습니다.</p>
-                    @endforelse
-                </div>
-            </article>
-        </div>
     </section>
 
     <section class="section">
@@ -332,7 +317,7 @@
             <a href="/register">회원가입</a>
             <a href="/service/signup-guide">가입 안내</a>
         </div>
-        <div>© {{ now()->year }} 우리아파트 커뮤니티</div>
+        <div class="footer-copy">© {{ now()->year }} 우리아파트 커뮤니티</div>
     </footer>
 </div>
 </body>

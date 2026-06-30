@@ -57,15 +57,11 @@
 
 <header class="site-nav">
     <div class="site-brand">
-        <a href="/?apartment_id={{ $apartmentId }}">🏠 홈</a>
-        <span>입주민 커뮤니티</span>
+        <a href="/?apartment_id={{ $apartmentId }}">아파인드</a>
     </div>
     <nav class="site-links">
-        <a href="/?apartment_id={{ $apartmentId }}">메인</a>
         <a href="/boards/free?apartment_id={{ $apartmentId }}">게시판</a>
         <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티</a>
-        <a href="/terms">이용약관</a>
-        <a href="/privacy">개인정보처리방침</a>
         @guest
             <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
             <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
