@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\ApartmentSearchController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Auth\AccountSettingsController;
 use App\Http\Controllers\Community\CommunityBoardController;
@@ -23,6 +24,7 @@ Route::view('/apartments', 'placeholder', [
     'title' => '아파트 검색',
     'description' => '단지 검색과 선택을 위한 페이지입니다.',
 ]);
+Route::get('/apartments/search', [ApartmentSearchController::class, 'index']);
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -60,6 +62,9 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index']);
+    Route::get('/review-queue', [AdminDashboardController::class, 'reviewQueue']);
+    Route::put('/review-queue/matches/{id}', [AdminDashboardController::class, 'updateMatchReview']);
+    Route::put('/review-queue/verifications/{id}', [AdminDashboardController::class, 'updateVerificationRequest']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
     Route::post('/boards', [AdminDashboardController::class, 'storeBoard']);
     Route::put('/boards/{id}', [AdminDashboardController::class, 'updateBoard']);

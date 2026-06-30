@@ -3,12 +3,19 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Apartment;
+use App\Models\ApartmentMatchReview;
 use App\Models\User;
+use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class WebAuthController extends Controller
 {
+    public function __construct(private readonly ApartmentSelectionService $apartmentSelectionService)
+    {
+    }
+
     public function showLogin()
     {
         return view('auth.login', [
@@ -50,6 +57,7 @@ class WebAuthController extends Controller
     {
         return view('auth.register', [
             'redirect' => request()->query('redirect', '/'),
+            'initialApartmentName' => Apartment::query()->find((int) request()->query('apartment_id', 0))?->name,
         ]);
     }
 
@@ -58,21 +66,35 @@ class WebAuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'apartment_query' => ['required', 'string', 'max:120'],
+            'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'preferred_apartment_id' => $data['apartment_id'] ?? null,
             'password' => $data['password'],
         ]);
+
+        $selection = $this->apartmentSelectionService->applySelection(
+            $user,
+            isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
+            $data['apartment_query'],
+            'register'
+        );
 
         Auth::login($user);
         $request->session()->regenerate();
 
         $redirect = $this->safeRedirect($request->input('redirect'));
 
-        return redirect($redirect ?? '/')->with('status', '회원가입이 완료되었습니다. 단지 인증 후 주민 전용 글을 볼 수 있습니다.');
+        $message = $selection['selected_apartment']
+            ? '회원가입이 완료되었습니다. 선택한 아파트 기준으로 입주민 인증을 진행해 주세요.'
+            : '회원가입이 완료되었습니다. 아파트 매칭 검수 요청이 접수되었습니다. 관리자 확인 후 인증을 진행할 수 있습니다.';
+
+        return redirect($redirect ?? '/')->with('status', $message);
     }
 
     public function logout(Request $request)

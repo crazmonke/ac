@@ -14,6 +14,11 @@
         .btn { margin-top: 16px; width: 100%; border: 0; background: #0b7a75; color: #fff; padding: 11px; border-radius: 8px; cursor: pointer; font-weight: 700; }
         .err { margin-top: 10px; color: #b42318; font-size: 0.9rem; }
         .meta { margin-top: 14px; font-size: 0.86rem; color: #53657a; }
+        .autocomplete { position: relative; }
+        .suggestions { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid #d6e1ef; border-radius: 10px; box-shadow: 0 12px 24px rgba(20, 35, 60, 0.08); overflow: hidden; z-index: 10; }
+        .suggestion { padding: 10px 12px; cursor: pointer; border-top: 1px solid #eef3f8; }
+        .suggestion:first-child { border-top: 0; }
+        .suggestion small { display: block; color: #64748b; margin-top: 4px; }
         a { color: #0f6f67; text-decoration: none; font-weight: 700; }
     </style>
 </head>
@@ -32,6 +37,14 @@
         <label>이메일
             <input type="email" name="email" value="{{ old('email') }}" required>
         </label>
+
+        <label>아파트 선택</label>
+        <div class="autocomplete">
+            <input id="apartmentQuery" type="text" name="apartment_query" value="{{ old('apartment_query', $initialApartmentName) }}" placeholder="아파트명 또는 지역 검색" autocomplete="off" required>
+            <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', request()->query('apartment_id')) }}">
+            <div id="apartmentSuggestions" class="suggestions" style="display:none;"></div>
+        </div>
+        <div class="meta">검색 결과에서 단지를 선택하면 입주민 인증 요청 시 해당 apartment_id가 고정됩니다.</div>
 
         <label>비밀번호
             <input type="password" name="password" required>
@@ -52,5 +65,83 @@
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    const queryInput = document.getElementById('apartmentQuery');
+    const apartmentIdInput = document.getElementById('apartmentId');
+    const suggestionBox = document.getElementById('apartmentSuggestions');
+    let lastController = null;
+
+    function closeSuggestions() {
+        suggestionBox.style.display = 'none';
+        suggestionBox.innerHTML = '';
+    }
+
+    queryInput.addEventListener('input', async () => {
+        const keyword = queryInput.value.trim();
+        apartmentIdInput.value = '';
+
+        if (lastController) {
+            lastController.abort();
+        }
+
+        if (keyword.length < 2) {
+            closeSuggestions();
+            return;
+        }
+
+        lastController = new AbortController();
+
+        try {
+            const response = await fetch(`/apartments/search?q=${encodeURIComponent(keyword)}`, {
+                headers: { Accept: 'application/json' },
+                signal: lastController.signal,
+            });
+
+            if (!response.ok) {
+                closeSuggestions();
+                return;
+            }
+
+            const payload = await response.json();
+            const rows = payload.data || [];
+
+            if (!rows.length) {
+                suggestionBox.innerHTML = '<div class="suggestion">검색 결과가 없습니다.</div>';
+                suggestionBox.style.display = 'block';
+                return;
+            }
+
+            suggestionBox.innerHTML = rows.map((row) => `
+                <div class="suggestion" data-id="${row.id}" data-name="${row.name}">
+                    ${row.name}
+                    <small>${row.region} · ${row.road_address}</small>
+                </div>
+            `).join('');
+            suggestionBox.style.display = 'block';
+        } catch (error) {
+            closeSuggestions();
+        }
+    });
+
+    suggestionBox.addEventListener('click', (event) => {
+        const item = event.target.closest('.suggestion[data-id]');
+        if (!item) {
+            return;
+        }
+
+        apartmentIdInput.value = item.dataset.id;
+        queryInput.value = item.dataset.name;
+        closeSuggestions();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.autocomplete')) {
+            closeSuggestions();
+        }
+    });
+})();
+</script>
 </body>
 </html>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +23,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'preferred_apartment_id',
         'password',
     ];
 
@@ -51,6 +53,21 @@ class User extends Authenticatable
     public function userRoles(): HasMany
     {
         return $this->hasMany(UserRole::class);
+    }
+
+    public function preferredApartment(): BelongsTo
+    {
+        return $this->belongsTo(Apartment::class, 'preferred_apartment_id');
+    }
+
+    public function residentVerificationRequests(): HasMany
+    {
+        return $this->hasMany(ResidentVerificationRequest::class);
+    }
+
+    public function apartmentMatchReviews(): HasMany
+    {
+        return $this->hasMany(ApartmentMatchReview::class);
     }
 
     public function hasRoleForApartment(string $role, ?int $apartmentId = null): bool

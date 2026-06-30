@@ -118,6 +118,12 @@
             color: var(--muted);
             font-size: 0.85rem;
         }
+        .autocomplete { position: relative; }
+        .suggestions { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 24px rgba(20, 35, 60, 0.08); overflow: hidden; z-index: 10; }
+        .suggestion { padding: 10px 12px; cursor: pointer; border-top: 1px solid #eef3f8; }
+        .suggestion:first-child { border-top: 0; }
+        .suggestion small { display: block; color: var(--muted); margin-top: 4px; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #eef2f8; color: #22344f; font-size: 0.8rem; font-weight: 700; }
         @media (min-width: 740px) {
             .form-grid.two {
                 grid-template-columns: 1fr 1fr;
@@ -152,6 +158,16 @@
                 이메일(아이디)
                 <input type="email" name="email" value="{{ old('email', $user->email) }}" maxlength="190" required>
             </label>
+
+            <div style="grid-column: 1 / -1;">
+                <label>아파트 선택</label>
+                <div class="autocomplete">
+                    <input id="apartmentQuery" name="apartment_query" value="{{ old('apartment_query', $selectedApartment?->name) }}" placeholder="아파트명 또는 지역 검색" autocomplete="off" required>
+                    <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', $selectedApartment?->id) }}">
+                    <div id="apartmentSuggestions" class="suggestions" style="display:none;"></div>
+                </div>
+                <div class="meta" style="margin-top:6px;">현재 선택: {{ $selectedApartment?->name ?? '미선택' }}</div>
+            </div>
 
             <div class="row" style="grid-column: 1 / -1;">
                 <button class="btn btn-primary" type="submit">프로필 저장</button>
@@ -197,13 +213,105 @@
 
     <section class="card">
         <h2>입주민 인증</h2>
-        <p>추후 인증 프로세스 페이지와 연동될 예정입니다. 지금은 인증 요청 버튼으로 접수 상태만 남깁니다.</p>
+        <p>선택된 아파트 기준으로 입주민 인증이 진행됩니다. 검수 상태는 아래에서 확인할 수 있습니다.</p>
+        <div class="row" style="margin-bottom:10px;">
+            <span class="badge">선택 아파트: {{ $selectedApartment?->name ?? '미선택' }}</span>
+            <span class="badge">입주민 권한: {{ $hasResidentRole ? '승인됨' : '미승인' }}</span>
+        </div>
+        @if($latestMatchReview)
+            <p class="meta">최근 아파트 매칭 검수: {{ $latestMatchReview->status }} · {{ $latestMatchReview->raw_apartment_name }}</p>
+        @endif
+        @if($latestVerificationRequest)
+            <p class="meta">최근 인증 요청: {{ $latestVerificationRequest->status }} · {{ $latestVerificationRequest->apartment->name ?? '미지정' }}</p>
+        @endif
         <form method="post" action="/settings/resident-verification-request">
             @csrf
             <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+            <label>
+                요청 메모
+                <input name="request_note" value="{{ old('request_note') }}" placeholder="동/호수, 인증 참고 메모를 남길 수 있습니다.">
+            </label>
             <button class="btn btn-danger" type="submit">입주민 인증 요청</button>
         </form>
     </section>
 </div>
+
+<script>
+(function () {
+    const queryInput = document.getElementById('apartmentQuery');
+    const apartmentIdInput = document.getElementById('apartmentId');
+    const suggestionBox = document.getElementById('apartmentSuggestions');
+    let lastController = null;
+
+    function closeSuggestions() {
+        suggestionBox.style.display = 'none';
+        suggestionBox.innerHTML = '';
+    }
+
+    queryInput.addEventListener('input', async () => {
+        const keyword = queryInput.value.trim();
+        apartmentIdInput.value = '';
+
+        if (lastController) {
+            lastController.abort();
+        }
+
+        if (keyword.length < 2) {
+            closeSuggestions();
+            return;
+        }
+
+        lastController = new AbortController();
+
+        try {
+            const response = await fetch(`/apartments/search?q=${encodeURIComponent(keyword)}`, {
+                headers: { Accept: 'application/json' },
+                signal: lastController.signal,
+            });
+
+            if (!response.ok) {
+                closeSuggestions();
+                return;
+            }
+
+            const payload = await response.json();
+            const rows = payload.data || [];
+
+            if (!rows.length) {
+                suggestionBox.innerHTML = '<div class="suggestion">검색 결과가 없습니다.</div>';
+                suggestionBox.style.display = 'block';
+                return;
+            }
+
+            suggestionBox.innerHTML = rows.map((row) => `
+                <div class="suggestion" data-id="${row.id}" data-name="${row.name}">
+                    ${row.name}
+                    <small>${row.region} · ${row.road_address}</small>
+                </div>
+            `).join('');
+            suggestionBox.style.display = 'block';
+        } catch (error) {
+            closeSuggestions();
+        }
+    });
+
+    suggestionBox.addEventListener('click', (event) => {
+        const item = event.target.closest('.suggestion[data-id]');
+        if (!item) {
+            return;
+        }
+
+        apartmentIdInput.value = item.dataset.id;
+        queryInput.value = item.dataset.name;
+        closeSuggestions();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.autocomplete')) {
+            closeSuggestions();
+        }
+    });
+})();
+</script>
 </body>
 </html>

@@ -28,6 +28,14 @@
             <strong>대기 신고</strong>
             <div>{{ $pendingReportsCount }}</div>
         </article>
+        <article class="card">
+            <strong>대기 아파트 매칭</strong>
+            <div>{{ $pendingMatchReviewsCount }}</div>
+        </article>
+        <article class="card">
+            <strong>대기 입주민 인증</strong>
+            <div>{{ $pendingVerificationCount }}</div>
+        </article>
     </section>
 
     <table>

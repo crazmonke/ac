@@ -4,20 +4,60 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
+use App\Models\ApartmentMatchReview;
 use App\Models\Board;
 use App\Models\BoardCategory;
+use App\Models\ResidentVerificationRequest;
 use App\Models\Report;
+use App\Models\UserRole;
+use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class AdminDashboardController extends Controller
 {
+    public function __construct(private readonly ApartmentSelectionService $apartmentSelectionService)
+    {
+    }
+
     public function index()
     {
         return view('admin.dashboard', [
             'boardsCount' => Board::query()->count(),
             'pendingReportsCount' => Report::query()->where('status', 'pending')->count(),
+            'pendingMatchReviewsCount' => ApartmentMatchReview::query()->where('status', 'pending')->count(),
+            'pendingVerificationCount' => ResidentVerificationRequest::query()->where('status', 'pending')->count(),
             'latestReports' => Report::query()->latest()->limit(10)->get(),
+        ]);
+    }
+
+    public function reviewQueue()
+    {
+        $matchReviews = ApartmentMatchReview::query()
+            ->with(['user', 'suggestedApartment', 'resolvedApartment'])
+            ->where('status', 'pending')
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        $verificationRequests = ResidentVerificationRequest::query()
+            ->with(['user', 'apartment'])
+            ->where('status', 'pending')
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        $matchSuggestions = $matchReviews->mapWithKeys(function (ApartmentMatchReview $review) {
+            return [
+                $review->id => $this->apartmentSelectionService->search($review->raw_apartment_name, 6),
+            ];
+        });
+
+        return view('admin.review-queue', [
+            'matchReviews' => $matchReviews,
+            'verificationRequests' => $verificationRequests,
+            'matchSuggestions' => $matchSuggestions,
         ]);
     }
 
@@ -120,5 +160,65 @@ class AdminDashboardController extends Controller
         $report->save();
 
         return redirect('/admin/reports')->with('status', '신고 상태가 업데이트되었습니다.');
+    }
+
+    public function updateMatchReview(Request $request, int $id)
+    {
+        $review = ApartmentMatchReview::query()->with('user')->findOrFail($id);
+
+        $data = $request->validate([
+            'status' => ['required', 'in:resolved,rejected'],
+            'resolved_apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'admin_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        if ($data['status'] === 'resolved' && empty($data['resolved_apartment_id'])) {
+            return back()->withErrors(['resolved_apartment_id' => '확정할 아파트를 선택해 주세요.']);
+        }
+
+        $review->fill([
+            'status' => $data['status'],
+            'resolved_apartment_id' => $data['status'] === 'resolved' ? (int) $data['resolved_apartment_id'] : null,
+            'admin_note' => $data['admin_note'] ?? null,
+            'resolved_by' => $request->user()->id,
+            'resolved_at' => now(),
+        ])->save();
+
+        if ($data['status'] === 'resolved' && $review->user) {
+            $review->user->preferred_apartment_id = (int) $data['resolved_apartment_id'];
+            $review->user->save();
+        }
+
+        return redirect('/admin/review-queue')->with('status', '아파트 매칭 검수 상태가 업데이트되었습니다.');
+    }
+
+    public function updateVerificationRequest(Request $request, int $id)
+    {
+        $verificationRequest = ResidentVerificationRequest::query()->with(['user', 'apartment'])->findOrFail($id);
+
+        $data = $request->validate([
+            'status' => ['required', 'in:approved,rejected'],
+            'admin_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $verificationRequest->fill([
+            'status' => $data['status'],
+            'admin_note' => $data['admin_note'] ?? null,
+            'reviewed_by' => $request->user()->id,
+            'reviewed_at' => now(),
+        ])->save();
+
+        if ($data['status'] === 'approved') {
+            UserRole::query()->firstOrCreate([
+                'user_id' => $verificationRequest->user_id,
+                'apartment_id' => $verificationRequest->apartment_id,
+                'role' => 'resident',
+            ], [
+                'granted_at' => now(),
+                'granted_by' => $request->user()->id,
+            ]);
+        }
+
+        return redirect('/admin/review-queue')->with('status', '입주민 인증 검수 상태가 업데이트되었습니다.');
     }
 }
