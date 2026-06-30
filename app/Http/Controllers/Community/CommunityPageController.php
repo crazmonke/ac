@@ -11,6 +11,12 @@ class CommunityPageController extends Controller
     public function index(Request $request)
     {
         $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $user = $request->user();
+
+        if ($user && ! $user->hasRoleForApartment('resident', $apartmentId)) {
+            return redirect('/boards/free?apartment_id=' . $apartmentId);
+        }
+
         $apartment = Apartment::query()->find($apartmentId)
             ?? Apartment::query()->orderBy('id')->first();
 

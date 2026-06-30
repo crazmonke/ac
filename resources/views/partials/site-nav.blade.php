@@ -111,7 +111,6 @@
         <a href="/?apartment_id={{ $apartmentId }}">아파인드</a>
     </div>
     <nav class="site-links">
-        <a href="/boards/free?apartment_id={{ $apartmentId }}">게시판</a>
         <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티</a>
         @guest
             <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
