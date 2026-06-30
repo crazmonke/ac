@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\BoardCategory;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\UserRole;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -41,7 +42,19 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        Board::query()->updateOrCreate(
+        $publicCategory = BoardCategory::query()->updateOrCreate(
+            [
+                'apartment_id' => $apartment->id,
+                'slug' => 'public-info',
+            ],
+            [
+                'name' => '공개안내',
+                'sort_order' => 1,
+                'is_public' => true,
+            ]
+        );
+
+        $freeBoard = Board::query()->updateOrCreate(
             [
                 'apartment_id' => $apartment->id,
                 'slug' => 'free',
@@ -58,6 +71,66 @@ class DatabaseSeeder extends Seeder
                 'allow_anonymous' => false,
                 'is_active' => true,
                 'sort_order' => 0,
+            ]
+        );
+
+        $noticeBoard = Board::query()->updateOrCreate(
+            [
+                'apartment_id' => $apartment->id,
+                'slug' => 'notice',
+            ],
+            [
+                'category_id' => $publicCategory->id,
+                'name' => '공지사항',
+                'description' => '비회원도 확인 가능한 서비스/단지 공지',
+                'board_type' => 'notice',
+                'read_role' => 'guest',
+                'write_role' => 'admin',
+                'comment_role' => 'none',
+                'allow_file' => false,
+                'allow_anonymous' => false,
+                'is_active' => true,
+                'sort_order' => 1,
+            ]
+        );
+
+        $serviceNoticeBoard = Board::query()->updateOrCreate(
+            [
+                'apartment_id' => $apartment->id,
+                'slug' => 'service-notice',
+            ],
+            [
+                'category_id' => $publicCategory->id,
+                'name' => '서비스 공지',
+                'description' => '점검, 업데이트, 장애 안내',
+                'board_type' => 'notice',
+                'read_role' => 'guest',
+                'write_role' => 'admin',
+                'comment_role' => 'none',
+                'allow_file' => false,
+                'allow_anonymous' => false,
+                'is_active' => true,
+                'sort_order' => 2,
+            ]
+        );
+
+        Board::query()->updateOrCreate(
+            [
+                'apartment_id' => $apartment->id,
+                'slug' => 'policy',
+            ],
+            [
+                'category_id' => $publicCategory->id,
+                'name' => '개인정보/약관',
+                'description' => '약관 및 개인정보처리 관련 문서',
+                'board_type' => 'normal',
+                'read_role' => 'guest',
+                'write_role' => 'admin',
+                'comment_role' => 'none',
+                'allow_file' => false,
+                'allow_anonymous' => false,
+                'is_active' => true,
+                'sort_order' => 3,
             ]
         );
 
@@ -110,6 +183,57 @@ class DatabaseSeeder extends Seeder
             [
                 'granted_at' => now(),
                 'granted_by' => $admin->id,
+            ]
+        );
+
+        Post::query()->updateOrCreate(
+            [
+                'board_id' => $noticeBoard->id,
+                'title' => '커뮤니티 오픈 안내',
+            ],
+            [
+                'apartment_id' => $apartment->id,
+                'user_id' => $admin->id,
+                'body' => '입주민 커뮤니티가 오픈되었습니다. 비회원은 공지와 일부 메뉴를 확인할 수 있습니다.',
+                'is_notice' => true,
+                'is_anonymous' => false,
+                'visibility' => 'public',
+                'view_count' => 0,
+                'comment_count' => 0,
+            ]
+        );
+
+        Post::query()->updateOrCreate(
+            [
+                'board_id' => $serviceNoticeBoard->id,
+                'title' => '서비스 점검 공지',
+            ],
+            [
+                'apartment_id' => $apartment->id,
+                'user_id' => $admin->id,
+                'body' => '매주 화요일 02:00~03:00에 서비스 점검이 진행됩니다.',
+                'is_notice' => true,
+                'is_anonymous' => false,
+                'visibility' => 'public',
+                'view_count' => 0,
+                'comment_count' => 0,
+            ]
+        );
+
+        Post::query()->updateOrCreate(
+            [
+                'board_id' => $freeBoard->id,
+                'title' => '입주민 대표 토픽 샘플',
+            ],
+            [
+                'apartment_id' => $apartment->id,
+                'user_id' => $resident->id,
+                'body' => '입주민 전용 토픽 베스트 영역에 노출되는 샘플 게시글입니다.',
+                'is_notice' => false,
+                'is_anonymous' => false,
+                'visibility' => 'resident_only',
+                'view_count' => 18,
+                'comment_count' => 6,
             ]
         );
     }

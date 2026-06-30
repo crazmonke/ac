@@ -5,11 +5,18 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
+use App\Http\Controllers\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [PublicSiteController::class, 'home']);
+Route::get('/boards/{slug}', [PublicSiteController::class, 'board']);
+Route::get('/posts/{id}', [PublicSiteController::class, 'post']);
+Route::view('/service/signup-guide', 'placeholder', [
+    'title' => '회원가입 안내',
+    'description' => '로그인/회원가입 후 단지 인증을 완료하면 주민 전용 글을 열람할 수 있습니다.',
+]);
+Route::get('/terms', [PublicSiteController::class, 'terms']);
+Route::get('/privacy', [PublicSiteController::class, 'privacy']);
 
 Route::view('/apartments', 'placeholder', [
     'title' => '아파트 검색',
@@ -19,6 +26,8 @@ Route::view('/apartments', 'placeholder', [
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [WebAuthController::class, 'login'])->name('login.attempt');
+    Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [WebAuthController::class, 'register'])->name('register.attempt');
 });
 
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->middleware('auth');

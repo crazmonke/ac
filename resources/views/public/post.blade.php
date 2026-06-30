@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ $post->title }}</title>
+    <style>
+        body { margin: 0; font-family: 'SUIT', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f8fb; color: #17263d; }
+        .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; }
+        .top a { color: #0f6f67; text-decoration: none; font-weight: 700; }
+        .panel { margin-top: 12px; background: #fff; border: 1px solid #d5dfec; border-radius: 14px; padding: 14px; }
+        .meta { color: #5b6d82; font-size: 0.9rem; }
+        .gate { margin-top: 12px; border: 1px solid #ffd5ab; border-radius: 12px; background: #fff4e8; padding: 14px; color: #7e4310; }
+        .btn { text-decoration: none; display: inline-block; margin-top: 10px; border-radius: 9px; background: #0f6f67; color: #fff; padding: 9px 12px; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <a href="/?apartment_id={{ $apartmentId }}">← 메인으로</a>
+    </div>
+
+    <section class="panel">
+        <h1 style="margin:0 0 8px;">{{ $post->title }}</h1>
+        <div class="meta">{{ $post->apartment->name }} · {{ $post->board->name }} · {{ $post->created_at }}</div>
+
+        @if($canRead)
+            <div style="margin-top:14px; white-space: pre-wrap; line-height:1.6;">{{ $post->body }}</div>
+
+            @auth
+                <a class="btn" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">댓글/첨부 포함 전체 화면으로 이동</a>
+            @endauth
+        @else
+            <div class="gate">
+                이 글은 회원/입주민 전용 게시글입니다. 제목은 누구나 볼 수 있지만 본문 열람은 회원가입과 단지 인증이 필요합니다.
+                <br>
+                @if($isLoggedIn)
+                    <a class="btn" href="/community?apartment_id={{ $apartmentId }}">단지 인증 후 입주민 커뮤니티 이동</a>
+                @else
+                    <a class="btn" href="/register?redirect={{ urlencode('/posts/'.$post->id.'?apartment_id='.$apartmentId) }}">회원가입하고 본문 보기</a>
+                @endif
+            </div>
+        @endif
+    </section>
+</div>
+</body>
+</html>
