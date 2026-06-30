@@ -18,6 +18,9 @@
         .danger { background: #b42318; }
         a { color: #0f6f67; text-decoration: none; font-weight: 700; }
         .comment { border-top: 1px solid #e6edf6; padding: 10px 0; }
+        .children { margin-left: 20px; border-left: 2px solid #e3ebf6; padding-left: 10px; margin-top: 8px; }
+        .file-list li { margin-bottom: 6px; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -40,18 +43,40 @@
             · {{ $post->created_at }}
         </p>
         <div class="body">{{ $post->body }}</div>
+
+        <h3>첨부파일</h3>
+        <ul class="file-list">
+            @forelse($post->files as $file)
+                <li>
+                    <a href="/community/files/{{ $file->id }}">{{ $file->original_name }}</a>
+                    ({{ number_format($file->size) }} bytes)
+                    @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin || $currentUserId === $file->user_id))
+                        <form method="post" action="/community/files/{{ $file->id }}" style="display:inline;">
+                            @csrf
+                            @method('DELETE')
+                            <button class="danger" type="submit">삭제</button>
+                        </form>
+                    @endif
+                </li>
+            @empty
+                <li class="meta">첨부파일이 없습니다.</li>
+            @endforelse
+        </ul>
     </section>
 
     @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin))
         <section class="panel">
             <h2>게시글 수정</h2>
-            <form method="post" action="/community/posts/{{ $post->id }}">
+            <form method="post" enctype="multipart/form-data" action="/community/posts/{{ $post->id }}">
                 @csrf
                 @method('PUT')
                 <input name="title" value="{{ $post->title }}" required>
                 <textarea name="body" required>{{ $post->body }}</textarea>
                 <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked($post->is_anonymous)> 익명</label>
-                <button type="submit">수정</button>
+                <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf">
+                <div class="actions">
+                    <button type="submit">수정</button>
+                </div>
             </form>
             <form method="post" action="/community/posts/{{ $post->id }}" onsubmit="return confirm('삭제할까요?')" style="margin-top: 8px;">
                 @csrf
@@ -81,12 +106,69 @@
                 </div>
                 <div class="body">{{ $comment->body }}</div>
 
+                @if($canComment)
+                    <details style="margin-top:6px;">
+                        <summary>답글 작성</summary>
+                        <form method="post" action="/community/posts/{{ $post->id }}/comments" style="margin-top:8px;">
+                            @csrf
+                            <input type="hidden" name="parent_id" value="{{ $comment->id }}">
+                            <textarea name="body" placeholder="답글" required></textarea>
+                            <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명</label>
+                            <button type="submit">답글 등록</button>
+                        </form>
+                    </details>
+                @endif
+
                 @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
+                    <details style="margin-top:6px;">
+                        <summary>댓글 수정</summary>
+                        <form method="post" action="/community/comments/{{ $comment->id }}" style="margin-top:8px;">
+                            @csrf
+                            @method('PUT')
+                            <textarea name="body" required>{{ $comment->body }}</textarea>
+                            <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked($comment->is_anonymous)> 익명</label>
+                            <button type="submit">수정 저장</button>
+                        </form>
+                    </details>
+
                     <form method="post" action="/community/comments/{{ $comment->id }}" onsubmit="return confirm('댓글을 삭제할까요?')" style="margin-top: 6px;">
                         @csrf
                         @method('DELETE')
                         <button class="danger" type="submit">삭제</button>
                     </form>
+                @endif
+
+                @if($comment->children->count())
+                    <div class="children">
+                        @foreach($comment->children as $child)
+                            <article class="comment">
+                                <div class="meta">
+                                    {{ $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음') }}
+                                    · {{ $child->created_at }}
+                                </div>
+                                <div class="body">{{ $child->body }}</div>
+
+                                @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
+                                    <details style="margin-top:6px;">
+                                        <summary>답글 수정</summary>
+                                        <form method="post" action="/community/comments/{{ $child->id }}" style="margin-top:8px;">
+                                            @csrf
+                                            @method('PUT')
+                                            <textarea name="body" required>{{ $child->body }}</textarea>
+                                            <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked($child->is_anonymous)> 익명</label>
+                                            <button type="submit">수정 저장</button>
+                                        </form>
+                                    </details>
+
+                                    <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="return confirm('답글을 삭제할까요?')" style="margin-top: 6px;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="danger" type="submit">삭제</button>
+                                    </form>
+                                @endif
+                            </article>
+                        @endforeach
+                    </div>
                 @endif
             </article>
         @empty

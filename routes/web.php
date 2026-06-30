@@ -33,7 +33,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/community/posts/{id}', [CommunityBoardController::class, 'updatePost']);
     Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
+    Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);
+    Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
+    Route::delete('/community/files/{id}', [CommunityBoardController::class, 'destroyFile']);
     Route::get('/community/{slug}', [CommunityBoardController::class, 'board']);
 });
 
