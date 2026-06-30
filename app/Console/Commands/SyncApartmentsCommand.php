@@ -6,6 +6,7 @@ use App\Models\Apartment;
 use App\Models\ApartmentAlias;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -20,6 +21,9 @@ class SyncApartmentsCommand extends Command
         {--source=gov : Data source key, e.g. gov or file}
         {--path=storage/app/import/apartments.json : Local JSON path used for file source}
         {--url= : Remote JSON URL used for gov source}
+        {--service-key= : Government API service key used for gov source}
+        {--kapt-code= : K-APT apartment code used by the gov lookup API}
+        {--rows=500 : Page size for gov source pagination}
         {--deactivate-missing : Set source-bound apartments missing from this sync to inactive}
         {--dry-run : Validate and report without writing to DB}';
 
@@ -123,8 +127,107 @@ class SyncApartmentsCommand extends Command
     {
         return match ($source) {
             'file' => $this->loadRowsFromFile(),
+            'gov' => $this->loadRowsFromGov(),
             default => $this->loadRowsFromRemote(),
         };
+    }
+
+    private function loadRowsFromGov(): Collection
+    {
+        $baseUrl = trim((string) ($this->option('url') ?: env('APARTMENT_SYNC_SOURCE_URL', 'https://apis.data.go.kr/1613000/AptListService3')));
+        $serviceKey = trim((string) ($this->option('service-key') ?: env('APARTMENT_SYNC_SERVICE_KEY', '')));
+        $rowsPerPage = max(1, min(1000, (int) $this->option('rows')));
+
+        if ($serviceKey === '') {
+            $this->error('정부 API 서비스키가 비어 있습니다. --service-key 옵션 또는 APARTMENT_SYNC_SERVICE_KEY 설정이 필요합니다.');
+
+            return collect();
+        }
+
+        $serviceType = str_contains(strtolower($baseUrl), 'aptlistservice3') ? 'list' : 'basis';
+        $endpointPath = $serviceType === 'list' ? '/getTotalAptList3' : '/getAphusBassInfoV4';
+        $endpoint = rtrim($baseUrl, '/') . $endpointPath;
+        $page = 1;
+        $totalCount = null;
+        $rows = collect();
+        $kaptCode = trim((string) $this->option('kapt-code'));
+
+        do {
+            $query = [
+                'serviceKey' => $serviceKey,
+                'pageNo' => $page,
+                'numOfRows' => $rowsPerPage,
+                '_type' => 'json',
+            ];
+
+            if ($kaptCode !== '') {
+                $query['kaptCode'] = $kaptCode;
+            }
+
+            $response = Http::timeout(40)
+                ->retry(2, 800, throw: false)
+                ->acceptJson()
+                ->get($endpoint, $query);
+
+            if (! $response->successful()) {
+                $this->error('정부 API 조회 실패: HTTP ' . $response->status() . ' (page ' . $page . ')');
+
+                return collect();
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload)) {
+                $raw = trim((string) $response->body());
+
+                if (stripos($raw, 'forbidden') !== false) {
+                    $this->error('정부 API 응답이 Forbidden 입니다. 해당 API(15057332) 활용신청 승인/활성화 여부, 일반인증키(Decoding) 값, 호출 계정 일치 여부를 확인해 주세요.');
+                } elseif (stripos($raw, 'unauthorized') !== false) {
+                    $this->error('정부 API 응답이 Unauthorized 입니다. 일반인증키(Decoding) 값이 정확한지 확인해 주세요.');
+                } else {
+                    $this->error('정부 API 응답이 JSON 객체가 아닙니다. 원문: ' . mb_substr($raw, 0, 180));
+                }
+
+                return collect();
+            }
+
+            $resultCode = Arr::get($payload, 'response.header.resultCode');
+            if ($resultCode !== null && (string) $resultCode !== '00') {
+                $this->error('정부 API 오류: ' . (string) Arr::get($payload, 'response.header.resultMsg', 'Unknown error'));
+
+                return collect();
+            }
+
+            $items = Arr::get($payload, 'response.body.items.item', Arr::get($payload, 'response.body.items', Arr::get($payload, 'response.body.item', [])));
+
+            if (is_array($items) && ! Arr::isList($items)) {
+                $items = [$items];
+            }
+
+            if (! is_array($items)) {
+                $items = [];
+            }
+
+            foreach ($items as $item) {
+                if (is_array($item)) {
+                    $rows->push($this->mapGovItem($item));
+                }
+            }
+
+            if ($page === 1 && empty($items)) {
+                if ($serviceType === 'basis') {
+                    $this->warn('정부 API가 빈 결과를 반환했습니다. 이 API는 전국 목록 API가 아니라 kaptCode 기반 조회 API일 가능성이 높습니다. --kapt-code 옵션으로 단일 단지를 조회하거나, 전국 초기 적재용 별도 목록 소스가 필요합니다.');
+                } else {
+                    $this->warn('정부 API가 빈 결과를 반환했습니다. 조회 조건/활용신청 상태/트래픽 제한을 확인해 주세요.');
+                }
+            }
+
+            $totalCount ??= (int) Arr::get($payload, 'response.body.totalCount', 0);
+            $loadedCount = $rows->count();
+            $page++;
+        } while ($totalCount !== null && $loadedCount < $totalCount && ! empty($items));
+
+        return $rows->filter()->values();
     }
 
     private function loadRowsFromFile(): Collection
@@ -239,6 +342,54 @@ class SyncApartmentsCommand extends Command
             'source_key' => $sourceKey !== '' ? $sourceKey : null,
             'normalized_name' => $this->normalizeKoreanText($name),
             'aliases' => $aliases,
+        ];
+    }
+
+    private function mapGovItem(array $item): ?array
+    {
+        $name = trim((string) ($item['kaptName'] ?? $item['kaptname'] ?? $item['name'] ?? ''));
+        $sido = trim((string) ($item['as1'] ?? $item['sido'] ?? ''));
+        $sigungu = trim((string) ($item['as2'] ?? $item['sigungu'] ?? ''));
+        $eupmyeondong = trim((string) ($item['as3'] ?? $item['bjdCodeNm'] ?? $item['eupmyeondong'] ?? ''));
+        $roadAddress = trim((string) ($item['doroJuso'] ?? $item['roadAddr'] ?? $item['roadAddrPart1'] ?? $item['road_address'] ?? ''));
+        $as4 = trim((string) ($item['as4'] ?? ''));
+
+        if ($roadAddress === '') {
+            $rdNm = trim((string) ($item['rdnm'] ?? $item['rdNm'] ?? $item['rd_nm'] ?? ''));
+            $buldNo = trim((string) ($item['buldNo'] ?? $item['buld_no'] ?? ''));
+            if ($rdNm !== '' || $buldNo !== '') {
+                $roadAddress = trim($rdNm . ' ' . $buldNo);
+            }
+        }
+
+        if ($roadAddress === '') {
+            $roadAddress = trim(implode(' ', array_filter([$sido, $sigungu, $eupmyeondong !== '' ? $eupmyeondong : $as4])));
+        }
+
+        if ($name === '' || $sido === '' || $sigungu === '' || $roadAddress === '') {
+            return null;
+        }
+
+        if ($eupmyeondong === '') {
+            $eupmyeondong = $as4 !== '' ? $as4 : $sigungu;
+        }
+
+        $aliases = collect([
+            $item['kaptAddress'] ?? null,
+            $item['kaptdaCnt'] ?? null,
+            $item['kaptName'] ?? null,
+        ])->filter(fn ($value) => is_string($value) && trim($value) !== '')->unique()->values()->all();
+
+        return [
+            'source_key' => trim((string) ($item['kaptCode'] ?? $item['kaptcode'] ?? $item['kaptMgrNo'] ?? '')),
+            'name' => $name,
+            'sido' => $sido,
+            'sigungu' => $sigungu,
+            'eupmyeondong' => $eupmyeondong,
+            'road_address' => $roadAddress,
+            'jibun_address' => trim((string) ($item['bjdJuso'] ?? $item['jibunAddr'] ?? $item['kaptAddress'] ?? '')),
+            'aliases' => $aliases,
+            'synced_at' => Carbon::now()->toIso8601String(),
         ];
     }
 

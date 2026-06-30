@@ -4,7 +4,8 @@
     $currentUser = auth()->user();
     $displayId = $currentUser ? explode('@', $currentUser->email)[0] : '';
     $avatarSource = $currentUser ? ($currentUser->name ?: $displayId) : '';
-    $avatarLetter = strtoupper(substr($avatarSource, 0, 1));
+    $avatarFirst = function_exists('mb_substr') ? mb_substr($avatarSource, 0, 1, 'UTF-8') : substr($avatarSource, 0, 1);
+    $avatarLetter = function_exists('mb_strtoupper') ? mb_strtoupper($avatarFirst, 'UTF-8') : strtoupper($avatarFirst);
 @endphp
 
 <style>
