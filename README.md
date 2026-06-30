@@ -54,6 +54,106 @@ php artisan migrate:fresh --seed
 php artisan serve
 ```
 
+5. 브라우저 접속
+
+```text
+http://127.0.0.1:8000
+```
+
+6. 서버 종료
+
+```text
+서버를 실행한 터미널에서 Ctrl + C
+```
+
+## 로컬 서버 가동 가이드
+
+처음 1회 세팅이 끝난 뒤에는 아래 명령만으로 로컬 서버를 다시 띄울 수 있습니다.
+
+```bash
+cd /Users/user/ac
+php artisan serve
+```
+
+환경값(.env)을 수정한 경우에는 기존 서버를 종료(Ctrl + C)한 뒤 다시 실행해 주세요.
+
+```bash
+php artisan serve
+```
+
+## 자주 쓰는 개발 명령어
+
+### DB
+
+```bash
+# 마이그레이션만 적용
+php artisan migrate
+
+# DB 초기화 + 시드 재적재(개발용)
+php artisan migrate:fresh --seed
+
+# 시드만 재실행
+php artisan db:seed
+```
+
+### 캐시/설정 반영
+
+```bash
+# 캐시/설정/뷰/라우트 캐시 일괄 초기화
+php artisan optimize:clear
+
+# 설정 캐시만 초기화
+php artisan config:clear
+
+# 라우트 목록 확인
+php artisan route:list
+```
+
+### 테스트
+
+```bash
+# 전체 테스트
+php artisan test
+
+# PHPUnit 직접 실행
+./vendor/bin/phpunit
+```
+
+### 동기화(아파트 마스터)
+
+```bash
+# 정부 API 동기화 사전 확인 (DB 미반영)
+php artisan apartments:sync --source=gov --rows=1000 --dry-run
+
+# 실제 반영
+php artisan apartments:sync --source=gov --rows=1000 --deactivate-missing
+```
+
+## 운영/개발 주의사항
+
+### 운영(Production)에서 주의
+
+- `php artisan migrate:fresh --seed`는 운영 DB를 초기화하므로 절대 실행하면 안 됩니다.
+- 운영에서는 `php artisan migrate --force`만 사용해 스키마 변경을 적용하세요.
+- `.env` 변경 후에는 서비스 영향 시간을 고려해 재기동/캐시 반영을 진행하세요.
+
+```bash
+# 운영 배포 시 권장 예시
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+### 개발(Local)에서만 사용
+
+- `php artisan migrate:fresh --seed`
+- 테스트용 계정/샘플 데이터 재적재 명령
+- 대량 동기화 전 `--dry-run` 없이 반복 실행하는 작업
+
+### 공통 권장
+
+- 중요한 작업 전 DB 백업을 먼저 수행하세요.
+- 동기화/마이그레이션 전후로 로그와 주요 화면(홈, 커뮤니티, 관리자)을 빠르게 점검하세요.
+
 ## 웹 경로(초기 플레이스홀더)
 
 - `/`
