@@ -41,11 +41,11 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-3. DB 생성 및 마이그레이션
+3. DB 생성 및 마이그레이션 + 시드 데이터
 
 ```bash
 touch database/database.sqlite
-php artisan migrate
+php artisan migrate:fresh --seed
 ```
 
 4. 서버 실행
@@ -67,7 +67,24 @@ php artisan serve
 - `/community/owners`
 - `/community/tenants`
 
+## 인증/관리자 경로
+
+- `/login` (웹 세션 로그인)
+- `/admin` (관리자 대시보드)
+- `/admin/boards` (게시판 생성/수정/삭제)
+- `/admin/reports` (신고 상태 처리)
+
+## 초기 계정 (Seeder)
+
+- 관리자: `admin@example.com` / `admin1234!`
+- 일반 입주민: `resident@example.com` / `resident1234!`
+
+## 로컬 DB 관련
+
+- 현재 MVP는 SQLite 기반이라 별도 APM(MySQL) 설치 없이 로컬 테스트 가능합니다.
+- 필요 시 이후 `DB_CONNECTION=mysql`로 전환해도 되지만, 현재 단계에서는 SQLite 유지가 가장 간단합니다.
+
 ## 참고
 
-- 본 저장소는 MVP 스캐폴딩 단계입니다.
-- 인증(휴대폰/정부24/마이데이터), 파일 서명 URL, 관리자 상세 화면은 다음 단계에서 구현 예정입니다.
+- 본 저장소는 MVP 구현 단계입니다.
+- 정부24/마이데이터 연동, 정식 운영 정책, 고도화된 관리자 화면은 다음 단계에서 확장 가능합니다.

@@ -1,6 +1,10 @@
 <?php
 
+use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\BoardController;
+use App\Http\Controllers\Community\CommunityBoardController;
+use App\Http\Controllers\Community\CommunityPageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -12,53 +16,33 @@ Route::view('/apartments', 'placeholder', [
     'description' => '단지 검색과 선택을 위한 페이지입니다.',
 ]);
 
-Route::view('/login', 'placeholder', [
-    'title' => '로그인',
-    'description' => '인증 기능 연결 전 임시 로그인 안내 페이지입니다.',
-])->name('login');
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [WebAuthController::class, 'login'])->name('login.attempt');
+});
 
-Route::view('/community', 'placeholder', [
-    'title' => '입주민 커뮤니티',
-    'description' => '인증된 입주민 전용 커뮤니티 메인 페이지입니다.',
-]);
+Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-Route::view('/community/free', 'placeholder', [
-    'title' => '자유게시판',
-    'description' => '자유롭게 소통하는 기본 게시판입니다.',
-]);
+Route::get('/community', [CommunityPageController::class, 'index'])->middleware('auth');
+Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::class, 'index'])
+    ->middleware(['auth', 'role:resident,apartmentId']);
 
-Route::view('/community/info', 'placeholder', [
-    'title' => '생활정보 게시판',
-    'description' => '생활 팁과 동네 정보를 공유합니다.',
-]);
+Route::middleware('auth')->group(function () {
+    Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
+    Route::post('/community/boards/{slug}/posts', [CommunityBoardController::class, 'storePost']);
+    Route::put('/community/posts/{id}', [CommunityBoardController::class, 'updatePost']);
+    Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
+    Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
+    Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);
+    Route::get('/community/{slug}', [CommunityBoardController::class, 'board']);
+});
 
-Route::view('/community/market', 'placeholder', [
-    'title' => '나눔장터',
-    'description' => '나눔 및 중고 거래를 위한 게시판입니다.',
-]);
-
-Route::view('/community/lost', 'placeholder', [
-    'title' => '분실물 게시판',
-    'description' => '분실물 등록 및 확인 페이지입니다.',
-]);
-
-Route::view('/community/complaints', 'placeholder', [
-    'title' => '민원/건의',
-    'description' => '단지 민원과 건의 사항을 등록합니다.',
-]);
-
-Route::view('/community/owners', 'placeholder', [
-    'title' => '소유자 게시판',
-    'description' => '소유자 인증 사용자 전용 공간입니다.',
-]);
-
-Route::view('/community/tenants', 'placeholder', [
-    'title' => '임차인 게시판',
-    'description' => '임차인 인증 사용자 전용 공간입니다.',
-]);
-
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
+    Route::post('/boards', [AdminDashboardController::class, 'storeBoard']);
+    Route::put('/boards/{id}', [AdminDashboardController::class, 'updateBoard']);
+    Route::delete('/boards/{id}', [AdminDashboardController::class, 'destroyBoard']);
     Route::get('/reports', [AdminDashboardController::class, 'reports']);
+    Route::put('/reports/{id}', [AdminDashboardController::class, 'updateReport']);
 });

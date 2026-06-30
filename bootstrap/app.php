@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->statefulApi();
+
         $middleware->alias([
             'board.access' => \App\Http\Middleware\BoardAccessMiddleware::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
