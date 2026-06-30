@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\BoardController;
+use App\Http\Controllers\Auth\AccountSettingsController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
 use App\Http\Controllers\PublicSiteController;
@@ -37,6 +38,11 @@ Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::c
     ->middleware(['auth', 'role:resident,apartmentId']);
 
 Route::middleware('auth')->group(function () {
+    Route::get('/settings', [AccountSettingsController::class, 'show']);
+    Route::put('/settings/profile', [AccountSettingsController::class, 'updateProfile']);
+    Route::put('/settings/password', [AccountSettingsController::class, 'updatePassword']);
+    Route::post('/settings/resident-verification-request', [AccountSettingsController::class, 'requestResidentVerification']);
+
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);

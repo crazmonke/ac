@@ -1,6 +1,10 @@
 @php
     $apartmentId = $apartmentId ?? request()->query('apartment_id', 1);
     $isLoggedIn = $isLoggedIn ?? auth()->check();
+    $currentUser = auth()->user();
+    $displayId = $currentUser ? explode('@', $currentUser->email)[0] : '';
+    $avatarSource = $currentUser ? ($currentUser->name ?: $displayId) : '';
+    $avatarLetter = strtoupper(substr($avatarSource, 0, 1));
 @endphp
 
 <style>
@@ -25,6 +29,19 @@
         align-items: center;
         font-weight: 800;
         color: #17263d;
+    }
+    .site-brand-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(145deg, #2e4fb8, #0f6f67);
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 800;
+        box-shadow: 0 6px 14px rgba(16, 67, 120, 0.3);
     }
     .site-brand a {
         color: #0f6f67;
@@ -53,10 +70,43 @@
         color: #fff;
     }
     .site-links .inline-form { display: inline; margin: 0; }
+    .user-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #17263d;
+        border: 1px solid #d6e0ea;
+        border-radius: 999px;
+        padding: 5px 10px 5px 6px;
+        background: #fff;
+        font-weight: 700;
+        max-width: 220px;
+    }
+    .user-chip-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: #dde6f6;
+        color: #1f3a72;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        font-weight: 800;
+        flex: 0 0 auto;
+    }
+    .user-chip-id {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 160px;
+    }
 </style>
 
 <header class="site-nav">
     <div class="site-brand">
+        <span class="site-brand-badge">A</span>
         <a href="/?apartment_id={{ $apartmentId }}">아파인드</a>
     </div>
     <nav class="site-links">
@@ -66,6 +116,10 @@
             <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
             <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
         @else
+            <a class="user-chip" href="/settings?apartment_id={{ $apartmentId }}" title="계정 설정">
+                <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>
+                <span class="user-chip-id">{{ $currentUser->name }} ({{ $displayId }})</span>
+            </a>
             @if(auth()->user()->hasRoleForApartment('admin', $apartmentId))
                 <a href="/admin">관리자</a>
             @endif

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>계정 설정</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f8fb;
+            --ink: #15243a;
+            --muted: #62728a;
+            --line: #d6e0ea;
+            --card: #ffffff;
+            --brand: #2e4fb8;
+            --danger: #b42318;
+            --ok-bg: #e9f7ef;
+            --ok-line: #b6e2c8;
+            --ok-ink: #136a45;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: 'SUIT', sans-serif;
+        }
+        .shell {
+            max-width: 880px;
+            margin: 0 auto;
+            padding: 18px 16px 40px;
+        }
+        .page-title {
+            margin: 0 0 14px;
+            font-size: clamp(1.25rem, 2.6vw, 1.8rem);
+        }
+        .flash {
+            margin-bottom: 12px;
+            border: 1px solid var(--ok-line);
+            border-radius: 12px;
+            background: var(--ok-bg);
+            color: var(--ok-ink);
+            padding: 10px 12px;
+            font-weight: 600;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .card h2 {
+            margin: 0 0 6px;
+            font-size: 1.02rem;
+        }
+        .card p {
+            margin: 0 0 12px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        label {
+            display: grid;
+            gap: 6px;
+            font-size: 0.9rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            border: 1px solid #c8d5e7;
+            border-radius: 10px;
+            padding: 10px;
+            font: inherit;
+            color: var(--ink);
+            background: #fff;
+        }
+        .row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-primary {
+            background: var(--brand);
+            color: #fff;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .error {
+            margin-top: 8px;
+            color: var(--danger);
+            font-size: 0.86rem;
+            font-weight: 600;
+        }
+        .meta {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        @media (min-width: 740px) {
+            .form-grid.two {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+@include('partials.site-nav', ['apartmentId' => $apartmentId])
+
+<div class="shell">
+    <h1 class="page-title">계정 설정</h1>
+
+    @if(session('status'))
+        <div class="flash">{{ session('status') }}</div>
+    @endif
+
+    <section class="card">
+        <h2>프로필 정보</h2>
+        <p>상단 네비에 노출되는 사용자 이름과 계정 정보를 수정합니다.</p>
+        <form method="post" action="/settings/profile" class="form-grid two">
+            @csrf
+            @method('put')
+            <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+
+            <label>
+                이름
+                <input name="name" value="{{ old('name', $user->name) }}" maxlength="120" required>
+            </label>
+
+            <label>
+                이메일(아이디)
+                <input type="email" name="email" value="{{ old('email', $user->email) }}" maxlength="190" required>
+            </label>
+
+            <div class="row" style="grid-column: 1 / -1;">
+                <button class="btn btn-primary" type="submit">프로필 저장</button>
+                <span class="meta">변경 즉시 상단 네비 정보에 반영됩니다.</span>
+            </div>
+        </form>
+        @if($errors->has('name') || $errors->has('email'))
+            <div class="error">{{ $errors->first('name') ?: $errors->first('email') }}</div>
+        @endif
+    </section>
+
+    <section class="card">
+        <h2>비밀번호 변경</h2>
+        <p>현재 비밀번호를 확인한 뒤 새로운 비밀번호로 변경합니다.</p>
+        <form method="post" action="/settings/password" class="form-grid two">
+            @csrf
+            @method('put')
+            <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+
+            <label>
+                현재 비밀번호
+                <input type="password" name="current_password" required>
+            </label>
+
+            <label>
+                새 비밀번호
+                <input type="password" name="password" minlength="8" required>
+            </label>
+
+            <label style="grid-column: 1 / -1;">
+                새 비밀번호 확인
+                <input type="password" name="password_confirmation" minlength="8" required>
+            </label>
+
+            <div class="row" style="grid-column: 1 / -1;">
+                <button class="btn btn-primary" type="submit">비밀번호 변경</button>
+            </div>
+        </form>
+        @if($errors->has('current_password') || $errors->has('password'))
+            <div class="error">{{ $errors->first('current_password') ?: $errors->first('password') }}</div>
+        @endif
+    </section>
+
+    <section class="card">
+        <h2>입주민 인증</h2>
+        <p>추후 인증 프로세스 페이지와 연동될 예정입니다. 지금은 인증 요청 버튼으로 접수 상태만 남깁니다.</p>
+        <form method="post" action="/settings/resident-verification-request">
+            @csrf
+            <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+            <button class="btn btn-danger" type="submit">입주민 인증 요청</button>
+        </form>
+    </section>
+</div>
+</body>
+</html>
