@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Services\PermissionService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PublicSiteController extends Controller
 {
@@ -161,8 +162,11 @@ class PublicSiteController extends Controller
                 'id' => (int) $post->id,
                 'title' => $post->title,
                 'created_at' => $post->created_at,
+                'display_date' => $this->formatDisplayDate($post->created_at),
                 'board_name' => $post->board->name,
                 'apartment_name' => $post->apartment->name,
+                'region_label' => $this->regionLabelFromSido($post->apartment->sido),
+                'brand_token' => $this->brandTokenFromApartmentName($post->apartment->name),
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
                 'is_notice' => (bool) $post->is_notice,
@@ -170,5 +174,68 @@ class PublicSiteController extends Controller
                 'url' => $url,
             ];
         });
+    }
+
+    private function regionLabelFromSido(?string $sido): string
+    {
+        $value = trim((string) $sido);
+
+        if ($value === '') {
+            return '-';
+        }
+
+        if (str_starts_with($value, '서울')) {
+            return '서울';
+        }
+
+        return preg_replace('/\s+/', '', $value) ?: $value;
+    }
+
+    private function brandTokenFromApartmentName(?string $name): string
+    {
+        $value = trim((string) $name);
+
+        if ($value === '') {
+            return 'APT';
+        }
+
+        $knownBrands = [
+            '자이' => 'XI',
+            '래미안' => 'RAE',
+            '푸르지오' => 'PRU',
+            '더샵' => 'TS',
+            '힐스테이트' => 'HS',
+            '아이파크' => 'IP',
+            '롯데캐슬' => 'LC',
+            'e편한세상' => 'ECS',
+            'SK뷰' => 'SKV',
+            '위브' => 'WB',
+            '호반베르디움' => 'HB',
+        ];
+
+        foreach ($knownBrands as $keyword => $token) {
+            if (str_contains($value, $keyword)) {
+                return $token;
+            }
+        }
+
+        $normalized = preg_replace('/\s+/', '', $value) ?: $value;
+
+        return mb_substr($normalized, 0, 1);
+    }
+
+    private function formatDisplayDate($createdAt): string
+    {
+        if (! $createdAt) {
+            return '-';
+        }
+
+        $date = $createdAt->copy();
+
+        if ($date->isSameDay(now())) {
+            return $date->format('H:i');
+        }
+
+        return $date->format('m/d');
     }
 }

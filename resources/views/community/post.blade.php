@@ -65,6 +65,11 @@
             border-radius: 50%;
             background: linear-gradient(145deg, #dce6ff, #eef2ff);
             border: 1px solid var(--line);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #35528a;
             flex: 0 0 auto;
         }
         .author-name { font-weight: 800; }
@@ -226,6 +231,17 @@
     </style>
 </head>
 <body>
+@php
+    $avatarInitial = static function (?string $name): string {
+        $value = trim((string) $name);
+        if ($value === '') {
+            return 'U';
+        }
+
+        return mb_strtoupper(mb_substr($value, 0, 1));
+    };
+@endphp
+
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
@@ -253,9 +269,10 @@
             <h1 class="post-title">{{ $post->title }}</h1>
             <div class="author-row">
                 <div class="author">
-                    <div class="avatar"></div>
+                    @php($postAuthorName = $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음'))
+                    <div class="avatar">{{ $avatarInitial($postAuthorName) }}</div>
                     <div>
-                        <div class="author-name">{{ $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음') }}</div>
+                        <div class="author-name">{{ $postAuthorName }}</div>
                         <div class="meta">{{ $post->created_at }}</div>
                     </div>
                 </div>
@@ -316,10 +333,11 @@
                 <div class="best-label">✨ BEST 댓글</div>
                 @foreach($post->comments->whereIn('id', $bestCommentIds) as $bestComment)
                     <article class="comment" style="padding-top: 8px;">
-                        <div class="avatar"></div>
+                        @php($bestCommentAuthorName = $bestComment->is_anonymous ? '익명' : ($bestComment->user->name ?? '알 수 없음'))
+                        <div class="avatar">{{ $avatarInitial($bestCommentAuthorName) }}</div>
                         <div class="comment-body">
                             <div class="comment-head">
-                                <div class="comment-name">{{ $bestComment->is_anonymous ? '익명' : ($bestComment->user->name ?? '알 수 없음') }}</div>
+                                <div class="comment-name">{{ $bestCommentAuthorName }}</div>
                                 <div class="meta">답글 {{ $bestComment->children->count() }}개</div>
                             </div>
                             <div class="comment-text">{{ $bestComment->body }}</div>
@@ -330,10 +348,11 @@
                                     <div class="children" style="margin-top:8px;">
                                         @foreach($bestComment->children as $child)
                                             <article class="comment" style="grid-template-columns: 32px 1fr; padding-top:8px;">
-                                                <div class="avatar" style="width:32px; height:32px;"></div>
+                                                @php($bestChildAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
+                                                <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($bestChildAuthorName) }}</div>
                                                 <div class="comment-body">
                                                     <div class="comment-head">
-                                                        <div class="comment-name">{{ $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음') }}</div>
+                                                        <div class="comment-name">{{ $bestChildAuthorName }}</div>
                                                         <div class="meta">{{ $child->created_at }}</div>
                                                     </div>
                                                     <div class="comment-text">{{ $child->body }}</div>
@@ -369,10 +388,11 @@
                 @continue
             @endif
             <article class="comment">
-                <div class="avatar"></div>
+                @php($commentAuthorName = $comment->is_anonymous ? '익명' : ($comment->user->name ?? '알 수 없음'))
+                <div class="avatar">{{ $avatarInitial($commentAuthorName) }}</div>
                 <div class="comment-body">
                     <div class="comment-head">
-                        <div class="comment-name">{{ $comment->is_anonymous ? '익명' : ($comment->user->name ?? '알 수 없음') }}</div>
+                        <div class="comment-name">{{ $commentAuthorName }}</div>
                         <div class="meta">{{ $comment->created_at }}</div>
                     </div>
                     <div class="comment-text">{{ $comment->body }}</div>
@@ -407,10 +427,11 @@
                         <div class="children">
                             @foreach($comment->children as $child)
                                 <article class="comment" style="grid-template-columns: 32px 1fr;">
-                                    <div class="avatar" style="width:32px; height:32px;"></div>
+                                    @php($childAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
+                                    <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($childAuthorName) }}</div>
                                     <div class="comment-body">
                                         <div class="comment-head">
-                                            <div class="comment-name">{{ $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음') }}</div>
+                                            <div class="comment-name">{{ $childAuthorName }}</div>
                                             <div class="meta">{{ $child->created_at }}</div>
                                         </div>
                                         <div class="comment-text">{{ $child->body }}</div>

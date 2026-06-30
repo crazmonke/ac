@@ -141,6 +141,37 @@
             font-size: 0.8rem;
             margin-left: 6px;
         }
+        .region-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .region-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 0.76rem;
+            border: 1px solid #d0daea;
+            background: #f8fbff;
+            color: #3a4c68;
+            font-weight: 700;
+        }
+        .brand-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #2e4fb8, #0f7a72);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
         .notice-list { list-style: none; margin: 0; padding: 0; }
         .notice-list li {
             border-top: 1px solid #e8eef5;
@@ -232,22 +263,27 @@
             <table>
                 <thead>
                 <tr>
-                    <th>지역명/아파트명</th>
-                    <th>게시물 타이틀</th>
-                    <th>작성일</th>
+                    <th>지역/브랜드</th>
+                    <th>제목</th>
+                    <th>일자</th>
                 </tr>
                 </thead>
                 <tbody>
                 @forelse($bestTopics as $item)
                     <tr>
-                        <td>{{ $apartment->sido }} {{ $apartment->sigungu }} / {{ $item['apartment_name'] }}</td>
+                        <td>
+                            <span class="region-brand">
+                                <span class="region-pill">{{ $item['region_label'] }}</span>
+                                <span class="brand-icon">{{ $item['brand_token'] }}</span>
+                            </span>
+                        </td>
                         <td>
                             <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                             @if(! $item['can_read'])
                                 <span class="lock">회원가입 후 상세보기</span>
                             @endif
                         </td>
-                        <td>{{ $item['created_at']?->format('Y-m-d') }}</td>
+                        <td>{{ $item['display_date'] }}</td>
                     </tr>
                 @empty
                     <tr>
@@ -266,9 +302,9 @@
                 <thead>
                 <tr>
                     <th>게시판</th>
-                    <th>타이틀</th>
-                    <th>조회/댓글</th>
-                    <th>작성일</th>
+                    <th>제목</th>
+                    <th>조회</th>
+                    <th>일자</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -277,12 +313,15 @@
                         <td>{{ $item['board_name'] }}</td>
                         <td>
                             <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+                            @if($item['comment_count'] > 0)
+                                <span class="meta">({{ $item['comment_count'] }})</span>
+                            @endif
                             @if(! $item['can_read'])
                                 <span class="lock">🔒 회원 전용 상세</span>
                             @endif
                         </td>
-                        <td>{{ $item['view_count'] }} / {{ $item['comment_count'] }}</td>
-                        <td>{{ $item['created_at']?->format('Y-m-d') }}</td>
+                        <td>{{ $item['view_count'] }}</td>
+                        <td>{{ $item['display_date'] }}</td>
                     </tr>
                 @empty
                     <tr>
@@ -301,7 +340,7 @@
                 @forelse($notices as $item)
                     <li>
                         <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
-                        <span class="meta">{{ $item['created_at']?->format('Y-m-d') }}</span>
+                        <span class="meta">{{ $item['display_date'] }}</span>
                     </li>
                 @empty
                     <li class="meta">등록된 공지사항이 없습니다.</li>

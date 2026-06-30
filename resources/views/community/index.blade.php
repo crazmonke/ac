@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>커뮤니티 홈</title>
+    <title>{{ $apartmentName }} 커뮤니티</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f8fb; color: #17263d; }
         .wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
@@ -12,7 +12,12 @@
         .grid { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
         .card { background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; }
         .meta { color: #5b6d82; font-size: 0.9rem; }
-        .pill { display: inline-block; padding: 3px 8px; border: 1px solid #c7d8ea; border-radius: 999px; font-size: 0.78rem; margin-right: 6px; }
+        .post-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+        .post-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; border-top: 1px solid #edf2f8; padding-top: 8px; }
+        .post-row:first-child { border-top: 0; padding-top: 0; }
+        .post-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .post-views { font-size: 0.82rem; color: #4c607a; }
+        .post-date { font-size: 0.82rem; color: #5b6d82; min-width: 42px; text-align: right; }
         .err { margin-top: 14px; padding: 10px; border-radius: 8px; background: #fdecec; border: 1px solid #f4c8c8; color: #9e1d1d; }
         input, select { width: 100%; border: 1px solid #c7d8ea; border-radius: 8px; padding: 8px; }
         a { color: #0f6f67; text-decoration: none; font-weight: 700; }
@@ -23,8 +28,8 @@
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
     <div class="top">
-        <h1>입주민 커뮤니티</h1>
-        <div class="meta">apartment_id={{ $apartmentId }} · <a href="/admin/boards">게시판 관리</a></div>
+        <h1>{{ $apartmentName }} 커뮤니티</h1>
+        <div class="meta"><a href="/admin/boards">게시판 관리</a></div>
     </div>
 
     <div id="errorBox" class="err" style="display:none;"></div>
@@ -86,7 +91,8 @@
 
             const filtered = boardRows.filter(({ category, board }) => {
                 const byCategory = !categoryFilter || String(category.id) === categoryFilter;
-                const haystack = `${board.name} ${board.description || ''} ${category.name}`.toLowerCase();
+                const recentTitles = (board.recent_posts || []).map((post) => post.title).join(' ');
+                const haystack = `${board.name} ${board.description || ''} ${category.name} ${recentTitles}`.toLowerCase();
                 const byQuery = !q || haystack.includes(q);
                 return byCategory && byQuery;
             });
@@ -99,14 +105,17 @@
             const cards = filtered.map(({ category, board }) => `
                     <article class="card">
                         <h3><a href="/community/${board.slug}?apartment_id=${apartmentId}">${board.name}</a></h3>
-                        <div class="meta">카테고리: ${category.name} (${category.slug})</div>
-                        <p class="meta">${board.description || '설명 없음'}</p>
-                        <div>
-                            <span class="pill">읽기 ${board.read_role}</span>
-                            <span class="pill">쓰기 ${board.write_role}</span>
-                            <span class="pill">댓글 ${board.comment_role}</span>
-                        </div>
-                        <div class="meta" style="margin-top:8px;">slug: ${board.slug}</div>
+                        <ul class="post-list">
+                            ${(board.recent_posts || []).length
+                                ? (board.recent_posts || []).map((post) => `
+                                    <li class="post-row">
+                                        <a class="post-title" href="${post.url}">${post.title}</a>
+                                        <span class="post-views">조회 ${post.view_count}</span>
+                                        <span class="post-date">${post.display_date}</span>
+                                    </li>
+                                `).join('')
+                                : '<li class="meta">최근 게시물이 없습니다.</li>'}
+                        </ul>
                     </article>
                 `);
 
