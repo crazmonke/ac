@@ -31,43 +31,6 @@
                 var(--bg);
         }
         .shell { max-width: 1180px; margin: 0 auto; padding: 18px 16px 46px; }
-        .topbar {
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 12px 14px;
-            display: flex;
-            gap: 14px;
-            align-items: center;
-            justify-content: space-between;
-            backdrop-filter: blur(7px);
-            position: sticky;
-            top: 12px;
-            z-index: 9;
-        }
-        .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
-        .brand .logo {
-            width: 30px;
-            height: 30px;
-            border-radius: 9px;
-            display: grid;
-            place-items: center;
-            color: #fff;
-            background: linear-gradient(145deg, #0f7a72, #1f8f86);
-            box-shadow: 0 7px 16px rgba(15, 122, 114, 0.3);
-        }
-        .menu { display: flex; gap: 8px; flex-wrap: wrap; }
-        .menu a {
-            text-decoration: none;
-            color: var(--ink);
-            border: 1px solid var(--line);
-            background: #fff;
-            border-radius: 999px;
-            padding: 7px 11px;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-        .auth { display: flex; gap: 8px; align-items: center; }
         .btn {
             border: 0;
             border-radius: 10px;
@@ -209,34 +172,9 @@
     </style>
 </head>
 <body>
-<div class="shell">
-    <header class="topbar">
-        <div class="brand">
-            <span class="logo">🏠</span>
-            <span>{{ $apartment->name }} 커뮤니티</span>
-        </div>
-        <nav class="menu">
-            <a href="/?apartment_id={{ $apartment->id }}">메인</a>
-            <a href="/apartments">아파트 찾기</a>
-            <a href="/community?apartment_id={{ $apartment->id }}">입주민 커뮤니티</a>
-            <a href="/boards/free?apartment_id={{ $apartment->id }}">게시판 둘러보기</a>
-        </nav>
-        <div class="auth">
-            @auth
-                @if(auth()->user()->hasRoleForApartment('admin', $apartment->id))
-                    <a class="btn btn-soft" href="/admin">관리자</a>
-                @endif
-                <form method="post" action="/logout">
-                    @csrf
-                    <button class="btn btn-primary" type="submit">로그아웃</button>
-                </form>
-            @else
-                <a class="btn btn-soft" href="/login">로그인</a>
-                <a class="btn btn-primary" href="/register">회원가입</a>
-            @endauth
-        </div>
-    </header>
+@include('partials.site-nav', ['apartmentId' => $apartment->id])
 
+<div class="shell">
     @if(session('status'))
         <p class="danger-text">{{ session('status') }}</p>
     @endif

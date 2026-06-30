@@ -17,8 +17,8 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.admin-nav')
     <h1>신고 관리</h1>
-    <p><a href="/admin">대시보드로</a></p>
 
     @if(session('status'))
         <div class="flash">{{ session('status') }}</div>

@@ -81,6 +81,8 @@
 </head>
 <body>
 <div class="shell">
+    @include('partials.site-nav', ['apartmentId' => request()->query('apartment_id', 1)])
+
     <section class="hero">
         <span class="pill">MVP · Laravel 11 · SQLite</span>
         <h1>아파트 입주민 커뮤니티 플랫폼</h1>

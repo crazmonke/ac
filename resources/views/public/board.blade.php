@@ -21,6 +21,7 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => $apartmentId])
     <div class="top">
         <h1 style="margin:0;">{{ $board->name }}</h1>
         <div>

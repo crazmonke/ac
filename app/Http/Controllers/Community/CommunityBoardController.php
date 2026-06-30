@@ -93,6 +93,15 @@ class CommunityBoardController extends Controller
 
         $post->increment('view_count');
 
+        $rootCommentCount = $post->comments->count();
+        $replyCount = $post->comments->sum(fn ($comment) => $comment->children->count());
+        $bestCommentIds = $post->comments
+            ->sortByDesc(fn ($comment) => $comment->children->count())
+            ->take(2)
+            ->pluck('id')
+            ->values()
+            ->all();
+
         return view('community.post', [
             'post' => $post,
             'apartmentId' => (int) $post->apartment_id,
@@ -100,6 +109,45 @@ class CommunityBoardController extends Controller
             'canComment' => $this->permissionService->hasBoardPermission($user, $post->board, 'comment'),
             'isApartmentAdmin' => $this->permissionService->hasAdminRole($user, (int) $post->apartment_id),
             'currentUserId' => $user->id,
+            'rootCommentCount' => $rootCommentCount,
+            'replyCount' => $replyCount,
+            'totalCommentCount' => $rootCommentCount + $replyCount,
+            'bestCommentIds' => $bestCommentIds,
+        ]);
+    }
+
+    public function editPost(Request $request, int $id)
+    {
+        $post = Post::query()->with('board', 'files')->findOrFail($id);
+        $user = $request->user();
+
+        if (! $this->permissionService->hasBoardPermission($user, $post->board, 'write')) {
+            abort(403);
+        }
+
+        if (! $this->canManage($user, (int) $post->user_id, (int) $post->apartment_id)) {
+            abort(403);
+        }
+
+        return view('community.post-edit', [
+            'post' => $post,
+            'apartmentId' => (int) $post->apartment_id,
+        ]);
+    }
+
+    public function createPost(Request $request, string $slug)
+    {
+        $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $board = $this->resolveBoard($slug, $apartmentId);
+        $user = $request->user();
+
+        if (! $this->permissionService->hasBoardPermission($user, $board, 'write')) {
+            abort(403);
+        }
+
+        return view('community.post-create', [
+            'board' => $board,
+            'apartmentId' => $apartmentId,
         ]);
     }
 
@@ -260,6 +308,27 @@ class CommunityBoardController extends Controller
         ])->save();
 
         return back()->with('status', '댓글이 수정되었습니다.');
+    }
+
+    public function editComment(Request $request, int $id)
+    {
+        $comment = Comment::query()->with('post.board')->findOrFail($id);
+        $post = $comment->post;
+        $user = $request->user();
+
+        if (! $post || ! $this->permissionService->hasBoardPermission($user, $post->board, 'comment')) {
+            abort(403);
+        }
+
+        if (! $this->canManage($user, (int) $comment->user_id, (int) $post->apartment_id)) {
+            abort(403);
+        }
+
+        return view('community.comment-edit', [
+            'comment' => $comment,
+            'post' => $post,
+            'apartmentId' => (int) $post->apartment_id,
+        ]);
     }
 
     public function destroyComment(Request $request, int $id)

@@ -38,10 +38,13 @@ Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::c
 
 Route::middleware('auth')->group(function () {
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
+    Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
+    Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);
     Route::post('/community/boards/{slug}/posts', [CommunityBoardController::class, 'storePost']);
     Route::put('/community/posts/{id}', [CommunityBoardController::class, 'updatePost']);
     Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
+    Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);
     Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);
     Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);

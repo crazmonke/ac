@@ -20,6 +20,8 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => $apartmentId])
+
     <div class="top">
         <h1>입주민 커뮤니티</h1>
         <div class="meta">apartment_id={{ $apartmentId }} · <a href="/admin/boards">게시판 관리</a></div>

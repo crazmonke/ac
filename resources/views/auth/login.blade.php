@@ -6,7 +6,7 @@
     <title>로그인</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #eef4fa; color: #1b2d45; }
-        .wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+        .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 16px 20px 28px; gap: 14px; }
         .card { width: min(420px, 100%); background: #fff; border: 1px solid #d6e1ef; border-radius: 14px; padding: 22px; }
         h1 { margin: 0 0 14px; font-size: 1.45rem; }
         label { display: block; margin-top: 10px; font-size: 0.9rem; }
@@ -18,6 +18,7 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => request()->query('apartment_id', 1)])
     <form class="card" method="post" action="{{ route('login.attempt') }}">
         @csrf
         <input type="hidden" name="redirect" value="{{ old('redirect', $redirect ?? '/') }}">

@@ -13,6 +13,7 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => request()->query('apartment_id', 1)])
     <a href="/">← 메인으로</a>
     <section class="panel" style="margin-top:10px;">
         <h1 style="margin-top:0;">{{ $title }}</h1>

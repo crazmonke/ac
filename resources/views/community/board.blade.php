@@ -14,9 +14,11 @@
         .grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(120px, 1fr)); }
         input, textarea, select { width: 100%; border: 1px solid #c7d8ea; border-radius: 8px; padding: 9px; }
         textarea { min-height: 90px; }
-        button { border: 0; border-radius: 8px; background: #0f6f67; color: #fff; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+        button, .btn { border: 0; border-radius: 999px; background: #0f6f67; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-secondary { background: #dde7f3; color: #20324b; }
         a { color: #0f6f67; text-decoration: none; font-weight: 700; }
         .list { margin-top: 12px; }
+        .list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
         .item { background: #fff; border: 1px solid #d5dfec; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
         .item h3 { margin: 0 0 6px; }
         .pill { display: inline-block; border: 1px solid #c9d8eb; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
@@ -24,6 +26,8 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => $apartmentId])
+
     <h1>{{ $board->name }}</h1>
     <p class="meta">slug={{ $board->slug }} · apartment_id={{ $apartmentId }} · <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티 홈</a></p>
 
@@ -57,33 +61,16 @@
         </form>
     </section>
 
-    @if($canWrite)
-        <section class="panel">
-            <h2>새 글 작성</h2>
-            <form method="post" enctype="multipart/form-data" action="/community/boards/{{ $board->slug }}/posts?apartment_id={{ $apartmentId }}">
-                @csrf
-                <div class="grid">
-                    <div style="grid-column: 1 / -1;">
-                        <input name="title" placeholder="제목" required>
-                    </div>
-                    <div style="grid-column: 1 / -1;">
-                        <textarea name="body" placeholder="내용" required></textarea>
-                    </div>
-                    <div>
-                        <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명</label>
-                    </div>
-                    <div>
-                        <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf">
-                    </div>
-                    <div>
-                        <button type="submit">등록</button>
-                    </div>
-                </div>
-            </form>
-        </section>
-    @endif
-
     <section class="list">
+        <div class="list-head">
+            <div>
+                <strong>글 목록</strong>
+                <div class="meta">{{ $board->name }} · 총 {{ $posts->total() }}개</div>
+            </div>
+            @if($canWrite)
+                <a class="btn" href="/community/boards/{{ $board->slug }}/create?apartment_id={{ $apartmentId }}">새글작성</a>
+            @endif
+        </div>
         @forelse($posts as $post)
             <article class="item">
                 <h3>

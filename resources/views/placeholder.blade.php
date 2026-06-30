@@ -13,8 +13,11 @@
         }
         .wrap {
             min-height: 100vh;
-            display: grid;
-            place-items: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 14px;
             padding: 20px;
         }
         .card {
@@ -44,6 +47,8 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => request()->query('apartment_id', 1)])
+
     <section class="card">
         <h1>{{ $title }}</h1>
         <p>{{ $description }}</p>

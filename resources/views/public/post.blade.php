@@ -16,6 +16,7 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.site-nav', ['apartmentId' => $apartmentId])
     <div class="top">
         <a href="/?apartment_id={{ $apartmentId }}">← 메인으로</a>
     </div>

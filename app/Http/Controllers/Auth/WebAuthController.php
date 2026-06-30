@@ -31,6 +31,12 @@ class WebAuthController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+
+        if ($this->isAdminUser($user)) {
+            return redirect('/admin');
+        }
+
         $redirect = $this->safeRedirect($request->input('redirect'));
 
         if ($redirect !== null) {
@@ -90,5 +96,19 @@ class WebAuthController extends Controller
         }
 
         return null;
+    }
+
+    private function isAdminUser(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->userRoles()
+            ->where('role', 'admin')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->exists();
     }
 }

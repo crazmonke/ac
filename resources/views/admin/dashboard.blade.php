@@ -16,8 +16,8 @@
 </head>
 <body>
 <div class="wrap">
+    @include('partials.admin-nav')
     <h1>관리자 대시보드</h1>
-    <p><a href="/admin/boards">게시판 관리</a> · <a href="/admin/reports">신고 관리</a></p>
 
     <section class="grid">
         <article class="card">
