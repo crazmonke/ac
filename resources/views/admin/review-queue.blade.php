@@ -83,7 +83,7 @@
                     <form method="post" action="/admin/review-queue/verifications/{{ $requestItem->id }}" class="form-grid">
                         @csrf
                         @method('put')
-                        <textarea name="admin_note" placeholder="승인/반려 메모"></textarea>
+                        <textarea name="admin_note" placeholder="승인/반려 메모">{{ $requestItem->admin_note }}</textarea>
                         <div class="actions">
                             <button class="btn btn-primary" type="submit" name="status" value="approved">승인</button>
                             <button class="btn btn-danger" type="submit" name="status" value="rejected">반려</button>

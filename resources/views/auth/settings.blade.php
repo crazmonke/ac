@@ -227,10 +227,13 @@
         <form method="post" action="/settings/resident-verification-request">
             @csrf
             <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+            <input id="verificationLatitude" type="hidden" name="latitude" value="{{ old('latitude') }}">
+            <input id="verificationLongitude" type="hidden" name="longitude" value="{{ old('longitude') }}">
             <label>
                 요청 메모
                 <input name="request_note" value="{{ old('request_note') }}" placeholder="동/호수, 인증 참고 메모를 남길 수 있습니다.">
             </label>
+            <p class="meta" style="margin:8px 0 10px;">위치 권한을 허용하면 동네 단위 GPS 검증으로 인증이 우선 승인될 수 있습니다.</p>
             <button class="btn btn-danger" type="submit">입주민 인증 요청</button>
         </form>
     </section>
@@ -240,8 +243,28 @@
 (function () {
     const queryInput = document.getElementById('apartmentQuery');
     const apartmentIdInput = document.getElementById('apartmentId');
+    const verificationLatitude = document.getElementById('verificationLatitude');
+    const verificationLongitude = document.getElementById('verificationLongitude');
     const suggestionBox = document.getElementById('apartmentSuggestions');
     let lastController = null;
+
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            if (verificationLatitude && verificationLongitude) {
+                verificationLatitude.value = String(position.coords.latitude);
+                verificationLongitude.value = String(position.coords.longitude);
+            }
+        }, () => {
+            if (verificationLatitude && verificationLongitude) {
+                verificationLatitude.value = '';
+                verificationLongitude.value = '';
+            }
+        }, {
+            enableHighAccuracy: false,
+            timeout: 4000,
+            maximumAge: 300000,
+        });
+    }
 
     function closeSuggestions() {
         suggestionBox.style.display = 'none';

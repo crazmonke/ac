@@ -90,6 +90,7 @@ class PublicSiteController extends Controller
     public function board(Request $request, string $slug)
     {
         $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $user = $request->user();
 
         $board = Board::query()
             ->where('slug', $slug)
@@ -97,18 +98,25 @@ class PublicSiteController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        $canRead = $this->permissionService->hasBoardPermission($request->user(), $board, 'read');
+        $canReadBoard = $this->permissionService->hasBoardPermission($user, $board, 'read');
 
         $posts = Post::query()
             ->where('board_id', $board->id)
+            ->where('visibility', '!=', 'deleted')
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
+        $postReadMap = [];
+        foreach ($posts as $post) {
+            $postReadMap[$post->id] = $this->canReadPost($user, $post, $canReadBoard);
+        }
+
         return view('public.board', [
             'board' => $board,
             'posts' => $posts,
-            'canRead' => $canRead,
+            'canReadBoard' => $canReadBoard,
+            'postReadMap' => $postReadMap,
             'apartmentId' => $apartmentId,
         ]);
     }
@@ -119,11 +127,13 @@ class PublicSiteController extends Controller
             ->with(['board', 'apartment', 'user'])
             ->findOrFail($id);
 
-        $canRead = $this->permissionService->hasBoardPermission($request->user(), $post->board, 'read');
+        $canReadBoard = $this->permissionService->hasBoardPermission($request->user(), $post->board, 'read');
+        $canRead = $this->canReadPost($request->user(), $post, $canReadBoard);
 
         return view('public.post', [
             'post' => $post,
             'canRead' => $canRead,
+            'canReadBoard' => $canReadBoard,
             'apartmentId' => (int) $post->apartment_id,
             'isLoggedIn' => (bool) $request->user(),
         ]);
@@ -148,7 +158,8 @@ class PublicSiteController extends Controller
     private function mapPostCards(Collection $posts, $user, int $apartmentId): Collection
     {
         return $posts->map(function (Post $post) use ($user, $apartmentId) {
-            $canRead = $this->permissionService->hasBoardPermission($user, $post->board, 'read');
+            $canReadBoard = $this->permissionService->hasBoardPermission($user, $post->board, 'read');
+            $canRead = $this->canReadPost($user, $post, $canReadBoard);
 
             if ($canRead && $user) {
                 $url = '/community/posts/'.$post->id.'?apartment_id='.$apartmentId;
@@ -170,10 +181,18 @@ class PublicSiteController extends Controller
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
                 'is_notice' => (bool) $post->is_notice,
+                'is_guest_visible' => (bool) $post->is_guest_visible,
                 'can_read' => $canRead,
                 'url' => $url,
             ];
         });
+    }
+
+    private function canReadPost($user, Post $post, ?bool $canReadBoard = null): bool
+    {
+        $boardReadable = $canReadBoard ?? $this->permissionService->hasBoardPermission($user, $post->board, 'read');
+
+        return $boardReadable || (bool) $post->is_guest_visible;
     }
 
     private function regionLabelFromSido(?string $sido): string

@@ -278,7 +278,7 @@
                             </span>
                         </td>
                         <td>
-                            <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+                            <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
                             @if(! $item['can_read'])
                                 <span class="lock">회원가입 후 상세보기</span>
                             @endif
@@ -312,7 +312,7 @@
                     <tr>
                         <td>{{ $item['board_name'] }}</td>
                         <td>
-                            <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+                            <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
                             @if($item['comment_count'] > 0)
                                 <span class="meta">({{ $item['comment_count'] }})</span>
                             @endif
@@ -339,7 +339,7 @@
             <ul class="notice-list">
                 @forelse($notices as $item)
                     <li>
-                        <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+                        <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
                         <span class="meta">{{ $item['display_date'] }}</span>
                     </li>
                 @empty
@@ -359,5 +359,16 @@
         <div class="footer-copy">© {{ now()->year }} 우리아파트 커뮤니티</div>
     </footer>
 </div>
+<script>
+document.querySelectorAll('.requires-signup').forEach((link) => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const shouldMove = window.confirm('이 게시글 본문은 회원 전용입니다. 회원가입 페이지로 이동할까요?');
+        if (shouldMove) {
+            window.location.href = link.dataset.signupUrl || '/register';
+        }
+    });
+});
+</script>
 </body>
 </html>

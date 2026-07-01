@@ -6,6 +6,9 @@
     $avatarSource = $currentUser ? ($currentUser->name ?: $displayId) : '';
     $avatarFirst = function_exists('mb_substr') ? mb_substr($avatarSource, 0, 1, 'UTF-8') : substr($avatarSource, 0, 1);
     $avatarLetter = function_exists('mb_strtoupper') ? mb_strtoupper($avatarFirst, 'UTF-8') : strtoupper($avatarFirst);
+    $preferredApartment = $currentUser?->preferredApartment;
+    $contextApartment = $preferredApartment ?: \App\Models\Apartment::query()->find((int) $apartmentId);
+    $regionLabel = trim((string) ($contextApartment?->sigungu ?: $contextApartment?->eupmyeondong ?: $contextApartment?->sido));
 @endphp
 
 <style>
@@ -65,6 +68,11 @@
         font-weight: 700;
         cursor: pointer;
     }
+    .site-links a.filter-link {
+        background: #eff5ff;
+        color: #25457a;
+        border-color: #d5e2f4;
+    }
     .site-links .cta {
         background: #0f6f67;
         border-color: #0f6f67;
@@ -116,6 +124,10 @@
             <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
             <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
         @else
+            @if($contextApartment)
+                <a class="filter-link" href="/community?scope=region&apartment_id={{ $contextApartment->id }}">{{ $regionLabel !== '' ? $regionLabel : '동네' }}</a>
+                <a class="filter-link" href="/community?scope=apartment&apartment_id={{ $contextApartment->id }}">{{ $contextApartment->name }}</a>
+            @endif
             <a class="user-chip" href="/settings?apartment_id={{ $apartmentId }}" title="계정 설정">
                 <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>
                 <span class="user-chip-id">{{ $currentUser->name }} ({{ $displayId }})</span>

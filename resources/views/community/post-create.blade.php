@@ -40,6 +40,7 @@
                 <input name="title" placeholder="제목" required>
                 <textarea name="body" placeholder="내용" required></textarea>
                 <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명</label>
+                <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;"> 비회원에게 본문 공개</label>
                 <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf">
                 <div class="actions">
                     <button type="submit">등록</button>

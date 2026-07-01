@@ -68,6 +68,8 @@ class WebAuthController extends Controller
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
             'apartment_query' => ['required', 'string', 'max:120'],
             'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -82,7 +84,9 @@ class WebAuthController extends Controller
             $user,
             isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
             $data['apartment_query'],
-            'register'
+            'register',
+            isset($data['latitude']) ? (float) $data['latitude'] : null,
+            isset($data['longitude']) ? (float) $data['longitude'] : null
         );
 
         Auth::login($user);
@@ -90,9 +94,13 @@ class WebAuthController extends Controller
 
         $redirect = $this->safeRedirect($request->input('redirect'));
 
-        $message = $selection['selected_apartment']
-            ? '회원가입이 완료되었습니다. 선택한 아파트 기준으로 입주민 인증을 진행해 주세요.'
-            : '회원가입이 완료되었습니다. 아파트 매칭 검수 요청이 접수되었습니다. 관리자 확인 후 인증을 진행할 수 있습니다.';
+        if ($selection['selected_apartment'] && ($selection['auto_verified'] ?? false)) {
+            $message = '회원가입이 완료되었습니다. 위치 기반 검증으로 입주민 인증이 우선 승인되었습니다.';
+        } elseif ($selection['selected_apartment']) {
+            $message = '회원가입이 완료되었습니다. 선택한 아파트 기준으로 입주민 인증을 진행해 주세요.';
+        } else {
+            $message = '회원가입이 완료되었습니다. 아파트 매칭 검수 요청이 접수되었습니다. 관리자 확인 후 인증을 진행할 수 있습니다.';
+        }
 
         return redirect($redirect ?? '/')->with('status', $message);
     }

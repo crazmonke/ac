@@ -8,19 +8,21 @@
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f8fb; color: #17263d; }
         .wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
         .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .controls { margin-top: 12px; display: grid; grid-template-columns: 1fr 200px; gap: 10px; }
-        .grid { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-        .card { background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; }
-        .meta { color: #5b6d82; font-size: 0.9rem; }
-        .post-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
-        .post-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; border-top: 1px solid #edf2f8; padding-top: 8px; }
-        .post-row:first-child { border-top: 0; padding-top: 0; }
-        .post-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .post-views { font-size: 0.82rem; color: #4c607a; }
-        .post-date { font-size: 0.82rem; color: #5b6d82; min-width: 42px; text-align: right; }
-        .err { margin-top: 14px; padding: 10px; border-radius: 8px; background: #fdecec; border: 1px solid #f4c8c8; color: #9e1d1d; }
-        input, select { width: 100%; border: 1px solid #c7d8ea; border-radius: 8px; padding: 8px; }
-        a { color: #0f6f67; text-decoration: none; font-weight: 700; }
+        .meta { color: #5b6d82; font-size: 0.92rem; }
+        .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .scope-tab { border: 1px solid #d5dfec; border-radius: 999px; padding: 7px 12px; text-decoration: none; color: #20344f; background: #fff; font-weight: 700; }
+        .scope-tab.active { background: #0f6f67; border-color: #0f6f67; color: #fff; }
+        .panel { margin-top: 14px; background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; }
+        .post-list { list-style: none; margin: 0; padding: 0; }
+        .post-item { border-top: 1px solid #edf2f8; padding: 12px 0; }
+        .post-item:first-child { border-top: 0; padding-top: 0; }
+        .post-title { color: #17263d; text-decoration: none; font-weight: 700; }
+        .chips { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .chip { font-size: 0.78rem; border-radius: 999px; padding: 3px 8px; background: #ecf2ff; color: #294f8f; }
+        .chip.guest-open { background: #e9f8ef; color: #18603a; }
+        .chip.locked { background: #fff4e8; color: #8d4a1c; }
+        .empty-box { border: 1px solid #ffd7b5; background: #fff4e9; color: #7f4310; border-radius: 10px; padding: 12px; }
+        .empty-box a { color: #0f6f67; font-weight: 700; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -28,108 +30,69 @@
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
     <div class="top">
-        <h1>{{ $apartmentName }} 커뮤니티</h1>
-        <div class="meta"><a href="/admin/boards">게시판 관리</a></div>
+        <h1 style="margin:0;">커뮤니티</h1>
+        <div class="meta">
+            @if($isResident)
+                입주민 모드: {{ $regionLabel }} · {{ $apartmentName }} 중심
+            @else
+                비회원/일반회원 모드: 전국 게시글 노출
+            @endif
+        </div>
     </div>
 
-    <div id="errorBox" class="err" style="display:none;"></div>
-    <div class="controls">
-        <input id="searchInput" placeholder="게시판 이름/설명 검색">
-        <select id="categorySelect">
-            <option value="">전체 카테고리</option>
-        </select>
+    <div class="scope-tabs">
+        <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="/community?scope=all&apartment_id={{ $apartmentId }}">전국</a>
+        <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="/community?scope=region&apartment_id={{ $apartmentId }}">동네</a>
+        <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">아파트</a>
     </div>
-    <div id="boardContainer" class="grid"></div>
+
+    <section class="panel">
+        <ul class="post-list">
+            @forelse($posts as $post)
+                <li class="post-item">
+                    <a class="post-title {{ !auth()->check() && !$post['can_read'] ? 'requires-signup' : '' }}"
+                       href="{{ $post['url'] }}"
+                       @if(!auth()->check() && !$post['can_read']) data-signup-url="{{ $post['url'] }}" @endif>
+                        {{ $post['title'] }}
+                    </a>
+                    <div class="chips">
+                        <span class="chip">{{ $post['board_name'] }}</span>
+                        <span class="chip">{{ $post['sigungu'] ?: $post['sido'] }} · {{ $post['apartment_name'] }}</span>
+                        @if($post['is_guest_visible'])
+                            <span class="chip guest-open">비회원 공개</span>
+                        @elseif(!$post['can_read'])
+                            <span class="chip locked">상세는 회원/입주민 전용</span>
+                        @endif
+                    </div>
+                    <div class="meta" style="margin-top:6px;">{{ $post['created_at'] }} · 조회 {{ $post['view_count'] }} · 댓글 {{ $post['comment_count'] }}</div>
+                </li>
+            @empty
+                @if($requiresSignupForScope)
+                    <li class="empty-box">
+                        동네/아파트 범위 게시글은 회원가입 후 단지 인증을 완료하면 볼 수 있습니다.
+                        <br>
+                        <a href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">회원가입 및 인증 진행하기</a>
+                    </li>
+                @else
+                    <li class="meta">노출할 게시글이 없습니다.</li>
+                @endif
+            @endforelse
+        </ul>
+
+        <div style="margin-top:10px;" class="meta">{{ $posts->links() }}</div>
+    </section>
 </div>
 
 <script>
-(async function loadBoards() {
-    const apartmentId = {{ $apartmentId }};
-    const errorBox = document.getElementById('errorBox');
-    const container = document.getElementById('boardContainer');
-    const searchInput = document.getElementById('searchInput');
-    const categorySelect = document.getElementById('categorySelect');
-
-    try {
-        const response = await fetch(`/community/api/apartments/${apartmentId}/boards`, {
-            method: 'GET',
-            credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`API ${response.status}: ${text.slice(0, 200)}`);
+document.querySelectorAll('.requires-signup').forEach((link) => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const shouldMove = window.confirm('이 게시글 본문은 회원 전용입니다. 회원가입 페이지로 이동할까요?');
+        if (shouldMove) {
+            window.location.href = link.dataset.signupUrl || '/register';
         }
-
-        const payload = await response.json();
-        const categories = payload.data || [];
-        let boardRows = [];
-
-        if (!categories.length) {
-            container.innerHTML = '<div class="card">현재 표시할 게시판이 없습니다.</div>';
-            return;
-        }
-
-        categories.forEach((category) => {
-            const option = document.createElement('option');
-            option.value = String(category.id);
-            option.textContent = `${category.name} (${category.slug})`;
-            categorySelect.appendChild(option);
-
-            const boards = category.boards || [];
-            boards.forEach((board) => {
-                boardRows.push({ category, board });
-            });
-        });
-
-        function render() {
-            const q = (searchInput.value || '').trim().toLowerCase();
-            const categoryFilter = categorySelect.value;
-
-            const filtered = boardRows.filter(({ category, board }) => {
-                const byCategory = !categoryFilter || String(category.id) === categoryFilter;
-                const recentTitles = (board.recent_posts || []).map((post) => post.title).join(' ');
-                const haystack = `${board.name} ${board.description || ''} ${category.name} ${recentTitles}`.toLowerCase();
-                const byQuery = !q || haystack.includes(q);
-                return byCategory && byQuery;
-            });
-
-            if (!filtered.length) {
-                container.innerHTML = '<div class="card">조건에 맞는 게시판이 없습니다.</div>';
-                return;
-            }
-
-            const cards = filtered.map(({ category, board }) => `
-                    <article class="card">
-                        <h3><a href="/community/${board.slug}?apartment_id=${apartmentId}">${board.name}</a></h3>
-                        <ul class="post-list">
-                            ${(board.recent_posts || []).length
-                                ? (board.recent_posts || []).map((post) => `
-                                    <li class="post-row">
-                                        <a class="post-title" href="${post.url}">${post.title}</a>
-                                        <span class="post-views">조회 ${post.view_count}</span>
-                                        <span class="post-date">${post.display_date}</span>
-                                    </li>
-                                `).join('')
-                                : '<li class="meta">최근 게시물이 없습니다.</li>'}
-                        </ul>
-                    </article>
-                `);
-
-            container.innerHTML = cards.join('');
-        }
-
-        searchInput.addEventListener('input', render);
-        categorySelect.addEventListener('change', render);
-        render();
-    } catch (error) {
-        errorBox.style.display = 'block';
-        errorBox.textContent = '게시판 목록 로드 실패: ' + error.message;
-    }
-})();
+    });
+});
 </script>
 </body>
 </html>

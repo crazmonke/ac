@@ -164,6 +164,7 @@ class CommunityBoardController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
             'is_anonymous' => ['nullable', 'boolean'],
+            'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
         ]);
@@ -177,6 +178,7 @@ class CommunityBoardController extends Controller
             'is_notice' => false,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'visibility' => 'resident_only',
+            'is_guest_visible' => (bool) ($data['is_guest_visible'] ?? false),
             'view_count' => 0,
             'comment_count' => 0,
         ]);
@@ -203,6 +205,7 @@ class CommunityBoardController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
             'is_anonymous' => ['nullable', 'boolean'],
+            'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
         ]);
@@ -211,6 +214,7 @@ class CommunityBoardController extends Controller
             'title' => $data['title'],
             'body' => $data['body'],
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
+            'is_guest_visible' => (bool) ($data['is_guest_visible'] ?? false),
         ])->save();
 
         $this->storeAttachments($request, $post);

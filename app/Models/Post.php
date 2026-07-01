@@ -23,6 +23,7 @@ class Post extends Model
         'is_notice',
         'is_anonymous',
         'visibility',
+        'is_guest_visible',
         'view_count',
         'comment_count',
     ];
@@ -32,6 +33,7 @@ class Post extends Model
         return [
             'is_notice' => 'boolean',
             'is_anonymous' => 'boolean',
+            'is_guest_visible' => 'boolean',
         ];
     }
 

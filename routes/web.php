@@ -35,7 +35,7 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-Route::get('/community', [CommunityPageController::class, 'index'])->middleware('auth');
+Route::get('/community', [CommunityPageController::class, 'index']);
 Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::class, 'index'])
     ->middleware(['auth', 'role:resident,apartmentId']);
 

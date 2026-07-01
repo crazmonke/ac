@@ -30,6 +30,7 @@
                 <input name="title" value="{{ $post->title }}" required>
                 <textarea name="body" required>{{ $post->body }}</textarea>
                 <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked($post->is_anonymous)> 익명</label>
+                <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;" @checked($post->is_guest_visible)> 비회원에게 본문 공개</label>
                 <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf">
                 <div class="actions">
                     <button type="submit">수정 저장</button>

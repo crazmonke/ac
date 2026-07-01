@@ -33,7 +33,7 @@
 
     <div class="panel">
         <p class="meta">{{ $board->description ?: '게시판 설명이 없습니다.' }}</p>
-        @if(! $canRead)
+        @if(! $canReadBoard)
             <div class="cta">
                 이 게시판은 회원/입주민 전용입니다. 제목은 볼 수 있지만 상세 내용은 가입 후 확인할 수 있습니다.
                 <br>
@@ -44,12 +44,18 @@
 
     <section class="panel">
         @forelse($posts as $post)
+            @php
+                $canReadPost = (bool) ($postReadMap[$post->id] ?? false);
+                $postUrl = '/posts/'.$post->id.'?apartment_id='.$apartmentId;
+            @endphp
             <article class="item">
-                <a class="title" href="{{ $canRead ? '/posts/'.$post->id.'?apartment_id='.$apartmentId : '/register?redirect='.urlencode('/posts/'.$post->id.'?apartment_id='.$apartmentId) }}">
+                <a class="title {{ !auth()->check() && !$canReadPost ? 'requires-signup' : '' }}" href="{{ $canReadPost ? $postUrl : '/register?redirect='.urlencode($postUrl) }}" @if(!auth()->check() && !$canReadPost) data-signup-url="/register?redirect={{ urlencode($postUrl) }}" @endif>
                     {{ $post->title }}
                 </a>
-                @if(! $canRead)
+                @if(! $canReadPost)
                     <span class="badge">상세는 가입 후</span>
+                @elseif($post->is_guest_visible)
+                    <span class="badge" style="background:#e7f6ec; color:#166534;">비회원 공개</span>
                 @endif
                 <div class="meta" style="margin-top:5px;">{{ $post->created_at }}</div>
             </article>
@@ -60,5 +66,16 @@
         <div style="margin-top:10px;" class="meta">{{ $posts->links() }}</div>
     </section>
 </div>
+<script>
+document.querySelectorAll('.requires-signup').forEach((link) => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const shouldMove = window.confirm('이 게시글 본문은 회원 전용입니다. 회원가입 페이지로 이동할까요?');
+        if (shouldMove) {
+            window.location.href = link.dataset.signupUrl || '/register';
+        }
+    });
+});
+</script>
 </body>
 </html>
