@@ -129,8 +129,38 @@
             text-align: left;
             padding: 10px 6px;
             font-size: 0.93rem;
+            vertical-align: top;
         }
         th { font-size: 0.8rem; color: var(--muted); }
+        .post-table { table-layout: fixed; }
+        .best-table th:nth-child(1), .best-table td:nth-child(1) { width: 94px; }
+        .best-table th:nth-child(3), .best-table td:nth-child(3) { width: 54px; }
+        .latest-table th:nth-child(1), .latest-table td:nth-child(1) { width: 74px; }
+        .latest-table th:nth-child(3), .latest-table td:nth-child(3) { width: 48px; }
+        .latest-table th:nth-child(4), .latest-table td:nth-child(4) { width: 52px; }
+        .board-name {
+            display: inline-block;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 700;
+        }
+        .title-cell .title-link {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        .title-submeta {
+            margin-top: 2px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
         .title-link {
             color: var(--ink);
             text-decoration: none;
@@ -218,6 +248,16 @@
         }
         .danger-text { color: var(--danger); font-size: 0.86rem; margin: 8px 0 0; }
 
+        @media (max-width: 640px) {
+            th, td { padding: 8px 4px; font-size: 0.86rem; }
+            .best-table th:nth-child(1), .best-table td:nth-child(1) { width: 82px; }
+            .latest-table th:nth-child(1), .latest-table td:nth-child(1) { width: 58px; }
+            .latest-table th:nth-child(3), .latest-table td:nth-child(3) { width: 40px; }
+            .latest-table th:nth-child(4), .latest-table td:nth-child(4) { width: 44px; }
+            .board-name { font-size: 0.8rem; }
+            .lock { display: inline-block; margin-left: 0; }
+        }
+
         @media (min-width: 900px) {
             .hero { grid-template-columns: 1.4fr 1fr; }
             .grid { grid-template-columns: 1fr 1fr; }
@@ -260,7 +300,7 @@
     <section class="section">
         <h2 class="section-title">🏆 입주민 토픽 베스트</h2>
         <article class="card">
-            <table>
+            <table class="post-table best-table">
                 <thead>
                 <tr>
                     <th>지역/브랜드</th>
@@ -277,10 +317,10 @@
                                 <span class="brand-icon">{{ $item['brand_token'] }}</span>
                             </span>
                         </td>
-                        <td>
+                        <td class="title-cell">
                             <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
                             @if(! $item['can_read'])
-                                <span class="lock">회원가입 후 상세보기</span>
+                                <div class="title-submeta"><span class="lock">회원가입 후 상세보기</span></div>
                             @endif
                         </td>
                         <td>{{ $item['display_date'] }}</td>
@@ -298,7 +338,7 @@
     <section class="section">
         <h2 class="section-title">🆕 메인 최신글</h2>
         <article class="card">
-            <table>
+            <table class="post-table latest-table">
                 <thead>
                 <tr>
                     <th>게시판</th>
@@ -310,15 +350,17 @@
                 <tbody>
                 @forelse($latestPosts as $item)
                     <tr>
-                        <td>{{ $item['board_name'] }}</td>
-                        <td>
+                        <td class="board-col"><span class="board-name">{{ $item['board_name'] }}</span></td>
+                        <td class="title-cell">
                             <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
-                            @if($item['comment_count'] > 0)
-                                <span class="meta">({{ $item['comment_count'] }})</span>
-                            @endif
-                            @if(! $item['can_read'])
-                                <span class="lock">🔒 회원 전용 상세</span>
-                            @endif
+                            <div class="title-submeta">
+                                @if($item['comment_count'] > 0)
+                                    <span class="meta">댓글 {{ $item['comment_count'] }}</span>
+                                @endif
+                                @if(! $item['can_read'])
+                                    <span class="lock">🔒 회원 전용 상세</span>
+                                @endif
+                            </div>
                         </td>
                         <td>{{ $item['view_count'] }}</td>
                         <td>{{ $item['display_date'] }}</td>

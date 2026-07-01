@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Community;
 use App\Http\Controllers\Controller;
 use App\Models\Board;
 use App\Models\Comment;
+use App\Models\Poll;
+use App\Models\PollOption;
+use App\Models\PollVote;
 use App\Models\PostTopic;
 use App\Models\PostFile;
 use App\Models\Post;
@@ -94,6 +97,7 @@ class CommunityBoardController extends Controller
                 'apartment',
                 'user',
                 'files',
+                'poll.options.votes',
                 'comments' => function ($query) {
                     $query->whereNull('parent_id')
                         ->with(['user', 'children.user'])
@@ -119,6 +123,16 @@ class CommunityBoardController extends Controller
             ->values()
             ->all();
 
+        $userVoteOptionIds = collect();
+        $pollTotalVotes = 0;
+        if ($post->poll) {
+            $userVoteOptionIds = PollVote::query()
+                ->where('poll_id', $post->poll->id)
+                ->where('user_id', $user->id)
+                ->pluck('poll_option_id');
+            $pollTotalVotes = (int) $post->poll->options->sum('vote_count');
+        }
+
         return view('community.post', [
             'post' => $post,
             'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
@@ -130,6 +144,8 @@ class CommunityBoardController extends Controller
             'replyCount' => $replyCount,
             'totalCommentCount' => $rootCommentCount + $replyCount,
             'bestCommentIds' => $bestCommentIds,
+            'userVoteOptionIds' => $userVoteOptionIds,
+            'pollTotalVotes' => $pollTotalVotes,
         ]);
     }
 
@@ -247,17 +263,26 @@ class CommunityBoardController extends Controller
         $writerApartment = $user->preferredApartment;
         $writerApartmentId = (int) $writerApartment->id;
 
-        $data = $request->validate([
+        $rules = [
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
             'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
             'new_topic' => ['nullable', 'string', 'max:60'],
             'audience_scope' => ['required', 'in:region,apartment'],
+            'poll_allow_multiple' => ['nullable', 'boolean'],
+            'poll_results_public' => ['nullable', 'boolean'],
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
-        ]);
+        ];
+
+        if ($board->board_type === 'poll') {
+            $rules['poll_question'] = ['required', 'string', 'max:255'];
+            $rules['poll_options'] = ['required', 'string', 'max:4000'];
+        }
+
+        $data = $request->validate($rules);
 
         $audienceScope = (string) $data['audience_scope'];
         if (! $this->permissionService->hasVerifiedRole($user, $writerApartmentId)) {
@@ -292,6 +317,10 @@ class CommunityBoardController extends Controller
 
         $this->storeAttachments($request, $post);
 
+        if ($board->board_type === 'poll') {
+            $this->syncPollFromRequest($request, $post, $data);
+        }
+
         return redirect('/community/posts/'.$post->id.'?apartment_id='.$apartmentId);
     }
 
@@ -308,7 +337,7 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
-        $data = $request->validate([
+        $rules = [
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
             'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
@@ -318,7 +347,14 @@ class CommunityBoardController extends Controller
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
-        ]);
+        ];
+
+        if ($post->board->board_type === 'poll') {
+            $rules['poll_question'] = ['required', 'string', 'max:255'];
+            $rules['poll_options'] = ['required', 'string', 'max:4000'];
+        }
+
+        $data = $request->validate($rules);
 
         $audienceScope = (string) $data['audience_scope'];
         if (! $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id)) {
@@ -342,6 +378,10 @@ class CommunityBoardController extends Controller
         ])->save();
 
         $this->storeAttachments($request, $post);
+
+        if ($post->board->board_type === 'poll') {
+            $this->syncPollFromRequest($request, $post, $data);
+        }
 
         return back()->with('status', '게시글이 수정되었습니다.');
     }
@@ -521,6 +561,57 @@ class CommunityBoardController extends Controller
         return back()->with('status', '첨부파일이 삭제되었습니다.');
     }
 
+    public function storePollVote(Request $request, int $id)
+    {
+        $post = Post::query()->with(['board', 'poll.options'])->findOrFail($id);
+        $user = $request->user();
+
+        if ($post->board->board_type !== 'poll' || ! $post->poll) {
+            abort(404);
+        }
+
+        if (! $this->permissionService->canReadPostDetail($user, $post)) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'poll_option_ids' => ['required', 'array', 'min:1'],
+            'poll_option_ids.*' => ['integer', 'exists:poll_options,id'],
+        ]);
+
+        if (! $post->poll->allow_multiple && count($data['poll_option_ids']) > 1) {
+            return back()->withErrors(['poll_option_ids' => '단일 선택 투표입니다.'])->withInput();
+        }
+
+        $options = $post->poll->options->keyBy('id');
+        foreach ($data['poll_option_ids'] as $optionId) {
+            if (! $options->has((int) $optionId)) {
+                abort(422);
+            }
+        }
+
+        $existingVotes = PollVote::query()
+            ->where('poll_id', $post->poll->id)
+            ->where('user_id', $user->id)
+            ->get();
+
+        foreach ($existingVotes as $existingVote) {
+            $existingVote->option()->decrement('vote_count');
+            $existingVote->delete();
+        }
+
+        foreach ($data['poll_option_ids'] as $optionId) {
+            PollVote::query()->create([
+                'poll_id' => $post->poll->id,
+                'poll_option_id' => (int) $optionId,
+                'user_id' => $user->id,
+            ]);
+            PollOption::query()->where('id', (int) $optionId)->increment('vote_count');
+        }
+
+        return back()->with('status', '투표가 완료되었습니다.');
+    }
+
     private function resolveBoard(string $slug, int $apartmentId): Board
     {
         return Board::query()
@@ -648,5 +739,43 @@ class CommunityBoardController extends Controller
             ->first();
 
         return $topic ? (int) $topic->id : null;
+    }
+
+    private function syncPollFromRequest(Request $request, Post $post, array $data): void
+    {
+        $question = trim((string) ($data['poll_question'] ?? ''));
+        $rawOptions = trim((string) ($data['poll_options'] ?? ''));
+
+        if ($question === '' || $rawOptions === '') {
+            abort(422, '투표 질문과 선택지를 입력해 주세요.');
+        }
+
+        $optionLabels = collect(preg_split('/\r\n|\r|\n/', $rawOptions) ?: [])
+            ->map(fn ($line) => trim((string) $line))
+            ->filter()
+            ->take(10)
+            ->values();
+
+        if ($optionLabels->count() < 2) {
+            abort(422, '투표 선택지는 최소 2개 이상이어야 합니다.');
+        }
+
+        $poll = $post->poll()->updateOrCreate(
+            ['post_id' => $post->id],
+            [
+                'question' => $question,
+                'allow_multiple' => (bool) ($data['poll_allow_multiple'] ?? false),
+                'results_public' => (bool) ($data['poll_results_public'] ?? true),
+            ]
+        );
+
+        $poll->options()->delete();
+        foreach ($optionLabels as $index => $label) {
+            $poll->options()->create([
+                'label' => $label,
+                'sort_order' => $index,
+                'vote_count' => 0,
+            ]);
+        }
     }
 }

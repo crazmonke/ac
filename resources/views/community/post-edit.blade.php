@@ -46,6 +46,16 @@
                 </label>
                 <div class="meta" style="margin-top:-4px;">새 태그를 입력하면 선택한 기존 태그보다 우선 적용됩니다.</div>
                 <input name="new_topic" value="{{ old('new_topic') }}" placeholder="새 태그 만들기 (입력 시 선택값보다 우선)">
+                @if($post->board->board_type === 'poll')
+                    <label>투표 제목
+                        <input name="poll_question" value="{{ old('poll_question', $post->poll->question ?? '') }}" style="margin-top:6px;" placeholder="예: 단지 회의 시간은 언제가 좋을까요?" required>
+                    </label>
+                    <label>투표 선택지
+                        <textarea name="poll_options" style="margin-top:6px; min-height: 120px;" placeholder="선택지를 한 줄에 하나씩 입력하세요." required>{{ old('poll_options', isset($post->poll) ? $post->poll->options->pluck('label')->implode("\n") : '') }}</textarea>
+                    </label>
+                    <label><input type="checkbox" name="poll_allow_multiple" value="1" style="width:auto;" @checked(old('poll_allow_multiple', $post->poll->allow_multiple ?? false))> 복수 선택 허용</label>
+                    <label><input type="checkbox" name="poll_results_public" value="1" style="width:auto;" @checked(old('poll_results_public', $post->poll->results_public ?? true))> 투표 결과 공개</label>
+                @endif
                 <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked(old('is_anonymous', $post->is_anonymous))> 익명</label>
                 <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;" @checked(old('is_guest_visible', $post->is_guest_visible))> 비회원에게 본문 공개</label>
                 <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf">

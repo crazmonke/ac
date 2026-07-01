@@ -285,6 +285,77 @@
 
         <div style="margin-top:16px;" class="body">{{ $post->body }}</div>
 
+        <?php if ($post->board->board_type === 'poll' && $post->poll): ?>
+            <?php
+                $votedOptionIds = $userVoteOptionIds ?? collect();
+                $hasVoted = $votedOptionIds->isNotEmpty();
+                $totalVotes = max(1, (int) ($pollTotalVotes ?? 0));
+                $pollOptions = $post->poll->options->sortBy('sort_order');
+            ?>
+            <section class="card" style="margin-top:16px; background:#f8fbff; border-color:#d8e6ff;">
+                <h2 style="margin:0 0 10px; font-size:1.02rem;">투표</h2>
+                <div class="meta" style="margin-bottom:10px; font-weight:700; color:#1f3c7a;"><?php echo e($post->poll->question); ?></div>
+
+                <?php
+                    $pollIsClosed = $post->poll->closes_at && now()->greaterThanOrEqualTo($post->poll->closes_at);
+                ?>
+
+                <?php if ($hasVoted || $pollIsClosed): ?>
+                    <div style="display:grid; gap:10px;">
+                        <?php foreach ($pollOptions as $option): ?>
+                            <?php
+                                $count = (int) $option->vote_count;
+                                $percent = round(($count / $totalVotes) * 100);
+                            ?>
+                            <div style="border:1px solid #d8e6ff; border-radius:12px; padding:10px; background:#fff;">
+                                <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; font-weight:700;">
+                                    <span><?php echo e($option->label); ?></span>
+                                    <span class="meta"><?php echo e($count); ?>표 · <?php echo e($percent); ?>%</span>
+                                </div>
+                                <div style="margin-top:8px; height:8px; background:#e8eefb; border-radius:999px; overflow:hidden;">
+                                    <div style="width:<?php echo e($percent); ?>%; height:100%; background:#0f6f67;"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <?php if ($post->poll->results_public): ?>
+                        <div class="meta" style="margin-bottom:10px;">투표 후 결과를 바로 확인할 수 있습니다.</div>
+                    <?php endif; ?>
+                    <form method="post" action="/community/posts/<?php echo e($post->id); ?>/poll-votes?apartment_id=<?php echo e($apartmentId); ?>" style="display:grid; gap:8px;">
+                        <?php echo csrf_field(); ?>
+                        <?php foreach ($pollOptions as $option): ?>
+                            <label style="display:flex; gap:8px; align-items:center; border:1px solid #d8e6ff; border-radius:12px; padding:10px; background:#fff;">
+                                <input type="<?php echo e($post->poll->allow_multiple ? 'checkbox' : 'radio'); ?>" name="poll_option_ids[]" value="<?php echo e($option->id); ?>" style="width:auto;">
+                                <span><?php echo e($option->label); ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                        <button type="submit" class="btn" style="margin-top:4px;">투표하기</button>
+                    </form>
+                <?php endif; ?>
+
+                <?php if (! $hasVoted && ! $pollIsClosed && $post->poll->results_public): ?>
+                    <div style="display:grid; gap:10px; margin-top:14px;">
+                        <?php foreach ($pollOptions as $option): ?>
+                            <?php
+                                $count = (int) $option->vote_count;
+                                $percent = round(($count / $totalVotes) * 100);
+                            ?>
+                            <div style="border:1px solid #d8e6ff; border-radius:12px; padding:10px; background:#fff; opacity:0.75;">
+                                <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; font-weight:700;">
+                                    <span><?php echo e($option->label); ?></span>
+                                    <span class="meta"><?php echo e($count); ?>표 · <?php echo e($percent); ?>%</span>
+                                </div>
+                                <div style="margin-top:8px; height:8px; background:#e8eefb; border-radius:999px; overflow:hidden;">
+                                    <div style="width:<?php echo e($percent); ?>%; height:100%; background:#0f6f67;"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+        <?php endif; ?>
+
         <div class="actions">
             @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin))
                 <a class="btn" href="/community/posts/{{ $post->id }}/edit">수정</a>
