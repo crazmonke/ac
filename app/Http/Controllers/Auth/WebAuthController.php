@@ -67,7 +67,7 @@ class WebAuthController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
             'apartment_query' => ['required', 'string', 'max:120'],
-            'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'apartment_id' => ['required', 'integer', 'exists:apartments,id'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -82,7 +82,7 @@ class WebAuthController extends Controller
 
         $selection = $this->apartmentSelectionService->applySelection(
             $user,
-            isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
+            (int) $data['apartment_id'],
             $data['apartment_query'],
             'register',
             isset($data['latitude']) ? (float) $data['latitude'] : null,

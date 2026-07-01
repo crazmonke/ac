@@ -58,7 +58,7 @@ class AccountSettingsController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'apartment_query' => ['required', 'string', 'max:120'],
-            'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'apartment_id' => ['required', 'integer', 'exists:apartments,id'],
         ]);
 
         $user->update([
@@ -68,7 +68,7 @@ class AccountSettingsController extends Controller
 
         $selection = $this->apartmentSelectionService->applySelection(
             $user,
-            isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
+            (int) $data['apartment_id'],
             $data['apartment_query'],
             'settings'
         );

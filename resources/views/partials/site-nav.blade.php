@@ -1,5 +1,5 @@
 @php
-    $apartmentId = $apartmentId ?? request()->query('apartment_id', 1);
+    $requestedApartmentId = $apartmentId ?? request()->query('apartment_id', 1);
     $isLoggedIn = $isLoggedIn ?? auth()->check();
     $currentUser = auth()->user();
     $displayId = $currentUser ? explode('@', $currentUser->email)[0] : '';
@@ -7,7 +7,8 @@
     $avatarFirst = function_exists('mb_substr') ? mb_substr($avatarSource, 0, 1, 'UTF-8') : substr($avatarSource, 0, 1);
     $avatarLetter = function_exists('mb_strtoupper') ? mb_strtoupper($avatarFirst, 'UTF-8') : strtoupper($avatarFirst);
     $preferredApartment = $currentUser?->preferredApartment;
-    $contextApartment = $preferredApartment ?: \App\Models\Apartment::query()->find((int) $apartmentId);
+    $contextApartment = $preferredApartment ?: \App\Models\Apartment::query()->find((int) $requestedApartmentId);
+    $apartmentId = (int) ($contextApartment?->id ?? $requestedApartmentId ?? 1);
     $regionLabel = trim((string) ($contextApartment?->sigungu ?: $contextApartment?->eupmyeondong ?: $contextApartment?->sido));
 @endphp
 
@@ -116,7 +117,7 @@
 <header class="site-nav">
     <div class="site-brand">
         <span class="site-brand-badge">A</span>
-        <a href="/?apartment_id={{ $apartmentId }}">아파인드</a>
+        <a href="/">아파인드</a>
     </div>
     <nav class="site-links">
         <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티</a>

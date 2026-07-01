@@ -55,6 +55,14 @@
                     </select>
                 </div>
                 <div>
+                    <select name="topic">
+                        <option value="">태그 전체</option>
+                        @foreach($topicOptions as $option)
+                            <option value="{{ $option->slug }}" @selected($topic === $option->slug)>#{{ $option->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
                     <button type="submit">검색/정렬 적용</button>
                 </div>
             </div>
@@ -85,6 +93,9 @@
                     · 조회 {{ $post->view_count }}
                     · {{ $post->created_at }}
                 </div>
+                @if($post->topic)
+                    <div class="meta" style="margin-top:6px;">태그: <span class="pill">#{{ $post->topic->name }}</span></div>
+                @endif
                 <p>{{ \Illuminate\Support\Str::limit($post->body, 140) }}</p>
             </article>
         @empty

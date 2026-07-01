@@ -18,9 +18,11 @@ class PublicSiteController extends Controller
 
     public function home(Request $request)
     {
-        $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $user = $request->user();
 
-        $apartment = Apartment::query()->find($apartmentId)
+        $apartment = ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
+            ?? Apartment::query()->find($requestedApartmentId)
             ?? Apartment::query()->orderBy('id')->first();
 
         if (! $apartment) {
@@ -28,11 +30,13 @@ class PublicSiteController extends Controller
         }
 
         $apartmentId = (int) $apartment->id;
-        $user = $request->user();
 
         $boards = Board::query()
             ->with('category')
-            ->where('apartment_id', $apartmentId)
+            ->where(function ($query) use ($apartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $apartmentId);
+            })
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get();
@@ -42,7 +46,6 @@ class PublicSiteController extends Controller
 
         $notices = Post::query()
             ->with(['board', 'apartment'])
-            ->where('apartment_id', $apartmentId)
             ->where(function ($query) {
                 $query->where('is_notice', true)
                     ->orWhereHas('board', function ($boardQuery) {
@@ -55,7 +58,6 @@ class PublicSiteController extends Controller
 
         $bestTopics = Post::query()
             ->with(['board', 'apartment'])
-            ->where('apartment_id', $apartmentId)
             ->where('visibility', 'resident_only')
             ->whereHas('board', function ($query) {
                 $query->where('is_active', true)
@@ -68,7 +70,6 @@ class PublicSiteController extends Controller
 
         $latestPosts = Post::query()
             ->with(['board', 'apartment'])
-            ->where('apartment_id', $apartmentId)
             ->whereHas('board', function ($query) {
                 $query->where('is_active', true);
             })
@@ -80,9 +81,9 @@ class PublicSiteController extends Controller
             'apartment' => $apartment,
             'publicBoards' => $publicBoards,
             'lockedBoards' => $lockedBoards,
-            'notices' => $this->mapPostCards($notices, $user, $apartmentId),
-            'bestTopics' => $this->mapPostCards($bestTopics, $user, $apartmentId),
-            'latestPosts' => $this->mapPostCards($latestPosts, $user, $apartmentId),
+            'notices' => $this->mapPostCards($notices, $user),
+            'bestTopics' => $this->mapPostCards($bestTopics, $user),
+            'latestPosts' => $this->mapPostCards($latestPosts, $user),
             'isLoggedIn' => (bool) $user,
         ]);
     }
@@ -94,8 +95,12 @@ class PublicSiteController extends Controller
 
         $board = Board::query()
             ->where('slug', $slug)
-            ->where('apartment_id', $apartmentId)
             ->where('is_active', true)
+            ->where(function ($query) use ($apartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $apartmentId);
+            })
+            ->orderByRaw('CASE WHEN apartment_id IS NULL THEN 0 ELSE 1 END')
             ->firstOrFail();
 
         $canReadBoard = $this->permissionService->hasBoardPermission($user, $board, 'read');
@@ -127,13 +132,11 @@ class PublicSiteController extends Controller
             ->with(['board', 'apartment', 'user'])
             ->findOrFail($id);
 
-        $canReadBoard = $this->permissionService->hasBoardPermission($request->user(), $post->board, 'read');
-        $canRead = $this->canReadPost($request->user(), $post, $canReadBoard);
+        $canRead = $this->canReadPost($request->user(), $post);
 
         return view('public.post', [
             'post' => $post,
             'canRead' => $canRead,
-            'canReadBoard' => $canReadBoard,
             'apartmentId' => (int) $post->apartment_id,
             'isLoggedIn' => (bool) $request->user(),
         ]);
@@ -155,18 +158,17 @@ class PublicSiteController extends Controller
         ]);
     }
 
-    private function mapPostCards(Collection $posts, $user, int $apartmentId): Collection
+    private function mapPostCards(Collection $posts, $user): Collection
     {
-        return $posts->map(function (Post $post) use ($user, $apartmentId) {
-            $canReadBoard = $this->permissionService->hasBoardPermission($user, $post->board, 'read');
-            $canRead = $this->canReadPost($user, $post, $canReadBoard);
+        return $posts->map(function (Post $post) use ($user) {
+            $canRead = $this->canReadPost($user, $post);
 
             if ($canRead && $user) {
-                $url = '/community/posts/'.$post->id.'?apartment_id='.$apartmentId;
+                $url = '/community/posts/'.$post->id;
             } elseif ($canRead) {
-                $url = '/posts/'.$post->id.'?apartment_id='.$apartmentId;
+                $url = '/posts/'.$post->id;
             } else {
-                $url = '/register?redirect='.urlencode('/posts/'.$post->id.'?apartment_id='.$apartmentId);
+                $url = '/posts/'.$post->id;
             }
 
             return [
@@ -188,11 +190,9 @@ class PublicSiteController extends Controller
         });
     }
 
-    private function canReadPost($user, Post $post, ?bool $canReadBoard = null): bool
+    private function canReadPost($user, Post $post): bool
     {
-        $boardReadable = $canReadBoard ?? $this->permissionService->hasBoardPermission($user, $post->board, 'read');
-
-        return $boardReadable || (bool) $post->is_guest_visible;
+        return $this->permissionService->canReadPostDetail($user, $post);
     }
 
     private function regionLabelFromSido(?string $sido): string

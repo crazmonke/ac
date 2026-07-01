@@ -16,13 +16,18 @@ class Post extends Model
 
     protected $fillable = [
         'board_id',
+        'post_topic_id',
         'apartment_id',
+        'region_sido',
+        'region_sigungu',
+        'region_eupmyeondong',
         'user_id',
         'title',
         'body',
         'is_notice',
         'is_anonymous',
         'visibility',
+        'audience_scope',
         'is_guest_visible',
         'view_count',
         'comment_count',
@@ -40,6 +45,11 @@ class Post extends Model
     public function board(): BelongsTo
     {
         return $this->belongsTo(Board::class);
+    }
+
+    public function topic(): BelongsTo
+    {
+        return $this->belongsTo(PostTopic::class, 'post_topic_id');
     }
 
     public function apartment(): BelongsTo

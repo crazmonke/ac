@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\ApartmentSearchController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Auth\AccountSettingsController;
+use App\Http\Controllers\ReportWebController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
 use App\Http\Controllers\PublicSiteController;
@@ -46,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/resident-verification-request', [AccountSettingsController::class, 'requestResidentVerification']);
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
+    Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);
     Route::post('/community/boards/{slug}/posts', [CommunityBoardController::class, 'storePost']);
@@ -58,6 +60,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
     Route::delete('/community/files/{id}', [CommunityBoardController::class, 'destroyFile']);
     Route::get('/community/{slug}', [CommunityBoardController::class, 'board']);
+
+    Route::get('/reports/new', [ReportWebController::class, 'create']);
+    Route::post('/reports', [ReportWebController::class, 'store']);
 });
 
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {

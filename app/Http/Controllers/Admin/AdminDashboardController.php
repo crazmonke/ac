@@ -12,6 +12,7 @@ use App\Models\Report;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
@@ -67,20 +68,31 @@ class AdminDashboardController extends Controller
             'boards' => Board::query()->with('category')->orderBy('id', 'desc')->limit(100)->get(),
             'categories' => BoardCategory::query()->orderBy('name')->get(),
             'apartments' => Apartment::query()->orderBy('name')->get(),
-            'roles' => array_keys(config('community.roles', [])),
+            'roleLabels' => config('community.board_permission_roles', []),
             'boardTypes' => config('community.board_types', []),
         ]);
     }
 
     public function storeBoard(Request $request)
     {
-        $roles = array_keys(config('community.roles', []));
+        $roles = array_keys(config('community.board_permission_roles', []));
 
         $data = $request->validate([
             'category_id' => ['required', 'exists:board_categories,id'],
             'apartment_id' => ['nullable', 'exists:apartments,id'],
             'name' => ['required', 'string', 'max:120'],
-            'slug' => ['required', 'string', 'max:80', Rule::unique('boards', 'slug')->where('apartment_id', $request->input('apartment_id'))],
+            'slug' => [
+                'required',
+                'string',
+                'max:80',
+                Rule::unique('boards', 'slug')->where(function ($query) use ($request) {
+                    $apartmentId = $request->input('apartment_id');
+
+                    return $apartmentId
+                        ? $query->where('apartment_id', $apartmentId)
+                        : $query->whereNull('apartment_id');
+                }),
+            ],
             'description' => ['nullable', 'string'],
             'board_type' => ['required', Rule::in(config('community.board_types', []))],
             'read_role' => ['required', Rule::in($roles)],
@@ -102,7 +114,7 @@ class AdminDashboardController extends Controller
     public function updateBoard(Request $request, int $id)
     {
         $board = Board::query()->findOrFail($id);
-        $roles = array_keys(config('community.roles', []));
+        $roles = array_keys(config('community.board_permission_roles', []));
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -111,7 +123,11 @@ class AdminDashboardController extends Controller
                 'string',
                 'max:80',
                 Rule::unique('boards', 'slug')
-                    ->where('apartment_id', $board->apartment_id)
+                    ->where(function ($query) use ($board) {
+                        return $board->apartment_id
+                            ? $query->where('apartment_id', $board->apartment_id)
+                            : $query->whereNull('apartment_id');
+                    })
                     ->ignore($board->id),
             ],
             'board_type' => ['required', Rule::in(config('community.board_types', []))],
@@ -201,23 +217,43 @@ class AdminDashboardController extends Controller
             'admin_note' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $verificationRequest->fill([
-            'status' => $data['status'],
-            'admin_note' => $data['admin_note'] ?? null,
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-        ])->save();
-
-        if ($data['status'] === 'approved') {
-            UserRole::query()->firstOrCreate([
+        DB::transaction(function () use ($request, $verificationRequest, $data) {
+            $target = ResidentVerificationRequest::query()->firstOrCreate([
                 'user_id' => $verificationRequest->user_id,
                 'apartment_id' => $verificationRequest->apartment_id,
-                'role' => 'resident',
+                'status' => $data['status'],
             ], [
-                'granted_at' => now(),
-                'granted_by' => $request->user()->id,
+                'request_note' => $verificationRequest->request_note,
             ]);
-        }
+
+            $target->fill([
+                'admin_note' => $data['admin_note'] ?? null,
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ])->save();
+
+            if ((int) $verificationRequest->id !== (int) $target->id) {
+                $verificationRequest->delete();
+            }
+
+            if ($data['status'] === 'approved') {
+                UserRole::query()->firstOrCreate([
+                    'user_id' => $verificationRequest->user_id,
+                    'apartment_id' => $verificationRequest->apartment_id,
+                    'role' => 'resident',
+                ], [
+                    'granted_at' => now(),
+                    'granted_by' => $request->user()->id,
+                ]);
+
+                ResidentVerificationRequest::query()
+                    ->where('user_id', $verificationRequest->user_id)
+                    ->where('apartment_id', $verificationRequest->apartment_id)
+                    ->where('status', 'pending')
+                    ->where('id', '!=', $target->id)
+                    ->delete();
+            }
+        });
 
         return redirect('/admin/review-queue')->with('status', '입주민 인증 검수 상태가 업데이트되었습니다.');
     }

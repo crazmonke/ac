@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Community;
 
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
+use App\Models\Board;
 use App\Models\Post;
+use App\Models\PostTopic;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 
@@ -19,73 +21,125 @@ class CommunityPageController extends Controller
         $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
         $user = $request->user();
 
-        $apartment = Apartment::query()->find($requestedApartmentId)
-            ?? ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
+        $apartment = ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
+            ?? Apartment::query()->find($requestedApartmentId)
             ?? Apartment::query()->orderBy('id')->first();
 
         $apartmentName = $apartment?->name ?? '커뮤니티';
         $apartmentId = (int) ($apartment?->id ?? $requestedApartmentId);
-        $isResident = (bool) ($user && $apartment && $user->hasRoleForApartment('resident', (int) $apartment->id));
-        $isGuest = ! $user;
-        $scope = (string) $request->query('scope', $isResident ? 'region' : 'all');
-        $requiresSignupForScope = $isGuest && in_array($scope, ['region', 'apartment'], true);
+        $isVerified = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
+        $preferredApartmentId = (int) ($user?->preferred_apartment_id ?? 0);
+        $scope = (string) $request->query('scope', 'all');
+        $topic = trim((string) $request->query('topic', ''));
+        $requiresSignupForScope = false;
+        $shouldSplitApartmentFeed = $isVerified && $scope === 'apartment' && $preferredApartmentId > 0;
 
         if (! in_array($scope, ['all', 'region', 'apartment'], true)) {
-            $scope = $isResident ? 'region' : 'all';
+            $scope = 'all';
         }
 
         $postsQuery = Post::query()
-            ->with(['board', 'apartment'])
+            ->with(['board', 'apartment', 'topic'])
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', fn ($query) => $query->where('is_active', true))
             ->latest();
 
-        if ($requiresSignupForScope) {
-            $postsQuery->whereRaw('1=0');
-        } elseif ($isResident && $scope === 'apartment' && $apartment) {
-            $postsQuery->where('apartment_id', (int) $apartment->id);
-        } elseif ($isResident && $scope === 'region' && $apartment) {
-            $sido = trim((string) $apartment->sido);
-            $sigungu = trim((string) $apartment->sigungu);
-            $postsQuery->whereHas('apartment', function ($query) use ($sido, $sigungu) {
-                if ($sido !== '') {
-                    $query->where('sido', $sido);
-                }
-
-                if ($sigungu !== '') {
-                    $query->where('sigungu', $sigungu);
-                }
-            });
+        if ($scope === 'region') {
+            $postsQuery->where('audience_scope', 'region');
+        } elseif ($scope === 'apartment') {
+            $postsQuery->where('audience_scope', 'apartment');
         }
+
+        if ($topic !== '') {
+            $postsQuery->whereHas('topic', fn ($query) => $query->where('slug', $topic));
+        }
+
+        if ($shouldSplitApartmentFeed) {
+            $homeSido = trim((string) ($user?->home_sido ?? ''));
+            $homeSigungu = trim((string) ($user?->home_sigungu ?? ''));
+            $homeDong = trim((string) ($user?->home_eupmyeondong ?? ''));
+            $homeDongSafe = $homeDong !== '' ? $homeDong : '__NO_DONG__';
+
+            $postsQuery->orderByRaw(
+                'CASE '
+                .'WHEN apartment_id = ? THEN 0 '
+                .'WHEN region_sido = ? AND region_sigungu = ? AND COALESCE(region_eupmyeondong, \'\') = ? THEN 1 '
+                .'WHEN region_sido = ? AND region_sigungu = ? THEN 2 '
+                .'WHEN region_sido = ? THEN 3 '
+                .'ELSE 4 END',
+                [
+                    $preferredApartmentId,
+                    $homeSido,
+                    $homeSigungu,
+                    $homeDongSafe,
+                    $homeSido,
+                    $homeSigungu,
+                    $homeSido,
+                ]
+            )->latest();
+        } else {
+            $postsQuery->latest();
+        }
+
+        $topicsQuery = PostTopic::query()
+            ->whereHas('posts', function ($query) use ($scope) {
+                $query->where('visibility', '!=', 'deleted');
+
+                if ($scope === 'region') {
+                    $query->where('audience_scope', 'region');
+                } elseif ($scope === 'apartment') {
+                    $query->where('audience_scope', 'apartment');
+                }
+            })
+            ->orderBy('name');
+
+        $topicFacets = $topicsQuery
+            ->limit(20)
+            ->get(['name', 'slug']);
+
+        $canCreatePost = $isVerified;
 
         $posts = $postsQuery
             ->paginate(20)
             ->withQueryString();
 
-        $posts->through(function (Post $post) use ($user) {
-            $canReadBoard = $this->permissionService->hasBoardPermission($user, $post->board, 'read');
-            $canRead = $canReadBoard || (bool) $post->is_guest_visible;
+        $posts->through(function (Post $post) use ($user, $apartmentId) {
+            $canRead = $this->permissionService->canReadPostDetail($user, $post);
 
             return [
                 'id' => (int) $post->id,
                 'title' => $post->title,
                 'created_at' => $post->created_at,
                 'board_name' => $post->board->name,
+                'topic_name' => $post->topic?->name,
                 'apartment_name' => $post->apartment->name,
                 'sido' => $post->apartment->sido,
                 'sigungu' => $post->apartment->sigungu,
                 'apartment_id' => (int) $post->apartment_id,
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
+                'audience_scope' => (string) ($post->audience_scope ?? 'all'),
                 'can_read' => $canRead,
                 'is_guest_visible' => (bool) $post->is_guest_visible,
                 'url' => $canRead
-                    ? ($user && $canReadBoard
-                        ? '/community/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id
+                    ? ($user
+                        ? '/community/posts/'.$post->id.'?apartment_id='.$apartmentId
                         : '/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id)
-                    : '/register?redirect='.urlencode('/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id),
+                    : '/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id,
             ];
         });
+
+        $ownApartmentPosts = collect();
+        $otherApartmentPosts = collect();
+        if ($shouldSplitApartmentFeed) {
+            $pageItems = collect($posts->items());
+            $ownApartmentPosts = $pageItems
+                ->filter(fn (array $item) => (int) ($item['apartment_id'] ?? 0) === $preferredApartmentId)
+                ->values();
+            $otherApartmentPosts = $pageItems
+                ->filter(fn (array $item) => (int) ($item['apartment_id'] ?? 0) !== $preferredApartmentId)
+                ->values();
+        }
 
         $regionLabel = trim((string) ($apartment?->sigungu ?: $apartment?->eupmyeondong ?: $apartment?->sido));
 
@@ -95,8 +149,15 @@ class CommunityPageController extends Controller
             'regionLabel' => $regionLabel !== '' ? $regionLabel : '우리 동네',
             'posts' => $posts,
             'scope' => $scope,
-            'isResident' => $isResident,
+            'topic' => $topic,
+            'isVerified' => $isVerified,
             'requiresSignupForScope' => $requiresSignupForScope,
+            'topicFacets' => $topicFacets,
+            'canCreatePost' => (bool) $canCreatePost,
+            'shouldSplitApartmentFeed' => $shouldSplitApartmentFeed,
+            'preferredApartmentName' => trim((string) ($user?->home_apartment_name ?? '')),
+            'ownApartmentPosts' => $ownApartmentPosts,
+            'otherApartmentPosts' => $otherApartmentPosts,
         ]);
     }
 }

@@ -33,14 +33,10 @@
             @endauth
         @else
             <div class="gate">
-                이 글은 회원/입주민 전용 게시글입니다. 제목은 누구나 볼 수 있지만 본문 열람은 권한이 필요합니다.
+                이 글은 카테고리 권한 게시글입니다. 목록은 누구나 볼 수 있지만 본문 열람은 관련 인증 회원에게만 허용됩니다.
                 <br>
                 @if($isLoggedIn)
-                    @if($canReadBoard)
-                        <a class="btn" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">커뮤니티 화면으로 이동</a>
-                    @else
-                        <a class="btn" href="/settings?apartment_id={{ $apartmentId }}">입주민 인증하러 가기</a>
-                    @endif
+                    <a class="btn" href="/settings?apartment_id={{ $apartmentId }}">인증 상태 확인/변경</a>
                 @else
                     <a class="btn" href="/register?redirect={{ urlencode('/posts/'.$post->id.'?apartment_id='.$apartmentId) }}">회원가입하고 본문 보기</a>
                 @endif

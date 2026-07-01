@@ -37,10 +37,27 @@
         <form method="post" enctype="multipart/form-data" action="/community/boards/{{ $board->slug }}/posts?apartment_id={{ $apartmentId }}">
             @csrf
             <div class="grid">
-                <input name="title" placeholder="제목" required>
-                <textarea name="body" placeholder="내용" required></textarea>
-                <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명</label>
-                <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;"> 비회원에게 본문 공개</label>
+                <input name="title" placeholder="제목" value="{{ old('title') }}" required>
+                <textarea name="body" placeholder="내용" required>{{ old('body') }}</textarea>
+                <label>노출 카테고리
+                    <select name="audience_scope" style="margin-top:6px;">
+                        <option value="region" @selected(old('audience_scope', 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
+                        <option value="apartment" @selected(old('audience_scope') === 'apartment')>아파트 (같은 단지 인증 회원만 상세)</option>
+                    </select>
+                </label>
+                <div class="meta" style="margin-top:-4px;">글쓰기는 인증회원만 가능합니다.</div>
+                <label>태그/섹션 선택
+                    <select name="post_topic_id" style="margin-top:6px;">
+                        <option value="">선택 안 함</option>
+                        @foreach($topicOptions as $topic)
+                            <option value="{{ $topic->id }}" @selected((string) old('post_topic_id') === (string) $topic->id)>#{{ $topic->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <div class="meta" style="margin-top:-4px;">기존 태그를 선택하거나, 아래에 새 태그를 입력하면 새로 생성됩니다.</div>
+                <input name="new_topic" value="{{ old('new_topic') }}" placeholder="새 태그 만들기 (예: 반려동물, 리모델링, 육아)">
+                <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked(old('is_anonymous'))> 익명</label>
+                <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;" @checked(old('is_guest_visible'))> 비회원에게 본문 공개</label>
                 <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf">
                 <div class="actions">
                     <button type="submit">등록</button>

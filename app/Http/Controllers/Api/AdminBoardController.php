@@ -11,16 +11,29 @@ class AdminBoardController extends Controller
 {
     public function store(Request $request)
     {
+        $boardRoles = array_keys(config('community.board_permission_roles', []));
+
         $data = $request->validate([
             'category_id' => ['required', 'exists:board_categories,id'],
             'apartment_id' => ['nullable', 'exists:apartments,id'],
             'name' => ['required', 'string', 'max:120'],
-            'slug' => ['required', 'string', 'max:80', Rule::unique('boards', 'slug')->where('apartment_id', $request->input('apartment_id'))],
+            'slug' => [
+                'required',
+                'string',
+                'max:80',
+                Rule::unique('boards', 'slug')->where(function ($query) use ($request) {
+                    $apartmentId = $request->input('apartment_id');
+
+                    return $apartmentId
+                        ? $query->where('apartment_id', $apartmentId)
+                        : $query->whereNull('apartment_id');
+                }),
+            ],
             'description' => ['nullable', 'string'],
             'board_type' => ['required', Rule::in(config('community.board_types', []))],
-            'read_role' => ['required', Rule::in(array_keys(config('community.roles', [])))],
-            'write_role' => ['required', Rule::in(array_keys(config('community.roles', [])))],
-            'comment_role' => ['required', Rule::in(array_merge(array_keys(config('community.roles', [])), ['none']))],
+            'read_role' => ['required', Rule::in($boardRoles)],
+            'write_role' => ['required', Rule::in($boardRoles)],
+            'comment_role' => ['required', Rule::in(array_merge($boardRoles, ['none']))],
             'allow_file' => ['required', 'boolean'],
             'allow_anonymous' => ['required', 'boolean'],
             'is_active' => ['required', 'boolean'],
@@ -37,6 +50,7 @@ class AdminBoardController extends Controller
     public function update(Request $request, int $id)
     {
         $board = Board::query()->findOrFail($id);
+        $boardRoles = array_keys(config('community.board_permission_roles', []));
 
         $data = $request->validate([
             'category_id' => ['sometimes', 'exists:board_categories,id'],
@@ -47,14 +61,20 @@ class AdminBoardController extends Controller
                 'string',
                 'max:80',
                 Rule::unique('boards', 'slug')
-                    ->where('apartment_id', $request->input('apartment_id', $board->apartment_id))
+                    ->where(function ($query) use ($request, $board) {
+                        $apartmentId = $request->input('apartment_id', $board->apartment_id);
+
+                        return $apartmentId
+                            ? $query->where('apartment_id', $apartmentId)
+                            : $query->whereNull('apartment_id');
+                    })
                     ->ignore($board->id),
             ],
             'description' => ['nullable', 'string'],
             'board_type' => ['sometimes', Rule::in(config('community.board_types', []))],
-            'read_role' => ['sometimes', Rule::in(array_keys(config('community.roles', [])))],
-            'write_role' => ['sometimes', Rule::in(array_keys(config('community.roles', [])))],
-            'comment_role' => ['sometimes', Rule::in(array_merge(array_keys(config('community.roles', [])), ['none']))],
+            'read_role' => ['sometimes', Rule::in($boardRoles)],
+            'write_role' => ['sometimes', Rule::in($boardRoles)],
+            'comment_role' => ['sometimes', Rule::in(array_merge($boardRoles, ['none']))],
             'allow_file' => ['sometimes', 'boolean'],
             'allow_anonymous' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],

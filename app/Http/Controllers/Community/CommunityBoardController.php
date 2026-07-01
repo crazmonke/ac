@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Community;
 use App\Http\Controllers\Controller;
 use App\Models\Board;
 use App\Models\Comment;
+use App\Models\PostTopic;
 use App\Models\PostFile;
 use App\Models\Post;
 use App\Models\User;
@@ -21,9 +22,10 @@ class CommunityBoardController extends Controller
 
     public function board(Request $request, string $slug)
     {
-        $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $apartmentId = $this->resolveContextApartmentId($request);
         $keyword = trim((string) $request->query('q', ''));
         $sort = (string) $request->query('sort', 'latest');
+        $topic = trim((string) $request->query('topic', ''));
 
         $board = $this->resolveBoard($slug, $apartmentId);
         $user = $request->user();
@@ -33,9 +35,13 @@ class CommunityBoardController extends Controller
         }
 
         $postsQuery = Post::query()
-            ->with('user')
+            ->with(['user', 'topic'])
             ->where('board_id', $board->id)
             ->where('visibility', '!=', 'deleted');
+
+        if ($topic !== '') {
+            $postsQuery->whereHas('topic', fn ($query) => $query->where('slug', $topic));
+        }
 
         if ($keyword !== '') {
             $postsQuery->where(function ($query) use ($keyword) {
@@ -57,16 +63,26 @@ class CommunityBoardController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $topicOptions = PostTopic::query()
+            ->where(function ($query) use ($apartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $apartmentId);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         return view('community.board', [
             'board' => $board,
             'posts' => $posts,
             'apartmentId' => $apartmentId,
-            'canWrite' => $this->permissionService->hasBoardPermission($user, $board, 'write'),
+            'canWrite' => $this->canWriteInBoard($user, $board),
             'canComment' => $this->permissionService->hasBoardPermission($user, $board, 'comment'),
             'isApartmentAdmin' => $this->permissionService->hasAdminRole($user, $apartmentId),
             'currentUserId' => $user->id,
             'q' => $keyword,
             'sort' => $sort,
+            'topic' => $topic,
+            'topicOptions' => $topicOptions,
         ]);
     }
 
@@ -75,6 +91,7 @@ class CommunityBoardController extends Controller
         $post = Post::query()
             ->with([
                 'board',
+                'apartment',
                 'user',
                 'files',
                 'comments' => function ($query) {
@@ -87,7 +104,7 @@ class CommunityBoardController extends Controller
 
         $user = $request->user();
 
-        if (! $this->permissionService->hasBoardPermission($user, $post->board, 'read')) {
+        if (! $this->permissionService->canReadPostDetail($user, $post)) {
             abort(403);
         }
 
@@ -104,8 +121,8 @@ class CommunityBoardController extends Controller
 
         return view('community.post', [
             'post' => $post,
-            'apartmentId' => (int) $post->apartment_id,
-            'canWrite' => $this->permissionService->hasBoardPermission($user, $post->board, 'write'),
+            'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
+            'canWrite' => $this->canWriteInBoard($user, $post->board),
             'canComment' => $this->permissionService->hasBoardPermission($user, $post->board, 'comment'),
             'isApartmentAdmin' => $this->permissionService->hasAdminRole($user, (int) $post->apartment_id),
             'currentUserId' => $user->id,
@@ -118,10 +135,10 @@ class CommunityBoardController extends Controller
 
     public function editPost(Request $request, int $id)
     {
-        $post = Post::query()->with('board', 'files')->findOrFail($id);
+        $post = Post::query()->with(['board', 'files', 'topic'])->findOrFail($id);
         $user = $request->user();
 
-        if (! $this->permissionService->hasBoardPermission($user, $post->board, 'write')) {
+        if (! $this->canWriteInBoard($user, $post->board)) {
             abort(403);
         }
 
@@ -129,55 +146,145 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
+        $topicOptions = PostTopic::query()
+            ->where(function ($query) use ($post) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', (int) $post->apartment_id);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('community.post-edit', [
             'post' => $post,
-            'apartmentId' => (int) $post->apartment_id,
+            'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
+            'topicOptions' => $topicOptions,
+            'canUseRestrictedAudience' => $this->permissionService->hasVerifiedRole($user, (int) $post->apartment_id),
         ]);
     }
 
     public function createPost(Request $request, string $slug)
     {
-        $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $apartmentId = $this->resolveContextApartmentId($request);
         $board = $this->resolveBoard($slug, $apartmentId);
         $user = $request->user();
 
-        if (! $this->permissionService->hasBoardPermission($user, $board, 'write')) {
+        if (! $this->canWriteInBoard($user, $board)) {
             abort(403);
         }
+
+        if (! $user->preferred_apartment_id) {
+            return redirect('/settings?apartment_id='.$apartmentId)
+                ->withErrors(['apartment_query' => '글을 작성하려면 먼저 아파트를 선택해 주세요.']);
+        }
+
+        $writerApartmentId = (int) $user->preferred_apartment_id;
+
+        $topicOptions = PostTopic::query()
+            ->where(function ($query) use ($writerApartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $writerApartmentId);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return view('community.post-create', [
             'board' => $board,
             'apartmentId' => $apartmentId,
+            'topicOptions' => $topicOptions,
+            'canUseRestrictedAudience' => $this->permissionService->hasVerifiedRole($user, $writerApartmentId),
+        ]);
+    }
+
+    public function compose(Request $request)
+    {
+        $apartmentId = $this->resolveContextApartmentId($request);
+        $user = $request->user();
+
+        if (! $this->permissionService->hasVerifiedRole($user)) {
+            abort(403);
+        }
+
+        $candidateBoards = Board::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $writableBoards = $candidateBoards
+            ->filter(fn (Board $board) => $this->canWriteInBoard($user, $board))
+            ->values();
+
+        if ($writableBoards->count() === 1) {
+            $targetBoard = $writableBoards->first();
+            $targetApartmentId = $targetBoard->apartment_id
+                ? (int) $targetBoard->apartment_id
+                : ((int) ($user->preferred_apartment_id ?: $apartmentId));
+
+            return redirect('/community/boards/'.$targetBoard->slug.'/create?apartment_id='.$targetApartmentId);
+        }
+
+        return view('community.compose', [
+            'apartmentId' => $apartmentId,
+            'writableBoards' => $writableBoards,
         ]);
     }
 
     public function storePost(Request $request, string $slug)
     {
-        $apartmentId = max(1, (int) $request->query('apartment_id', 1));
+        $apartmentId = $this->resolveContextApartmentId($request);
         $board = $this->resolveBoard($slug, $apartmentId);
+        $user = $request->user()->loadMissing('preferredApartment');
 
-        if (! $this->permissionService->hasBoardPermission($request->user(), $board, 'write')) {
+        if (! $this->canWriteInBoard($user, $board)) {
             abort(403);
         }
+
+        if (! $user->preferred_apartment_id || ! $user->preferredApartment) {
+            return redirect('/settings?apartment_id='.$apartmentId)
+                ->withErrors(['apartment_query' => '글을 작성하려면 먼저 아파트를 선택해 주세요.']);
+        }
+
+        $writerApartment = $user->preferredApartment;
+        $writerApartmentId = (int) $writerApartment->id;
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
+            'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
+            'new_topic' => ['nullable', 'string', 'max:60'],
+            'audience_scope' => ['required', 'in:region,apartment'],
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
         ]);
 
+        $audienceScope = (string) $data['audience_scope'];
+        if (! $this->permissionService->hasVerifiedRole($user, $writerApartmentId)) {
+            return back()->withErrors(['audience_scope' => '글쓰기는 인증 회원만 가능합니다.'])->withInput();
+        }
+
+        $postTopicId = $this->resolvePostTopicId(
+            $request,
+            $writerApartmentId,
+            $data['post_topic_id'] ?? null,
+            $data['new_topic'] ?? null
+        );
+
         $post = Post::query()->create([
             'board_id' => $board->id,
-            'apartment_id' => (int) $board->apartment_id,
-            'user_id' => $request->user()->id,
+            'post_topic_id' => $postTopicId,
+            'apartment_id' => $writerApartmentId,
+            'region_sido' => $writerApartment->sido,
+            'region_sigungu' => $writerApartment->sigungu,
+            'region_eupmyeondong' => $writerApartment->eupmyeondong,
+            'user_id' => $user->id,
             'title' => $data['title'],
             'body' => $data['body'],
             'is_notice' => false,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'visibility' => 'resident_only',
+            'audience_scope' => $audienceScope,
             'is_guest_visible' => (bool) ($data['is_guest_visible'] ?? false),
             'view_count' => 0,
             'comment_count' => 0,
@@ -193,7 +300,7 @@ class CommunityBoardController extends Controller
         $post = Post::query()->with('board')->findOrFail($id);
         $user = $request->user();
 
-        if (! $this->permissionService->hasBoardPermission($user, $post->board, 'write')) {
+        if (! $this->canWriteInBoard($user, $post->board)) {
             abort(403);
         }
 
@@ -204,15 +311,32 @@ class CommunityBoardController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
+            'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
+            'new_topic' => ['nullable', 'string', 'max:60'],
+            'audience_scope' => ['required', 'in:region,apartment'],
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
         ]);
 
+        $audienceScope = (string) $data['audience_scope'];
+        if (! $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id)) {
+            return back()->withErrors(['audience_scope' => '글쓰기는 인증 회원만 가능합니다.'])->withInput();
+        }
+
+        $postTopicId = $this->resolvePostTopicId(
+            $request,
+            (int) $post->apartment_id,
+            $data['post_topic_id'] ?? null,
+            $data['new_topic'] ?? null
+        );
+
         $post->fill([
             'title' => $data['title'],
             'body' => $data['body'],
+            'post_topic_id' => $postTopicId,
+            'audience_scope' => $audienceScope,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'is_guest_visible' => (bool) ($data['is_guest_visible'] ?? false),
         ])->save();
@@ -227,7 +351,7 @@ class CommunityBoardController extends Controller
         $post = Post::query()->with('board')->findOrFail($id);
         $user = $request->user();
 
-        if (! $this->permissionService->hasBoardPermission($user, $post->board, 'write')) {
+        if (! $this->canWriteInBoard($user, $post->board)) {
             abort(403);
         }
 
@@ -380,7 +504,7 @@ class CommunityBoardController extends Controller
         $post = $file->post;
         $user = $request->user();
 
-        if (! $post || ! $this->permissionService->hasBoardPermission($user, $post->board, 'write')) {
+        if (! $post || ! $this->canWriteInBoard($user, $post->board)) {
             abort(403);
         }
 
@@ -401,9 +525,28 @@ class CommunityBoardController extends Controller
     {
         return Board::query()
             ->where('slug', $slug)
-            ->where('apartment_id', $apartmentId)
             ->where('is_active', true)
+            ->where(function ($query) use ($apartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $apartmentId);
+            })
+            ->orderByRaw('CASE WHEN apartment_id IS NULL THEN 0 ELSE 1 END')
             ->firstOrFail();
+    }
+
+    private function resolveContextApartmentId(Request $request, ?int $fallbackApartmentId = null): int
+    {
+        $preferredApartmentId = (int) ($request->user()?->preferred_apartment_id ?? 0);
+        if ($preferredApartmentId > 0) {
+            return $preferredApartmentId;
+        }
+
+        $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
+        if ($requestedApartmentId > 0) {
+            return $requestedApartmentId;
+        }
+
+        return max(1, (int) ($fallbackApartmentId ?? 1));
     }
 
     private function canManage(User $user, int $ownerUserId, int $apartmentId): bool
@@ -413,6 +556,19 @@ class CommunityBoardController extends Controller
         }
 
         return $this->permissionService->hasAdminRole($user, $apartmentId);
+    }
+
+    private function canWriteInBoard(?User $user, Board $board): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (! $this->permissionService->hasBoardPermission($user, $board, 'write')) {
+            return false;
+        }
+
+        return $this->permissionService->hasVerifiedRole($user, $board->apartment_id ? (int) $board->apartment_id : null);
     }
 
     private function storeAttachments(Request $request, Post $post): void
@@ -440,5 +596,57 @@ class CommunityBoardController extends Controller
                 'size' => $uploadedFile->getSize(),
             ]);
         }
+    }
+
+    private function resolvePostTopicId(
+        Request $request,
+        int $apartmentId,
+        mixed $topicId,
+        ?string $newTopicName
+    ): ?int {
+        $newTopicName = trim((string) $newTopicName);
+
+        if ($newTopicName !== '') {
+            $slug = Str::slug($newTopicName, '-');
+
+            if ($slug === '') {
+                $slug = 'topic-'.Str::lower(Str::random(8));
+            }
+
+            $baseSlug = $slug;
+            $suffix = 1;
+            while (
+                PostTopic::query()
+                    ->where('apartment_id', $apartmentId)
+                    ->where('slug', $slug)
+                    ->exists()
+            ) {
+                $suffix++;
+                $slug = $baseSlug.'-'.$suffix;
+            }
+
+            $topic = PostTopic::query()->create([
+                'apartment_id' => $apartmentId,
+                'created_by' => $request->user()->id,
+                'name' => $newTopicName,
+                'slug' => $slug,
+            ]);
+
+            return (int) $topic->id;
+        }
+
+        if (! $topicId) {
+            return null;
+        }
+
+        $topic = PostTopic::query()
+            ->where('id', (int) $topicId)
+            ->where(function ($query) use ($apartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $apartmentId);
+            })
+            ->first();
+
+        return $topic ? (int) $topic->id : null;
     }
 }

@@ -62,6 +62,10 @@ class ApartmentSelectionService
         if ($apartmentId) {
             $selectedApartment = Apartment::query()->findOrFail($apartmentId);
             $user->preferred_apartment_id = $selectedApartment->id;
+            $user->home_sido = $selectedApartment->sido;
+            $user->home_sigungu = $selectedApartment->sigungu;
+            $user->home_eupmyeondong = $selectedApartment->eupmyeondong;
+            $user->home_apartment_name = $selectedApartment->name;
             $user->save();
 
             if ($latitude !== null && $longitude !== null) {

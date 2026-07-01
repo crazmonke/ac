@@ -77,26 +77,26 @@
                 <div>
                     <label>읽기 권한</label>
                     <select name="read_role" required>
-                        @foreach($roles as $role)
-                            <option value="{{ $role }}">{{ $role }}</option>
+                        @foreach($roleLabels as $role => $label)
+                            <option value="{{ $role }}">{{ $label }} ({{ $role }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
                     <label>쓰기 권한</label>
                     <select name="write_role" required>
-                        @foreach($roles as $role)
-                            <option value="{{ $role }}">{{ $role }}</option>
+                        @foreach($roleLabels as $role => $label)
+                            <option value="{{ $role }}">{{ $label }} ({{ $role }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
                     <label>댓글 권한</label>
                     <select name="comment_role" required>
-                        @foreach($roles as $role)
-                            <option value="{{ $role }}">{{ $role }}</option>
+                        @foreach($roleLabels as $role => $label)
+                            <option value="{{ $role }}">{{ $label }} ({{ $role }})</option>
                         @endforeach
-                        <option value="none">none</option>
+                        <option value="none">비활성 (none)</option>
                     </select>
                 </div>
                 <div>
@@ -145,20 +145,20 @@
                 </td>
                 <td>
                         <select name="read_role" required>
-                            @foreach($roles as $role)
-                                <option value="{{ $role }}" @selected($board->read_role === $role)>{{ $role }}</option>
+                            @foreach($roleLabels as $role => $label)
+                                <option value="{{ $role }}" @selected($board->read_role === $role)>{{ $label }} ({{ $role }})</option>
                             @endforeach
                         </select>
                         <select name="write_role" required>
-                            @foreach($roles as $role)
-                                <option value="{{ $role }}" @selected($board->write_role === $role)>{{ $role }}</option>
+                            @foreach($roleLabels as $role => $label)
+                                <option value="{{ $role }}" @selected($board->write_role === $role)>{{ $label }} ({{ $role }})</option>
                             @endforeach
                         </select>
                         <select name="comment_role" required>
-                            @foreach($roles as $role)
-                                <option value="{{ $role }}" @selected($board->comment_role === $role)>{{ $role }}</option>
+                            @foreach($roleLabels as $role => $label)
+                                <option value="{{ $role }}" @selected($board->comment_role === $role)>{{ $label }} ({{ $role }})</option>
                             @endforeach
-                            <option value="none" @selected($board->comment_role === 'none')>none</option>
+                            <option value="none" @selected($board->comment_role === 'none')>비활성 (none)</option>
                         </select>
                 </td>
                 <td>

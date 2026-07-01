@@ -24,6 +24,10 @@ class User extends Authenticatable
         'name',
         'email',
         'preferred_apartment_id',
+        'home_sido',
+        'home_sigungu',
+        'home_eupmyeondong',
+        'home_apartment_name',
         'password',
     ];
 
