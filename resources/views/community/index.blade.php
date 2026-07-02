@@ -18,6 +18,9 @@
         .topic-scroll::-webkit-scrollbar { display: none; }
         .topic-scroll.dragging { cursor: grabbing; user-select: none; }
         .topic-scroll .scope-tab { flex: 0 0 auto; }
+        .desktop-write-cta { display: inline-flex; }
+        .mobile-bottom-nav { display: none; }
+        .has-mobile-bottom-nav { }
         .panel { margin-top: 14px; background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; }
         .post-list { list-style: none; margin: 0; padding: 0; }
         .post-item { border-top: 1px solid #edf2f8; padding: 12px 0; }
@@ -36,9 +39,47 @@
         .chip.locked { background: #fff4e8; color: #8d4a1c; }
         .empty-box { border: 1px solid #ffd7b5; background: #fff4e9; color: #7f4310; border-radius: 10px; padding: 12px; }
         .empty-box a { color: #0f6f67; font-weight: 700; text-decoration: none; }
+
+        @media (max-width: 768px) {
+            .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+            .desktop-write-cta { display: none; }
+            .mobile-bottom-nav {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 120;
+                display: block;
+                padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+                background:
+                    radial-gradient(120px 70px at 15% 12%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 70%),
+                    radial-gradient(160px 90px at 84% 85%, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0) 72%),
+                    linear-gradient(130deg, #1f5f77 0%, #2b8b89 100%);
+                border-top: 1px solid rgba(220, 243, 246, 0.42);
+                backdrop-filter: blur(8px);
+            }
+            .mobile-bottom-nav-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 58px; }
+            .mobile-nav-item { text-decoration: none; color: #e9f0fb; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 2px 6px; font-weight: 700; }
+            .mobile-nav-item-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 10px;
+                background: linear-gradient(145deg, #d9f7ee 0%, #aeead8 100%);
+                color: #0f5f61;
+                border: 1px solid rgba(217, 247, 238, 0.75);
+                box-shadow: 0 6px 14px rgba(6, 45, 51, 0.22);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.35rem;
+                line-height: 1;
+                margin-bottom: 3px;
+            }
+            .mobile-nav-item-label { font-size: 0.78rem; line-height: 1.1; letter-spacing: -0.01em; }
+        }
     </style>
 </head>
-<body>
+<body class="{{ $canCreatePost ? 'has-mobile-bottom-nav' : '' }}">
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
@@ -76,7 +117,7 @@
             작성할 게시판을 고르고 태그를 지정해 글을 등록할 수 있습니다.
         </div>
         @if($canCreatePost)
-            <a class="scope-tab active" href="/community/compose?apartment_id={{ $apartmentId }}">글쓰기</a>
+            <a class="scope-tab active desktop-write-cta" href="/community/compose?apartment_id={{ $apartmentId }}">글쓰기</a>
         @elseif(auth()->check())
             <div class="empty-box" style="margin:0; padding:8px 10px;">글쓰기는 인증회원만 가능합니다. 단지 인증을 완료해 주세요.</div>
         @else
@@ -158,6 +199,17 @@
         @include('partials.pagination', ['paginator' => $posts])
     </section>
 </div>
+
+@if($canCreatePost)
+    <nav class="mobile-bottom-nav" aria-label="모바일 하단 메뉴">
+        <div class="mobile-bottom-nav-inner">
+            <a class="mobile-nav-item" href="/community/compose?apartment_id={{ $apartmentId }}" aria-label="글쓰기">
+                <span class="mobile-nav-item-icon">+</span>
+                <span class="mobile-nav-item-label">글쓰기</span>
+            </a>
+        </div>
+    </nav>
+@endif
 
 <script>
 document.querySelectorAll('.requires-signup').forEach((link) => {

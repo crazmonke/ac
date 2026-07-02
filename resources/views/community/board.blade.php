@@ -22,6 +22,46 @@
         .item { background: #fff; border: 1px solid #d5dfec; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
         .item h3 { margin: 0 0 6px; }
         .pill { display: inline-block; border: 1px solid #c9d8eb; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+        .desktop-write-cta { display: inline-flex; }
+        .mobile-bottom-nav { display: none; }
+
+        @media (max-width: 768px) {
+            .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+            .desktop-write-cta { display: none; }
+            .mobile-bottom-nav {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 120;
+                display: block;
+                padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+                background:
+                    radial-gradient(120px 70px at 15% 12%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 70%),
+                    radial-gradient(160px 90px at 84% 85%, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0) 72%),
+                    linear-gradient(130deg, #1f5f77 0%, #2b8b89 100%);
+                border-top: 1px solid rgba(220, 243, 246, 0.42);
+                backdrop-filter: blur(8px);
+            }
+            .mobile-bottom-nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 58px; }
+            .mobile-nav-item { text-decoration: none; color: #e9f0fb; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 2px 6px; font-weight: 700; }
+            .mobile-nav-item-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 10px;
+                background: linear-gradient(145deg, #d9f7ee 0%, #aeead8 100%);
+                color: #0f5f61;
+                border: 1px solid rgba(217, 247, 238, 0.75);
+                box-shadow: 0 6px 14px rgba(6, 45, 51, 0.22);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.35rem;
+                line-height: 1;
+                margin-bottom: 3px;
+            }
+            .mobile-nav-item-label { font-size: 0.78rem; line-height: 1.1; letter-spacing: -0.01em; }
+        }
     </style>
 </head>
 <body>
@@ -76,7 +116,7 @@
                 <div class="meta">{{ $board->name }} · 총 {{ $posts->total() }}개</div>
             </div>
             @if($canWrite)
-                <a class="btn" href="/community/boards/{{ $board->slug }}/create?apartment_id={{ $apartmentId }}">새글작성</a>
+                <a class="btn desktop-write-cta" href="/community/boards/{{ $board->slug }}/create?apartment_id={{ $apartmentId }}">새글작성</a>
             @endif
         </div>
         @forelse($posts as $post)
@@ -117,5 +157,16 @@
 
     @include('partials.pagination', ['paginator' => $posts])
 </div>
+
+@if($canWrite)
+    <nav class="mobile-bottom-nav" aria-label="모바일 하단 메뉴">
+        <div class="mobile-bottom-nav-inner">
+            <a class="mobile-nav-item" href="/community/boards/{{ $board->slug }}/create?apartment_id={{ $apartmentId }}" aria-label="글쓰기">
+                <span class="mobile-nav-item-icon">+</span>
+                <span class="mobile-nav-item-label">글쓰기</span>
+            </a>
+        </div>
+    </nav>
+@endif
 </body>
 </html>
