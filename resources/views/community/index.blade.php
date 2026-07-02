@@ -229,71 +229,74 @@ if (topicScroll) {
     let startScrollLeft = 0;
     let didDrag = false;
     const dragThreshold = 6;
+    const enablePointerDrag = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
-    topicScroll.addEventListener('pointerdown', (event) => {
-        if (event.pointerType === 'mouse' && event.button !== 0) {
-            return;
-        }
-
-        isDragging = true;
-        didDrag = false;
-        startX = event.clientX;
-        startScrollLeft = topicScroll.scrollLeft;
-        topicScroll.classList.add('dragging');
-
-        if (typeof topicScroll.setPointerCapture === 'function') {
-            topicScroll.setPointerCapture(event.pointerId);
-        }
-    });
-
-    topicScroll.addEventListener('pointermove', (event) => {
-        if (!isDragging) {
-            return;
-        }
-
-        const deltaX = event.clientX - startX;
-        if (Math.abs(deltaX) > dragThreshold) {
-            didDrag = true;
-        }
-
-        topicScroll.scrollLeft = startScrollLeft - deltaX;
-    });
-
-    const finishDrag = (event) => {
-        if (!isDragging) {
-            return;
-        }
-
-        isDragging = false;
-        topicScroll.classList.remove('dragging');
-
-        if (typeof topicScroll.releasePointerCapture === 'function') {
-            try {
-                topicScroll.releasePointerCapture(event.pointerId);
-            } catch (error) {
-                // Ignore invalid release attempts.
-            }
-        }
-    };
-
-    topicScroll.addEventListener('pointerup', finishDrag);
-    topicScroll.addEventListener('pointercancel', finishDrag);
-    topicScroll.addEventListener('pointerleave', (event) => {
-        if (event.pointerType === 'mouse') {
-            finishDrag(event);
-        }
-    });
-
-    topicScroll.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', (event) => {
-            if (!didDrag) {
+    if (enablePointerDrag) {
+        topicScroll.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse') {
                 return;
             }
 
-            event.preventDefault();
+            isDragging = true;
             didDrag = false;
+            startX = event.clientX;
+            startScrollLeft = topicScroll.scrollLeft;
+            topicScroll.classList.add('dragging');
+
+            if (typeof topicScroll.setPointerCapture === 'function') {
+                topicScroll.setPointerCapture(event.pointerId);
+            }
         });
-    });
+
+        topicScroll.addEventListener('pointermove', (event) => {
+            if (!isDragging) {
+                return;
+            }
+
+            const deltaX = event.clientX - startX;
+            if (Math.abs(deltaX) > dragThreshold) {
+                didDrag = true;
+            }
+
+            topicScroll.scrollLeft = startScrollLeft - deltaX;
+        });
+
+        const finishDrag = (event) => {
+            if (!isDragging) {
+                return;
+            }
+
+            isDragging = false;
+            topicScroll.classList.remove('dragging');
+
+            if (typeof topicScroll.releasePointerCapture === 'function') {
+                try {
+                    topicScroll.releasePointerCapture(event.pointerId);
+                } catch (error) {
+                    // Ignore invalid release attempts.
+                }
+            }
+        };
+
+        topicScroll.addEventListener('pointerup', finishDrag);
+        topicScroll.addEventListener('pointercancel', finishDrag);
+        topicScroll.addEventListener('pointerleave', (event) => {
+            if (event.pointerType === 'mouse') {
+                finishDrag(event);
+            }
+        });
+
+        topicScroll.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', (event) => {
+                if (!didDrag) {
+                    return;
+                }
+
+                event.preventDefault();
+                didDrag = false;
+            });
+        });
+    }
 }
 </script>
 </body>

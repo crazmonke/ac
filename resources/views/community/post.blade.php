@@ -45,6 +45,15 @@
             font-weight: 700;
             font-size: 0.92rem;
         }
+        .appbar .back-chip {
+            gap: 4px;
+            background: #e9eef5;
+            border-color: #cfd8e6;
+            color: #22344d;
+            font-weight: 800;
+            padding: 8px 14px;
+            line-height: 1;
+        }
         .appbar .title { font-weight: 800; font-size: 0.98rem; }
         .card {
             background: var(--card);
@@ -86,10 +95,27 @@
             font-weight: 700;
         }
         .body {
-            white-space: pre-wrap;
             line-height: 1.75;
             font-size: 1rem;
             color: #1d2c42;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .body p,
+        .body ul,
+        .body ol,
+        .body blockquote,
+        .body pre {
+            margin: 0 0 1em;
+        }
+        .body a {
+            color: #1f4ca1;
+            text-decoration: underline;
+        }
+        .body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
         }
         .section-title {
             display: flex;
@@ -247,7 +273,7 @@
 
     <div class="appbar">
         <div class="left">
-            <a href="/community/{{ $post->board->slug }}?apartment_id={{ $apartmentId }}">← 목록</a>
+            <a class="back-chip" href="/community/{{ $post->board->slug }}?apartment_id={{ $apartmentId }}">← 커뮤니티로</a>
             <div class="title">{{ $post->board->name }}</div>
         </div>
         <div class="right">
@@ -283,7 +309,7 @@
             </div>
         </div>
 
-        <div style="margin-top:16px;" class="body">{{ $post->body }}</div>
+        <div style="margin-top:16px;" class="body">{!! $post->body !!}</div>
 
         <?php if ($post->board->board_type === 'poll' && $post->poll): ?>
             <?php
@@ -366,31 +392,6 @@
                 </form>
             @endif
         </div>
-    </section>
-
-    <section class="card">
-        <div class="section-title">
-            <h2>첨부파일</h2>
-        </div>
-        <ul class="attachment-list">
-            @forelse($post->files as $file)
-                <li>
-                    <div>
-                        <a href="/community/files/{{ $file->id }}">{{ $file->original_name }}</a>
-                        <div class="meta">{{ number_format($file->size) }} bytes</div>
-                    </div>
-                    @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin || $currentUserId === $file->user_id))
-                        <form method="post" action="/community/files/{{ $file->id }}" style="display:inline; margin:0;">
-                            @csrf
-                            @method('DELETE')
-                            <button class="ghost" type="submit">삭제</button>
-                        </form>
-                    @endif
-                </li>
-            @empty
-                <li class="meta">첨부파일이 없습니다.</li>
-            @endforelse
-        </ul>
     </section>
 
     <section class="card">

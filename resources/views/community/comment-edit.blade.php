@@ -14,12 +14,29 @@
         a.btn.secondary { background: #dde7f3; color: #20324b; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .meta { color: #5b6d82; font-size: 0.9rem; }
+        .back-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 999px;
+            border: 1px solid #cfd8e6;
+            background: #e9eef5;
+            color: #22344d;
+            padding: 8px 14px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-decoration: none;
+            line-height: 1;
+            transition: background-color 0.16s ease, border-color 0.16s ease;
+        }
+        .back-chip:hover { background: #dfe7f2; border-color: #c4d0e2; }
+        .back-chip:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(47, 82, 184, 0.14); }
     </style>
 </head>
 <body>
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
-    <p class="meta"><a href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">← 게시글로 돌아가기</a></p>
+    <p class="meta"><a class="back-chip" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">← 게시글로 돌아가기</a></p>
 
     <section class="panel">
         <h1>댓글 수정</h1>

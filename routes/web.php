@@ -48,6 +48,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/withdraw-request', [AccountSettingsController::class, 'requestWithdrawal']);
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
+    Route::post('/community/editor/photos', [CommunityBoardController::class, 'uploadEditorPhoto']);
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);

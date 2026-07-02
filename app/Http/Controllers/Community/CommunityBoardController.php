@@ -305,7 +305,7 @@ class CommunityBoardController extends Controller
             'region_eupmyeondong' => $writerApartment->eupmyeondong,
             'user_id' => $user->id,
             'title' => $data['title'],
-            'body' => $data['body'],
+            'body' => $this->sanitizeEditorHtml((string) $data['body']),
             'is_notice' => false,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'visibility' => 'resident_only',
@@ -370,7 +370,7 @@ class CommunityBoardController extends Controller
 
         $post->fill([
             'title' => $data['title'],
-            'body' => $data['body'],
+            'body' => $this->sanitizeEditorHtml((string) $data['body']),
             'post_topic_id' => $postTopicId,
             'audience_scope' => $audienceScope,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
@@ -383,7 +383,8 @@ class CommunityBoardController extends Controller
             $this->syncPollFromRequest($request, $post, $data);
         }
 
-        return back()->with('status', '게시글이 수정되었습니다.');
+        return redirect('/community/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id)
+            ->with('status', '게시글이 수정되었습니다.');
     }
 
     public function destroyPost(Request $request, int $id)
@@ -612,6 +613,32 @@ class CommunityBoardController extends Controller
         return back()->with('status', '투표가 완료되었습니다.');
     }
 
+    public function uploadEditorPhoto(Request $request)
+    {
+        $data = $request->validate([
+            'file' => ['required', 'image', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp'],
+        ]);
+
+        $uploadedFile = $data['file'];
+        $dateSegment = now()->format('Y/m');
+        $targetDirectory = public_path('uploads/editor-images/'.$dateSegment);
+
+        if (! is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        $extension = Str::lower((string) $uploadedFile->getClientOriginalExtension());
+        $safeExtension = $extension !== '' ? $extension : 'jpg';
+        $storedName = Str::uuid().'.'.$safeExtension;
+
+        $uploadedFile->move($targetDirectory, $storedName);
+
+        return response()->json([
+            'url' => '/uploads/editor-images/'.$dateSegment.'/'.$storedName,
+            'name' => (string) $uploadedFile->getClientOriginalName(),
+        ]);
+    }
+
     private function resolveBoard(string $slug, int $apartmentId): Board
     {
         return Board::query()
@@ -787,5 +814,158 @@ class CommunityBoardController extends Controller
                 'vote_count' => 0,
             ]);
         }
+    }
+
+    private function sanitizeEditorHtml(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+
+        if (! class_exists(\DOMDocument::class)) {
+            return strip_tags($html);
+        }
+
+        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'span', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'pre', 'code', 'a', 'img'];
+        $allowedAttrMap = [
+            'a' => ['href', 'target', 'rel', 'style'],
+            'img' => ['src', 'alt'],
+            'span' => ['style'],
+            'p' => ['style'],
+            'li' => ['style'],
+            'blockquote' => ['style'],
+            'h1' => ['style'],
+            'h2' => ['style'],
+            'h3' => ['style'],
+            'h4' => ['style'],
+        ];
+
+        $previousUseInternalErrors = libxml_use_internal_errors(true);
+
+        $document = new \DOMDocument('1.0', 'UTF-8');
+        $wrappedHtml = '<div id="__se2_root__">'.$html.'</div>';
+        $encodedHtml = mb_convert_encoding($wrappedHtml, 'HTML-ENTITIES', 'UTF-8');
+
+        $document->loadHTML($encodedHtml, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousUseInternalErrors);
+
+        $elements = [];
+        foreach ($document->getElementsByTagName('*') as $element) {
+            $elements[] = $element;
+        }
+
+        foreach (array_reverse($elements) as $element) {
+            $tag = Str::lower($element->tagName);
+
+            if ($tag === 'div' && $element->getAttribute('id') === '__se2_root__') {
+                continue;
+            }
+
+            if (! in_array($tag, $allowedTags, true)) {
+                $parent = $element->parentNode;
+                if (! $parent) {
+                    continue;
+                }
+
+                while ($element->firstChild) {
+                    $parent->insertBefore($element->firstChild, $element);
+                }
+
+                $parent->removeChild($element);
+                continue;
+            }
+
+            $allowedAttrs = $allowedAttrMap[$tag] ?? [];
+            if ($element->hasAttributes()) {
+                for ($index = $element->attributes->length - 1; $index >= 0; $index--) {
+                    $attributeNode = $element->attributes->item($index);
+                    if (! $attributeNode) {
+                        continue;
+                    }
+
+                    $attributeName = Str::lower($attributeNode->name);
+                    if (! in_array($attributeName, $allowedAttrs, true)) {
+                        $element->removeAttribute($attributeNode->name);
+                    }
+                }
+            }
+
+            if ($tag === 'a') {
+                $href = trim((string) $element->getAttribute('href'));
+                if ($href === '' || ! preg_match('/^(https?:\/\/|mailto:|tel:|\/|#)/i', $href)) {
+                    $element->removeAttribute('href');
+                }
+
+                $target = Str::lower(trim((string) $element->getAttribute('target')));
+                if ($target === '_blank') {
+                    $element->setAttribute('rel', 'noopener noreferrer nofollow');
+                } else {
+                    $element->removeAttribute('target');
+                    $element->removeAttribute('rel');
+                }
+            } elseif ($tag === 'img') {
+                $src = trim((string) $element->getAttribute('src'));
+                if ($src === '' || ! preg_match('/^(https?:\/\/|\/)/i', $src)) {
+                    $parent = $element->parentNode;
+                    if ($parent) {
+                        $parent->removeChild($element);
+                    }
+                }
+            }
+
+            if ($element->hasAttribute('style')) {
+                $sanitizedStyle = $this->sanitizeInlineStyle((string) $element->getAttribute('style'));
+                if ($sanitizedStyle === '') {
+                    $element->removeAttribute('style');
+                } else {
+                    $element->setAttribute('style', $sanitizedStyle);
+                }
+            }
+        }
+
+        $root = $document->getElementById('__se2_root__');
+        if (! $root) {
+            return '';
+        }
+
+        $sanitized = '';
+        foreach ($root->childNodes as $childNode) {
+            $sanitized .= $document->saveHTML($childNode);
+        }
+
+        return trim($sanitized);
+    }
+
+    private function sanitizeInlineStyle(string $style): string
+    {
+        $allowedStyleMap = [
+            'color' => '/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgb\((\s*\d+\s*,){2}\s*\d+\s*\)|rgba\((\s*\d+\s*,){3}\s*(0|0?\.\d+|1)\s*\))$/i',
+            'background-color' => '/^(transparent|#([0-9a-f]{3}|[0-9a-f]{6})|rgb\((\s*\d+\s*,){2}\s*\d+\s*\)|rgba\((\s*\d+\s*,){3}\s*(0|0?\.\d+|1)\s*\))$/i',
+            'font-size' => '/^((1[0-9]|2[0-9]|3[0-9]|40)px|xx-small|x-small|small|medium|large|x-large|xx-large|smaller|larger)$/i',
+            'text-align' => '/^(left|center|right)$/i',
+            'border-left' => '/^4px\s+solid\s+#([0-9a-f]{3}|[0-9a-f]{6})$/i',
+            'padding' => '/^\d{1,2}px(\s+\d{1,2}px){0,3}$/',
+            'margin' => '/^\d{1,2}px(\s+\d{1,2}px){0,3}$/',
+            'border-radius' => '/^\d{1,2}px$/',
+        ];
+
+        $safeDeclarations = [];
+        foreach (explode(';', $style) as $declaration) {
+            [$property, $value] = array_pad(explode(':', $declaration, 2), 2, null);
+            $property = Str::lower(trim((string) $property));
+            $value = trim((string) $value);
+
+            if ($property === '' || $value === '' || ! isset($allowedStyleMap[$property])) {
+                continue;
+            }
+
+            if (preg_match($allowedStyleMap[$property], $value)) {
+                $safeDeclarations[] = $property.':'.$value;
+            }
+        }
+
+        return implode('; ', $safeDeclarations);
     }
 }

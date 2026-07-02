@@ -10,6 +10,29 @@
         .top a { color: #0f6f67; text-decoration: none; font-weight: 700; }
         .panel { margin-top: 12px; background: #fff; border: 1px solid #d5dfec; border-radius: 14px; padding: 14px; }
         .meta { color: #5b6d82; font-size: 0.9rem; }
+        .body {
+            margin-top: 14px;
+            line-height: 1.75;
+            color: #1d2c42;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .body p,
+        .body ul,
+        .body ol,
+        .body blockquote,
+        .body pre {
+            margin: 0 0 1em;
+        }
+        .body a {
+            color: #1f4ca1;
+            text-decoration: underline;
+        }
+        .body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
         .gate { margin-top: 12px; border: 1px solid #ffd5ab; border-radius: 12px; background: #fff4e8; padding: 14px; color: #7e4310; }
         .btn { text-decoration: none; display: inline-block; margin-top: 10px; border-radius: 9px; background: #0f6f67; color: #fff; padding: 9px 12px; font-weight: 700; }
     </style>
@@ -26,7 +49,7 @@
         <div class="meta">{{ $post->apartment->name }} · {{ $post->board->name }} · {{ $post->created_at }}</div>
 
         @if($canRead)
-            <div style="margin-top:14px; white-space: pre-wrap; line-height:1.6;">{{ $post->body }}</div>
+            <div class="body">{!! $post->body !!}</div>
 
             @auth
                 <a class="btn" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">댓글/첨부 포함 전체 화면으로 이동</a>

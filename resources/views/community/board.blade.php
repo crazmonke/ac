@@ -9,6 +9,23 @@
         .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
         .panel { background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
         .meta { color: #5b6d82; font-size: 0.9rem; }
+        .back-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 999px;
+            border: 1px solid #cfd8e6;
+            background: #e9eef5;
+            color: #22344d;
+            padding: 8px 14px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-decoration: none;
+            line-height: 1;
+            transition: background-color 0.16s ease, border-color 0.16s ease;
+        }
+        .back-chip:hover { background: #dfe7f2; border-color: #c4d0e2; }
+        .back-chip:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(47, 82, 184, 0.14); }
         .flash { margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #bee6d9; background: #e8f6f1; color: #166b53; }
         .err { margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #f4c8c8; background: #fdecec; color: #9e1d1d; }
         .grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(120px, 1fr)); }
@@ -22,6 +39,33 @@
         .item { background: #fff; border: 1px solid #d5dfec; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
         .item h3 { margin: 0 0 6px; }
         .pill { display: inline-block; border: 1px solid #c9d8eb; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+        .post-preview {
+            margin-top: 10px;
+            color: #24364e;
+            line-height: 1.7;
+            font-size: 0.94rem;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 4;
+        }
+        .post-preview p,
+        .post-preview ul,
+        .post-preview ol,
+        .post-preview blockquote,
+        .post-preview h1,
+        .post-preview h2,
+        .post-preview h3,
+        .post-preview h4,
+        .post-preview pre {
+            margin: 0 0 0.55em;
+        }
+        .post-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .post-preview a { color: inherit; text-decoration: underline; }
         .desktop-write-cta { display: inline-flex; }
         .mobile-bottom-nav { display: none; }
 
@@ -69,7 +113,7 @@
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
     <h1>{{ $board->name }}</h1>
-    <p class="meta"><a href="/community?apartment_id={{ $apartmentId }}">커뮤니티 홈</a></p>
+    <p class="meta"><a class="back-chip" href="/community?apartment_id={{ $apartmentId }}">← 커뮤니티로</a></p>
 
     @if(session('status'))
         <div class="flash">{{ session('status') }}</div>
@@ -145,7 +189,7 @@
                     <div class="meta" style="margin-top:6px;">태그: <span class="pill">#{{ $post->topic->name }}</span></div>
                 @endif
                 @if($access['can_read'])
-                    <p>{{ \Illuminate\Support\Str::limit($post->body, 140) }}</p>
+                    <div class="post-preview">{!! $post->body !!}</div>
                 @else
                     <p class="meta">본문은 권한이 충족되면 열람할 수 있습니다.</p>
                 @endif
