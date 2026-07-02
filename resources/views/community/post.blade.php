@@ -267,13 +267,14 @@
         return mb_strtoupper(mb_substr($value, 0, 1));
     };
 @endphp
+@php($communityScope = in_array($post->audience_scope, ['region', 'apartment'], true) ? $post->audience_scope : 'region')
 
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
     <div class="appbar">
         <div class="left">
-            <a class="back-chip" href="/community/{{ $post->board->slug }}?apartment_id={{ $apartmentId }}">← 커뮤니티로</a>
+            <a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">← 커뮤니티로</a>
             <div class="title">{{ $post->board->name }}</div>
         </div>
         <div class="right">
@@ -550,7 +551,7 @@
 
 <div class="bottom-bar">
     <div class="bottom-bar-inner">
-        <a class="ghost" href="/community/{{ $post->board->slug }}?apartment_id={{ $apartmentId }}">목록</a>
+        <a class="ghost" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">목록</a>
         <button class="ghost" type="button" id="shareButton">공유</button>
     </div>
 </div>

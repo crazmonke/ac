@@ -25,6 +25,8 @@
         .post-list { list-style: none; margin: 0; padding: 0; }
         .post-item { border-top: 1px solid #edf2f8; padding: 12px 0; }
         .post-item:first-child { border-top: 0; padding-top: 0; }
+        .post-row { display: flex; align-items: flex-start; gap: 12px; }
+        .post-main { flex: 1 1 auto; min-width: 0; }
         .split-section { margin-top: 10px; border: 1px solid #d7e2f1; border-radius: 12px; overflow: hidden; background: #fbfdff; }
         .split-head { padding: 10px 12px; background: linear-gradient(180deg, #eef4ff, #f7faff); border-bottom: 1px solid #d7e2f1; }
         .split-title { margin: 0; font-size: 0.98rem; font-weight: 900; color: #173662; letter-spacing: -0.01em; }
@@ -33,6 +35,21 @@
         .split-section .post-list .post-item:first-child { padding-top: 8px; }
         .split-divider { margin: 14px 0 10px; border-top: 2px dashed #c7d6ea; }
         .post-title { color: #17263d; text-decoration: none; font-weight: 700; }
+        .post-thumb {
+            flex: 0 0 94px;
+            width: 94px;
+            aspect-ratio: 4 / 3;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #d7e2f1;
+            background: #eef3f9;
+        }
+        .post-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
         .chips { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
         .chip { font-size: 0.78rem; border-radius: 999px; padding: 3px 8px; background: #ecf2ff; color: #294f8f; }
         .chip.guest-open { background: #e9f8ef; color: #18603a; }
@@ -42,6 +59,8 @@
 
         @media (max-width: 768px) {
             .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+            .post-row { gap: 10px; }
+            .post-thumb { flex-basis: 86px; width: 86px; border-radius: 9px; }
             .desktop-write-cta { display: none; }
             .mobile-bottom-nav {
                 position: fixed;
@@ -130,8 +149,11 @@
             $renderPostItem = function (array $post) {
                 $titleClass = !auth()->check() && !$post['can_read'] ? 'requires-signup' : '';
                 $signupAttr = !auth()->check() && !$post['can_read'] ? 'data-signup-url="'.e($post['url']).'"' : '';
+                $thumbnail = $post['thumbnail_url'] ?? null;
 
                 return '<li class="post-item">'
+                    .'<div class="post-row">'
+                    .'<div class="post-main">'
                     .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.e($post['title']).'</a>'
                     .'<div class="chips">'
                     .'<span class="chip">'.e($post['board_name']).'</span>'
@@ -141,6 +163,9 @@
                     .($post['is_guest_visible'] ? '<span class="chip guest-open">비회원 공개</span>' : (!empty($post['access_label']) ? '<span class="chip locked">'.e($post['access_label']).'</span>' : ''))
                     .'</div>'
                     .'<div class="meta" style="margin-top:6px;">'.e((string) $post['created_at']).' · 조회 '.e((string) $post['view_count']).' · 댓글 '.e((string) $post['comment_count']).'</div>'
+                    .'</div>'
+                    .($thumbnail ? '<a class="post-thumb" href="'.e($post['url']).'" '.$signupAttr.' aria-label="'.e($post['title']).' 대표 이미지"><img src="'.e($thumbnail).'" alt="'.e($post['title']).'"></a>' : '')
+                    .'</div>'
                     .'</li>';
             };
         @endphp

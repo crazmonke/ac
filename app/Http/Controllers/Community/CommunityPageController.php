@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Post;
+use App\Models\PostFile;
 use App\Models\PostTopic;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CommunityPageController extends Controller
 {
@@ -42,7 +44,7 @@ class CommunityPageController extends Controller
         }
 
         $postsQuery = Post::query()
-            ->with(['board', 'apartment', 'topic'])
+            ->with(['board', 'apartment', 'topic', 'files'])
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', fn ($query) => $query->where('is_active', true))
             ->latest();
@@ -134,6 +136,7 @@ class CommunityPageController extends Controller
                 'can_read' => $canRead,
                 'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
                 'is_guest_visible' => (bool) $post->is_guest_visible,
+                'thumbnail_url' => $canRead ? $this->resolvePostThumbnailUrl($post) : null,
                 'url' => $canRead
                     ? ($user
                         ? '/community/posts/'.$post->id.'?apartment_id='.$apartmentId
@@ -172,5 +175,21 @@ class CommunityPageController extends Controller
             'ownApartmentPosts' => $ownApartmentPosts,
             'otherApartmentPosts' => $otherApartmentPosts,
         ]);
+    }
+
+    private function resolvePostThumbnailUrl(Post $post): ?string
+    {
+        $imageFile = $post->files
+            ->first(fn (PostFile $file) => Str::startsWith(Str::lower((string) $file->mime_type), 'image/'));
+
+        if ($imageFile) {
+            return '/community/files/'.$imageFile->id;
+        }
+
+        if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', (string) $post->body, $matches)) {
+            return $matches[1] ?? null;
+        }
+
+        return null;
     }
 }

@@ -41,7 +41,7 @@ class CommunityBoardController extends Controller
         }
 
         $postsQuery = Post::query()
-            ->with(['user', 'topic'])
+            ->with(['user', 'topic', 'files'])
             ->where('board_id', $board->id)
             ->where('visibility', '!=', 'deleted');
 
@@ -84,6 +84,7 @@ class CommunityBoardController extends Controller
                 'url' => $canRead
                     ? '/community/posts/'.$post->id.'?apartment_id='.$apartmentId
                     : '/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id,
+                'thumbnail_url' => $canRead ? $this->resolvePostThumbnailUrl($post) : null,
             ];
         }
 
@@ -400,8 +401,10 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
-        $slug = $post->board->slug;
         $apartmentId = (int) $post->apartment_id;
+        $scope = in_array($post->audience_scope, ['region', 'apartment'], true)
+            ? $post->audience_scope
+            : 'region';
 
         foreach ($post->files as $file) {
             Storage::disk($file->disk)->delete($file->path);
@@ -410,7 +413,7 @@ class CommunityBoardController extends Controller
 
         $post->delete();
 
-        return redirect('/community/'.$slug.'?apartment_id='.$apartmentId)
+        return redirect('/community?scope='.$scope.'&apartment_id='.$apartmentId)
             ->with('status', '게시글이 삭제되었습니다.');
     }
 
@@ -724,6 +727,22 @@ class CommunityBoardController extends Controller
                 'size' => $uploadedFile->getSize(),
             ]);
         }
+    }
+
+    private function resolvePostThumbnailUrl(Post $post): ?string
+    {
+        $imageFile = $post->files
+            ->first(fn (PostFile $file) => Str::startsWith(Str::lower((string) $file->mime_type), 'image/'));
+
+        if ($imageFile) {
+            return '/community/files/'.$imageFile->id;
+        }
+
+        if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', (string) $post->body, $matches)) {
+            return $matches[1] ?? null;
+        }
+
+        return null;
     }
 
     private function resolvePostTopicId(

@@ -110,8 +110,9 @@
 <body>
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
+    @php($communityScope = request('scope', ($board->apartment_id ? 'apartment' : 'region')))
     <section class="card">
-        <p class="meta"><a class="back-chip" href="/community/{{ $board->slug }}?apartment_id={{ $apartmentId }}">← 목록으로</a></p>
+        <p class="meta"><a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">← 커뮤니티로</a></p>
         <h1 style="margin-top:0;">새 글 작성</h1>
         <p class="meta">게시판: {{ $board->name }}</p>
 
@@ -292,7 +293,7 @@
                 <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;" @checked(old('is_guest_visible'))> 비회원에게 본문 공개</label>
                 <div class="actions">
                     <button type="submit">등록</button>
-                    <a class="btn secondary" href="/community/{{ $board->slug }}?apartment_id={{ $apartmentId }}">취소</a>
+                    <a class="btn secondary" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">취소</a>
                 </div>
             </div>
         </form>

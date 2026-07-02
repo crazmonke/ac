@@ -38,6 +38,31 @@
         .list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
         .item { background: #fff; border: 1px solid #d5dfec; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
         .item h3 { margin: 0 0 6px; }
+        .item-row { display: flex; align-items: flex-start; gap: 12px; }
+        .item-main { flex: 1 1 auto; min-width: 0; }
+        .item-thumb {
+            flex: 0 0 94px;
+            width: 94px;
+            aspect-ratio: 4 / 3;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #d7e2f1;
+            background: #eef3f9;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+        }
+        .item-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .item-title-link {
+            color: #17263d;
+            display: inline;
+            text-decoration: none;
+            font-weight: 800;
+            line-height: 1.45;
+        }
         .pill { display: inline-block; border: 1px solid #c9d8eb; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
         .post-preview {
             margin-top: 10px;
@@ -72,6 +97,8 @@
         @media (max-width: 768px) {
             .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
             .desktop-write-cta { display: none; }
+            .item-row { gap: 10px; }
+            .item-thumb { flex-basis: 86px; width: 86px; border-radius: 9px; }
             .mobile-bottom-nav {
                 position: fixed;
                 left: 0;
@@ -165,34 +192,44 @@
         </div>
         @forelse($posts as $post)
             @php
-                $access = $postAccessMap[$post->id] ?? ['can_read' => true, 'access_label' => null, 'url' => '/community/posts/'.$post->id.'?apartment_id='.$apartmentId];
+                $access = $postAccessMap[$post->id] ?? ['can_read' => true, 'access_label' => null, 'url' => '/community/posts/'.$post->id.'?apartment_id='.$apartmentId, 'thumbnail_url' => null];
+                $thumbnailUrl = $access['thumbnail_url'] ?? null;
             @endphp
             <article class="item">
-                <h3>
-                    <a href="{{ $access['url'] }}">{{ $post->title }}</a>
-                    @if($post->is_notice)
-                        <span class="pill">공지</span>
+                <div class="item-row">
+                    <div class="item-main">
+                        <h3>
+                            <a class="item-title-link" href="{{ $access['url'] }}">{{ $post->title }}</a>
+                            @if($post->is_notice)
+                                <span class="pill">공지</span>
+                            @endif
+                            @if(! $access['can_read'])
+                                <span class="pill">{{ $access['access_label'] ?? '상세 제한' }}</span>
+                            @elseif($post->is_guest_visible)
+                                <span class="pill">비회원 공개</span>
+                            @endif
+                        </h3>
+                        <div class="meta">
+                            작성자: {{ $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음') }}
+                            · 댓글 {{ $post->comment_count }}
+                            · 조회 {{ $post->view_count }}
+                            · {{ $post->created_at }}
+                        </div>
+                        @if($post->topic)
+                            <div class="meta" style="margin-top:6px;">태그: <span class="pill">#{{ $post->topic->name }}</span></div>
+                        @endif
+                        @if($access['can_read'])
+                            <div class="post-preview">{!! $post->body !!}</div>
+                        @else
+                            <p class="meta">본문은 권한이 충족되면 열람할 수 있습니다.</p>
+                        @endif
+                    </div>
+                    @if($thumbnailUrl)
+                        <a class="item-thumb" href="{{ $access['url'] }}" aria-label="{{ $post->title }} 대표 이미지">
+                            <img src="{{ $thumbnailUrl }}" alt="{{ $post->title }}">
+                        </a>
                     @endif
-                    @if(! $access['can_read'])
-                        <span class="pill">{{ $access['access_label'] ?? '상세 제한' }}</span>
-                    @elseif($post->is_guest_visible)
-                        <span class="pill">비회원 공개</span>
-                    @endif
-                </h3>
-                <div class="meta">
-                    작성자: {{ $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음') }}
-                    · 댓글 {{ $post->comment_count }}
-                    · 조회 {{ $post->view_count }}
-                    · {{ $post->created_at }}
                 </div>
-                @if($post->topic)
-                    <div class="meta" style="margin-top:6px;">태그: <span class="pill">#{{ $post->topic->name }}</span></div>
-                @endif
-                @if($access['can_read'])
-                    <div class="post-preview">{!! $post->body !!}</div>
-                @else
-                    <p class="meta">본문은 권한이 충족되면 열람할 수 있습니다.</p>
-                @endif
             </article>
         @empty
             <div class="item">게시글이 없습니다.</div>
