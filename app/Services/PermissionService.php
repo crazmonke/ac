@@ -104,24 +104,60 @@ class PermissionService
 
         $scope = (string) ($post->audience_scope ?? 'all');
 
-        if (! $user) {
-            return false;
-        }
-
-        if ($scope === 'all') {
-            return true;
-        }
-
-        if ($scope === 'region') {
-            // 비인증 회원도 동네 카테고리 본문은 열람 가능.
-            return true;
-        }
-
+        // 단지 게시글은 게시판 read_role보다 우선해서 동일 단지 인증회원만 허용.
         if ($scope === 'apartment') {
+            if (! $user) {
+                return false;
+            }
+
             return $this->hasVerifiedRole($user, (int) $post->apartment_id);
         }
 
-        return false;
+        $post->loadMissing('board');
+
+        if (! $post->board || ! $this->hasBoardPermission($user, $post->board, 'read')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function resolvePostAccessLabel(?User $user, Post $post): ?string
+    {
+        if ($this->canReadPostDetail($user, $post)) {
+            return null;
+        }
+
+        $scope = (string) ($post->audience_scope ?? 'all');
+
+        if (! $user) {
+            return '회원 전용';
+        }
+
+        if ($scope === 'apartment') {
+            return '인증 회원 전용';
+        }
+
+        $post->loadMissing('board');
+        $requiredReadRole = $this->normalizeBoardPermissionRole($post->board?->read_role);
+
+        if ($requiredReadRole === 'guest') {
+            return null;
+        }
+
+        if ($requiredReadRole === 'admin') {
+            return '관리자 전용';
+        }
+
+        if (! $this->hasVerifiedRole($user)) {
+            if ($requiredReadRole === 'member') {
+                return null;
+            }
+
+            return '인증 회원 전용';
+        }
+
+        return '인증 회원 전용';
     }
 
     private function currentLevelForApartment(int $userId, int $apartmentId): int

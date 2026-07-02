@@ -298,7 +298,24 @@
     </section>
 
     <section class="section">
-        <h2 class="section-title">🏆 입주민 토픽 베스트</h2>
+        <h2 class="section-title">📢 공지 / 서비스 공지</h2>
+        <article class="card">
+            <ul class="notice-list">
+                @forelse($notices as $item)
+                    <li>
+                        <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
+                        <span class="meta">{{ $item['display_date'] }}</span>
+                    </li>
+                @empty
+                    <li class="meta">등록된 공지사항이 없습니다.</li>
+                @endforelse
+            </ul>
+            @include('partials.pagination', ['paginator' => $notices])
+        </article>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">🏆 커뮤니티 토픽 베스트 (조회수 TOP 10)</h2>
         <article class="card">
             <table class="post-table best-table">
                 <thead>
@@ -319,8 +336,8 @@
                         </td>
                         <td class="title-cell">
                             <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
-                            @if(! $item['can_read'])
-                                <div class="title-submeta"><span class="lock">회원가입 후 상세보기</span></div>
+                            @if(!empty($item['access_label']))
+                                <div class="title-submeta"><span class="lock">{{ $item['access_label'] }}</span></div>
                             @endif
                         </td>
                         <td>{{ $item['display_date'] }}</td>
@@ -336,7 +353,7 @@
     </section>
 
     <section class="section">
-        <h2 class="section-title">🆕 메인 최신글</h2>
+        <h2 class="section-title">🆕 커뮤니티</h2>
         <article class="card">
             <table class="post-table latest-table">
                 <thead>
@@ -357,8 +374,8 @@
                                 @if($item['comment_count'] > 0)
                                     <span class="meta">댓글 {{ $item['comment_count'] }}</span>
                                 @endif
-                                @if(! $item['can_read'])
-                                    <span class="lock">🔒 회원 전용 상세</span>
+                                @if(!empty($item['access_label']))
+                                    <span class="lock">🔒 {{ $item['access_label'] }}</span>
                                 @endif
                             </div>
                         </td>
@@ -372,22 +389,6 @@
                 @endforelse
                 </tbody>
             </table>
-        </article>
-    </section>
-
-    <section class="section">
-        <h2 class="section-title">📢 공지 / 서비스 공지</h2>
-        <article class="card">
-            <ul class="notice-list">
-                @forelse($notices as $item)
-                    <li>
-                        <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
-                        <span class="meta">{{ $item['display_date'] }}</span>
-                    </li>
-                @empty
-                    <li class="meta">등록된 공지사항이 없습니다.</li>
-                @endforelse
-            </ul>
         </article>
     </section>
 

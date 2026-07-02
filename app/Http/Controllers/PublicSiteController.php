@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Services\PermissionService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
 class PublicSiteController extends Controller
@@ -47,41 +48,51 @@ class PublicSiteController extends Controller
         $notices = Post::query()
             ->with(['board', 'apartment'])
             ->where(function ($query) {
-                $query->where('is_notice', true)
-                    ->orWhereHas('board', function ($boardQuery) {
-                        $boardQuery->where('board_type', 'notice');
-                    });
+                $this->applyNoticeFilter($query);
             })
             ->latest()
-            ->limit(6)
+            ->paginate(20, ['*'], 'notice_page')
+            ->withQueryString();
+        $notices = $this->mapPostPaginator($notices, $user);
+
+        $bestCandidatePosts = Post::query()
+            ->with(['board', 'apartment'])
+            ->where('visibility', '!=', 'deleted')
+            ->where(function ($query) {
+                $this->applyNonNoticeFilter($query);
+            })
+            ->whereHas('board', function ($query) {
+                $query->where('is_active', true);
+            })
+            ->whereIn('audience_scope', ['region', 'apartment'])
+            ->orderByDesc('view_count')
+            ->orderByDesc('comment_count')
+            ->latest()
+            ->limit(300)
             ->get();
 
-        $bestTopics = Post::query()
-            ->with(['board', 'apartment'])
-            ->where('visibility', 'resident_only')
-            ->whereHas('board', function ($query) {
-                $query->where('is_active', true)
-                    ->where('read_role', '!=', 'guest');
-            })
-            ->orderByRaw('(view_count * 2 + comment_count * 3) desc')
-            ->latest()
-            ->limit(8)
-            ->get();
+        $bestTopics = $bestCandidatePosts
+            ->filter(fn (Post $post) => $this->permissionService->canReadPostDetail($user, $post))
+            ->take(10)
+            ->values();
 
         $latestPosts = Post::query()
             ->with(['board', 'apartment'])
+            ->where(function ($query) {
+                $this->applyNonNoticeFilter($query);
+            })
             ->whereHas('board', function ($query) {
                 $query->where('is_active', true);
             })
             ->latest()
-            ->limit(12)
+            ->limit(20)
             ->get();
 
         return view('public.home', [
             'apartment' => $apartment,
             'publicBoards' => $publicBoards,
             'lockedBoards' => $lockedBoards,
-            'notices' => $this->mapPostCards($notices, $user),
+            'notices' => $notices,
             'bestTopics' => $this->mapPostCards($bestTopics, $user),
             'latestPosts' => $this->mapPostCards($latestPosts, $user),
             'isLoggedIn' => (bool) $user,
@@ -160,34 +171,63 @@ class PublicSiteController extends Controller
 
     private function mapPostCards(Collection $posts, $user): Collection
     {
-        return $posts->map(function (Post $post) use ($user) {
-            $canRead = $this->canReadPost($user, $post);
+        return $posts->map(fn (Post $post) => $this->mapPostCard($post, $user));
+    }
 
-            if ($canRead && $user) {
-                $url = '/community/posts/'.$post->id;
-            } elseif ($canRead) {
-                $url = '/posts/'.$post->id;
-            } else {
-                $url = '/posts/'.$post->id;
-            }
+    private function mapPostPaginator(LengthAwarePaginator $paginator, $user): LengthAwarePaginator
+    {
+        $paginator->setCollection(
+            $paginator->getCollection()->map(fn (Post $post) => $this->mapPostCard($post, $user))
+        );
 
-            return [
-                'id' => (int) $post->id,
-                'title' => $post->title,
-                'created_at' => $post->created_at,
-                'display_date' => $this->formatDisplayDate($post->created_at),
-                'board_name' => $post->board->name,
-                'apartment_name' => $post->apartment->name,
-                'region_label' => $this->regionLabelFromSido($post->apartment->sido),
-                'brand_token' => $this->brandTokenFromApartmentName($post->apartment->name),
-                'view_count' => (int) $post->view_count,
-                'comment_count' => (int) $post->comment_count,
-                'is_notice' => (bool) $post->is_notice,
-                'is_guest_visible' => (bool) $post->is_guest_visible,
-                'can_read' => $canRead,
-                'url' => $url,
-            ];
-        });
+        return $paginator;
+    }
+
+    private function mapPostCard(Post $post, $user): array
+    {
+        $canRead = $this->canReadPost($user, $post);
+
+        if ($canRead && $user) {
+            $url = '/community/posts/'.$post->id;
+        } elseif ($canRead) {
+            $url = '/posts/'.$post->id;
+        } else {
+            $url = '/posts/'.$post->id;
+        }
+
+        return [
+            'id' => (int) $post->id,
+            'title' => $post->title,
+            'created_at' => $post->created_at,
+            'display_date' => $this->formatDisplayDate($post->created_at),
+            'board_name' => $post->board->name,
+            'apartment_name' => $post->apartment->name,
+            'region_label' => $this->regionLabelFromSido($post->apartment->sido),
+            'brand_token' => $this->brandTokenFromApartmentName($post->apartment->name),
+            'view_count' => (int) $post->view_count,
+            'comment_count' => (int) $post->comment_count,
+            'is_notice' => (bool) $post->is_notice,
+            'is_guest_visible' => (bool) $post->is_guest_visible,
+            'can_read' => $canRead,
+            'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
+            'url' => $url,
+        ];
+    }
+
+    private function applyNoticeFilter($query): void
+    {
+        $query->where('is_notice', true)
+            ->orWhereHas('board', function ($boardQuery) {
+                $boardQuery->where('board_type', 'notice');
+            });
+    }
+
+    private function applyNonNoticeFilter($query): void
+    {
+        $query->where('is_notice', false)
+            ->whereDoesntHave('board', function ($boardQuery) {
+                $boardQuery->where('board_type', 'notice');
+            });
     }
 
     private function canReadPost($user, Post $post): bool

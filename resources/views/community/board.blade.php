@@ -29,7 +29,7 @@
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
     <h1>{{ $board->name }}</h1>
-    <p class="meta">slug={{ $board->slug }} · apartment_id={{ $apartmentId }} · <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티 홈</a></p>
+    <p class="meta"><a href="/community?apartment_id={{ $apartmentId }}">커뮤니티 홈</a></p>
 
     @if(session('status'))
         <div class="flash">{{ session('status') }}</div>
@@ -103,7 +103,7 @@
         @endforelse
     </section>
 
-    <div class="meta">{{ $posts->links() }}</div>
+    @include('partials.pagination', ['paginator' => $posts])
 </div>
 </body>
 </html>

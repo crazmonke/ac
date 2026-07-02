@@ -89,7 +89,7 @@
                     .'<span class="chip">'.($post['audience_scope'] === 'region' ? '동네 전용' : ($post['audience_scope'] === 'apartment' ? '아파트 전용' : '전체')).'</span>'
                     .(!empty($post['topic_name']) ? '<span class="chip">#'.e($post['topic_name']).'</span>' : '')
                     .'<span class="chip">'.e(($post['sigungu'] ?: $post['sido']).' · '.$post['apartment_name']).'</span>'
-                    .($post['is_guest_visible'] ? '<span class="chip guest-open">비회원 공개</span>' : (!$post['can_read'] ? '<span class="chip locked">상세는 인증된 관련 사용자 전용</span>' : ''))
+                    .($post['is_guest_visible'] ? '<span class="chip guest-open">비회원 공개</span>' : (!empty($post['access_label']) ? '<span class="chip locked">'.e($post['access_label']).'</span>' : ''))
                     .'</div>'
                     .'<div class="meta" style="margin-top:6px;">'.e((string) $post['created_at']).' · 조회 '.e((string) $post['view_count']).' · 댓글 '.e((string) $post['comment_count']).'</div>'
                     .'</li>';
@@ -147,7 +147,7 @@
             </ul>
         @endif
 
-        <div style="margin-top:10px;" class="meta">{{ $posts->links() }}</div>
+        @include('partials.pagination', ['paginator' => $posts])
     </section>
 </div>
 

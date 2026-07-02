@@ -31,6 +31,9 @@ class CommunityPageController extends Controller
         $preferredApartmentId = (int) ($user?->preferred_apartment_id ?? 0);
         $scope = (string) $request->query('scope', 'all');
         $topic = trim((string) $request->query('topic', ''));
+        $selectedTopicName = $topic !== ''
+            ? PostTopic::query()->where('slug', $topic)->value('name')
+            : null;
         $requiresSignupForScope = false;
         $shouldSplitApartmentFeed = $isVerified && $scope === 'apartment' && $preferredApartmentId > 0;
 
@@ -51,7 +54,13 @@ class CommunityPageController extends Controller
         }
 
         if ($topic !== '') {
-            $postsQuery->whereHas('topic', fn ($query) => $query->where('slug', $topic));
+            $postsQuery->whereHas('topic', function ($query) use ($topic, $selectedTopicName) {
+                $query->where('slug', $topic);
+
+                if ($selectedTopicName) {
+                    $query->orWhere('name', $selectedTopicName);
+                }
+            });
         }
 
         if ($shouldSplitApartmentFeed) {
@@ -94,8 +103,11 @@ class CommunityPageController extends Controller
             ->orderBy('name');
 
         $topicFacets = $topicsQuery
-            ->limit(20)
-            ->get(['name', 'slug']);
+            ->limit(200)
+            ->get(['name', 'slug'])
+            ->unique(fn ($item) => mb_strtolower(trim((string) $item->name)))
+            ->values()
+            ->take(20);
 
         $canCreatePost = $isVerified;
 
@@ -120,6 +132,7 @@ class CommunityPageController extends Controller
                 'comment_count' => (int) $post->comment_count,
                 'audience_scope' => (string) ($post->audience_scope ?? 'all'),
                 'can_read' => $canRead,
+                'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
                 'is_guest_visible' => (bool) $post->is_guest_visible,
                 'url' => $canRead
                     ? ($user

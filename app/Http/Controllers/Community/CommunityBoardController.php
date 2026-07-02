@@ -32,6 +32,9 @@ class CommunityBoardController extends Controller
 
         $board = $this->resolveBoard($slug, $apartmentId);
         $user = $request->user();
+        $selectedTopicName = $topic !== ''
+            ? PostTopic::query()->where('slug', $topic)->value('name')
+            : null;
 
         if (! $this->permissionService->hasBoardPermission($user, $board, 'read')) {
             abort(403);
@@ -43,7 +46,13 @@ class CommunityBoardController extends Controller
             ->where('visibility', '!=', 'deleted');
 
         if ($topic !== '') {
-            $postsQuery->whereHas('topic', fn ($query) => $query->where('slug', $topic));
+            $postsQuery->whereHas('topic', function ($query) use ($topic, $selectedTopicName) {
+                $query->where('slug', $topic);
+
+                if ($selectedTopicName) {
+                    $query->orWhere('name', $selectedTopicName);
+                }
+            });
         }
 
         if ($keyword !== '') {
@@ -66,13 +75,7 @@ class CommunityBoardController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $topicOptions = PostTopic::query()
-            ->where(function ($query) use ($apartmentId) {
-                $query->whereNull('apartment_id')
-                    ->orWhere('apartment_id', $apartmentId);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+        $topicOptions = $this->loadDistinctTopicOptions($apartmentId);
 
         return view('community.board', [
             'board' => $board,
@@ -162,13 +165,7 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
-        $topicOptions = PostTopic::query()
-            ->where(function ($query) use ($post) {
-                $query->whereNull('apartment_id')
-                    ->orWhere('apartment_id', (int) $post->apartment_id);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $topicOptions = $this->loadDistinctTopicOptions((int) $post->apartment_id);
 
         return view('community.post-edit', [
             'post' => $post,
@@ -195,13 +192,7 @@ class CommunityBoardController extends Controller
 
         $writerApartmentId = (int) $user->preferred_apartment_id;
 
-        $topicOptions = PostTopic::query()
-            ->where(function ($query) use ($writerApartmentId) {
-                $query->whereNull('apartment_id')
-                    ->orWhere('apartment_id', $writerApartmentId);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $topicOptions = $this->loadDistinctTopicOptions($writerApartmentId);
 
         return view('community.post-create', [
             'board' => $board,
@@ -215,10 +206,6 @@ class CommunityBoardController extends Controller
     {
         $apartmentId = $this->resolveContextApartmentId($request);
         $user = $request->user();
-
-        if (! $this->permissionService->hasVerifiedRole($user)) {
-            abort(403);
-        }
 
         $candidateBoards = Board::query()
             ->where('is_active', true)
@@ -285,8 +272,8 @@ class CommunityBoardController extends Controller
         $data = $request->validate($rules);
 
         $audienceScope = (string) $data['audience_scope'];
-        if (! $this->permissionService->hasVerifiedRole($user, $writerApartmentId)) {
-            return back()->withErrors(['audience_scope' => '글쓰기는 인증 회원만 가능합니다.'])->withInput();
+        if ($audienceScope === 'apartment' && ! $this->permissionService->hasVerifiedRole($user, $writerApartmentId)) {
+            return back()->withErrors(['audience_scope' => '아파트 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
         }
 
         $postTopicId = $this->resolvePostTopicId(
@@ -357,8 +344,8 @@ class CommunityBoardController extends Controller
         $data = $request->validate($rules);
 
         $audienceScope = (string) $data['audience_scope'];
-        if (! $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id)) {
-            return back()->withErrors(['audience_scope' => '글쓰기는 인증 회원만 가능합니다.'])->withInput();
+        if ($audienceScope === 'apartment' && ! $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id)) {
+            return back()->withErrors(['audience_scope' => '아파트 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
         }
 
         $postTopicId = $this->resolvePostTopicId(
@@ -655,11 +642,21 @@ class CommunityBoardController extends Controller
             return false;
         }
 
-        if (! $this->permissionService->hasBoardPermission($user, $board, 'write')) {
-            return false;
-        }
+        return $this->permissionService->hasBoardPermission($user, $board, 'write');
+    }
 
-        return $this->permissionService->hasVerifiedRole($user, $board->apartment_id ? (int) $board->apartment_id : null);
+    private function loadDistinctTopicOptions(int $apartmentId)
+    {
+        return PostTopic::query()
+            ->where(function ($query) use ($apartmentId) {
+                $query->whereNull('apartment_id')
+                    ->orWhere('apartment_id', $apartmentId);
+            })
+            ->orderByRaw('CASE WHEN apartment_id = ? THEN 0 ELSE 1 END', [$apartmentId])
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+                ->unique(fn ($topic) => mb_strtolower(trim((string) $topic->name)))
+            ->values();
     }
 
     private function storeAttachments(Request $request, Post $post): void

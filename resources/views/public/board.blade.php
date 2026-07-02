@@ -63,7 +63,7 @@
             <p class="meta">게시글이 없습니다.</p>
         @endforelse
 
-        <div style="margin-top:10px;" class="meta">{{ $posts->links() }}</div>
+        @include('partials.pagination', ['paginator' => $posts])
     </section>
 </div>
 <script>
