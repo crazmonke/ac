@@ -12,10 +12,11 @@
             --muted: #607086;
             --line: #dde5ef;
             --brand: #2f52b8;
+            --publish-dock-height: calc(96px + env(safe-area-inset-bottom));
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
-        .wrap { max-width: 740px; margin: 0 auto; padding: 12px; }
+        .wrap { max-width: 740px; margin: 0 auto; padding: 12px 12px calc(var(--publish-dock-height) + 16px); }
         .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
         .meta { color: var(--muted); font-size: 0.88rem; }
         .back-chip {
@@ -62,6 +63,62 @@
         a.btn.secondary { background: #dde7f3; color: #20324b; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
         .grid { display: grid; gap: 10px; }
+        .publish-dock {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 25;
+            background: rgba(245, 247, 251, 0.96);
+            border-top: 1px solid var(--line);
+            backdrop-filter: blur(10px);
+        }
+        .publish-dock-inner {
+            max-width: 740px;
+            margin: 0 auto;
+            padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
+        .publish-options {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+        .publish-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 38px;
+            padding: 8px 11px;
+            border: 1px solid #d6e1ee;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.86);
+            color: #263853;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .publish-option input {
+            width: auto;
+            margin: 0;
+            accent-color: var(--brand);
+        }
+        .publish-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .publish-actions button,
+        .publish-actions .btn {
+            min-width: 64px;
+            min-height: 42px;
+            padding: 10px 16px;
+        }
         .editor-shell { border: 1px solid #d6e1ee; border-radius: 16px; overflow: hidden; background: #fff; }
         .editor-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid #e4ebf5; background: linear-gradient(180deg, #fbfdff, #f4f8ff); }
         .editor-toolbar-scroll { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
@@ -99,11 +156,28 @@
         .editor-host textarea { border: 0; border-radius: 0; }
 
         @media (max-width: 768px) {
+            :root { --publish-dock-height: calc(172px + env(safe-area-inset-bottom)); }
             .editor-toolbar { padding: 8px 10px; }
             .editor-toolbar-scroll { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
             .editor-tool { flex: 0 0 auto; height: 42px; min-width: 42px; padding: 0 10px; border-radius: 12px; font-size: 1rem; }
             .editor-tool.labelled { min-width: 58px; }
-            .editor-layer { position: fixed; left: 12px; right: 12px; top: auto; bottom: 76px; min-width: 0; }
+            .editor-layer { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(var(--publish-dock-height) + 12px); min-width: 0; }
+            .publish-dock-inner {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .publish-options {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+            .publish-option {
+                justify-content: center;
+                min-width: 0;
+            }
+            .publish-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
     </style>
 </head>
@@ -289,11 +363,21 @@
                     <label><input type="checkbox" name="poll_allow_multiple" value="1" style="width:auto;" @checked(old('poll_allow_multiple'))> 복수 선택 허용</label>
                     <label><input type="checkbox" name="poll_results_public" value="1" style="width:auto;" @checked(old('poll_results_public', true))> 투표 결과 공개</label>
                 @endif
-                <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked(old('is_anonymous'))> 익명</label>
-                <label><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;" @checked(old('is_guest_visible'))> 비회원에게 본문 공개</label>
-                <div class="actions">
-                    <button type="submit">등록</button>
-                    <a class="btn secondary" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">취소</a>
+                <div class="publish-dock">
+                    <div class="publish-dock-inner">
+                        <div class="publish-options">
+                            <label class="publish-option">
+                                <input type="checkbox" name="is_anonymous" value="1" @checked(old('is_anonymous'))> 익명
+                            </label>
+                            <label class="publish-option">
+                                <input type="checkbox" name="is_guest_visible" value="1" @checked(old('is_guest_visible'))> 비회원에게 본문 공개
+                            </label>
+                        </div>
+                        <div class="publish-actions">
+                            <button type="submit">등록</button>
+                            <a class="btn secondary" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">취소</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>

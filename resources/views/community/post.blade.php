@@ -14,10 +14,12 @@
             --brand: #2f52b8;
             --brand-soft: #ebf0ff;
             --danger: #b42318;
+            --fixed-actions-height: calc(64px + env(safe-area-inset-bottom));
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
-        .wrap { max-width: 740px; margin: 0 auto; padding: 12px 12px 112px; }
+        body.has-comment-composer { --fixed-actions-height: calc(164px + env(safe-area-inset-bottom)); }
+        .wrap { max-width: 740px; margin: 0 auto; padding: 12px 12px calc(var(--fixed-actions-height) + 16px); }
         .appbar {
             position: sticky;
             top: 0;
@@ -195,7 +197,7 @@
             background: #fafcff;
         }
         .attachment-list a { color: var(--ink); text-decoration: none; font-weight: 700; }
-        .composer {
+        .fixed-actions {
             position: fixed;
             left: 0;
             right: 0;
@@ -205,10 +207,13 @@
             border-top: 1px solid var(--line);
             backdrop-filter: blur(10px);
         }
+        .composer {
+            background: transparent;
+        }
         .composer-inner {
             max-width: 740px;
             margin: 0 auto;
-            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+            padding: 10px 12px 8px;
         }
         .composer-bar {
             display: grid;
@@ -216,17 +221,28 @@
             gap: 8px;
             align-items: end;
         }
-        .composer-bar textarea { min-height: 58px; max-height: 120px; }
-        .composer-hint { color: var(--muted); font-size: 0.82rem; margin-top: 6px; }
+        .composer-bar textarea { min-height: 58px; max-height: 120px; resize: none; }
+        .composer-options {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .composer-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .composer-option input {
+            width: auto;
+            margin: 0;
+        }
         .bottom-bar {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 30;
-            background: rgba(255,255,255,0.98);
+            background: transparent;
             border-top: 1px solid var(--line);
-            backdrop-filter: blur(10px);
         }
         .bottom-bar-inner {
             max-width: 740px;
@@ -256,7 +272,7 @@
         }
     </style>
 </head>
-<body>
+<body class="{{ $canComment ? 'has-comment-composer' : '' }}">
 @php
     $avatarInitial = static function (?string $name): string {
         $value = trim((string) $name);
@@ -531,28 +547,31 @@
     </section>
 </div>
 
-@if($canComment)
-    <div class="composer" id="comment-composer">
-        <div class="composer-inner">
-            <form method="post" action="/community/posts/{{ $post->id }}/comments">
-                @csrf
-                <div class="composer-bar">
-                    <textarea name="body" placeholder="댓글을 남겨보세요" required></textarea>
-                    <button type="submit">등록</button>
-                </div>
-                <label style="display:inline-flex; align-items:center; gap:6px; margin-top:8px;">
-                    <input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명
-                </label>
-                <div class="composer-hint">댓글은 화면 하단에서 바로 남길 수 있습니다.</div>
-            </form>
+<div class="fixed-actions">
+    @if($canComment)
+        <div class="composer" id="comment-composer">
+            <div class="composer-inner">
+                <form method="post" action="/community/posts/{{ $post->id }}/comments">
+                    @csrf
+                    <div class="composer-bar">
+                        <textarea name="body" placeholder="댓글을 남겨보세요" required></textarea>
+                        <button type="submit">등록</button>
+                    </div>
+                    <div class="composer-options">
+                        <label class="composer-option">
+                            <input type="checkbox" name="is_anonymous" value="1"> 익명
+                        </label>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
-@endif
+    @endif
 
-<div class="bottom-bar">
-    <div class="bottom-bar-inner">
-        <a class="ghost" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">목록</a>
-        <button class="ghost" type="button" id="shareButton">공유</button>
+    <div class="bottom-bar">
+        <div class="bottom-bar-inner">
+            <a class="ghost" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">목록</a>
+            <button class="ghost" type="button" id="shareButton">공유</button>
+        </div>
     </div>
 </div>
 
@@ -563,23 +582,69 @@
 
     const shareUrl = window.location.href;
     const shareText = @json($post->title);
+    const defaultLabel = shareButton.textContent;
+    let labelTimer = null;
 
-    shareButton.addEventListener('click', async () => {
+    const setTemporaryLabel = (label) => {
+        window.clearTimeout(labelTimer);
+        shareButton.textContent = label;
+        labelTimer = window.setTimeout(() => {
+            shareButton.textContent = defaultLabel;
+        }, 1400);
+    };
+
+    const copyWithSelectionFallback = (text) => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-999px';
+        textarea.style.left = '-999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
         try {
-            if (navigator.share) {
-                await navigator.share({ title: shareText, text: shareText, url: shareUrl });
-                return;
-            }
-
-            await navigator.clipboard.writeText(shareUrl);
-            shareButton.textContent = '링크 복사됨';
-            setTimeout(() => { shareButton.textContent = '공유'; }, 1200);
+            return document.execCommand('copy');
         } catch (error) {
+            return false;
+        } finally {
+            textarea.remove();
+        }
+    };
+
+    const copyShareUrl = async () => {
+        if (navigator.clipboard && window.isSecureContext && document.hasFocus()) {
             try {
                 await navigator.clipboard.writeText(shareUrl);
-            } catch (copyError) {
-                console.error(copyError);
+                return true;
+            } catch (error) {
+                // Fall through to the selection-based copy below.
             }
+        }
+
+        return copyWithSelectionFallback(shareUrl);
+    };
+
+    shareButton.addEventListener('click', async () => {
+        shareButton.disabled = true;
+
+        try {
+            if (navigator.share && document.hasFocus()) {
+                try {
+                    await navigator.share({ title: shareText, text: shareText, url: shareUrl });
+                    return;
+                } catch (error) {
+                    if (error && error.name === 'AbortError') {
+                        return;
+                    }
+                }
+            }
+
+            const copied = await copyShareUrl();
+            setTemporaryLabel(copied ? '링크 복사됨' : '다시 시도');
+        } finally {
+            shareButton.disabled = false;
         }
     });
 })();

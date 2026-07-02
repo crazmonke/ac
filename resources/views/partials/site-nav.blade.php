@@ -15,13 +15,20 @@
 <style>
     .site-nav {
         position: sticky;
-        top: 12px;
-        z-index: 20;
+        top: 0;
+        z-index: 40;
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
         margin-bottom: 14px;
-        padding: 12px 14px;
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid #d6e0ea;
-        border-radius: 14px;
+        background: rgba(245, 247, 251, 0.96);
+        border-bottom: 1px solid #d6e0ea;
+        backdrop-filter: blur(10px);
+    }
+    .site-nav-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 10px 14px;
         display: flex;
         gap: 12px;
         align-items: center;
@@ -57,6 +64,7 @@
         gap: 8px;
         flex-wrap: wrap;
         align-items: center;
+        min-width: 0;
     }
     .site-links a, .site-links button {
         border: 1px solid #d6e0ea;
@@ -112,34 +120,45 @@
         white-space: nowrap;
         max-width: 160px;
     }
+    @media (max-width: 640px) {
+        .site-nav-inner {
+            gap: 10px;
+            padding: 10px 18px;
+        }
+        .site-links {
+            width: 100%;
+        }
+    }
 </style>
 
 <header class="site-nav">
-    <div class="site-brand">
-        <span class="site-brand-badge">A</span>
-        <a href="/">아파인드</a>
+    <div class="site-nav-inner">
+        <div class="site-brand">
+            <span class="site-brand-badge">A</span>
+            <a href="/">아파인드</a>
+        </div>
+        <nav class="site-links">
+            <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티</a>
+            @guest
+                <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
+                <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
+            @else
+                @if($contextApartment)
+                    <a class="filter-link" href="/community?scope=region&apartment_id={{ $contextApartment->id }}">{{ $regionLabel !== '' ? $regionLabel : '동네' }}</a>
+                    <a class="filter-link" href="/community?scope=apartment&apartment_id={{ $contextApartment->id }}">{{ $contextApartment->name }}</a>
+                @endif
+                <a class="user-chip" href="/settings?apartment_id={{ $apartmentId }}" title="계정 설정">
+                    <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>
+                    <span class="user-chip-id">{{ $currentUser->name }} ({{ $displayId }})</span>
+                </a>
+                @if(auth()->user()->hasRoleForApartment('admin', $apartmentId) || auth()->user()->hasRoleForApartment('admin'))
+                    <a href="/admin">관리자</a>
+                @endif
+                <form method="post" action="/logout" class="inline-form">
+                    @csrf
+                    <button type="submit">로그아웃</button>
+                </form>
+            @endguest
+        </nav>
     </div>
-    <nav class="site-links">
-        <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티</a>
-        @guest
-            <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
-            <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
-        @else
-            @if($contextApartment)
-                <a class="filter-link" href="/community?scope=region&apartment_id={{ $contextApartment->id }}">{{ $regionLabel !== '' ? $regionLabel : '동네' }}</a>
-                <a class="filter-link" href="/community?scope=apartment&apartment_id={{ $contextApartment->id }}">{{ $contextApartment->name }}</a>
-            @endif
-            <a class="user-chip" href="/settings?apartment_id={{ $apartmentId }}" title="계정 설정">
-                <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>
-                <span class="user-chip-id">{{ $currentUser->name }} ({{ $displayId }})</span>
-            </a>
-            @if(auth()->user()->hasRoleForApartment('admin', $apartmentId) || auth()->user()->hasRoleForApartment('admin'))
-                <a href="/admin">관리자</a>
-            @endif
-            <form method="post" action="/logout" class="inline-form">
-                @csrf
-                <button type="submit">로그아웃</button>
-            </form>
-        @endguest
-    </nav>
 </header>

@@ -70,15 +70,12 @@
                 z-index: 120;
                 display: block;
                 padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-                background:
-                    radial-gradient(120px 70px at 15% 12%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 70%),
-                    radial-gradient(160px 90px at 84% 85%, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0) 72%),
-                    linear-gradient(130deg, #1f5f77 0%, #2b8b89 100%);
+                background: linear-gradient(180deg, #eef4ff, #f7faff);
                 border-top: 1px solid rgba(220, 243, 246, 0.42);
                 backdrop-filter: blur(8px);
             }
             .mobile-bottom-nav-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 58px; }
-            .mobile-nav-item { text-decoration: none; color: #e9f0fb; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 2px 6px; font-weight: 700; }
+            .mobile-nav-item { text-decoration: none; color: #02451b; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 2px 6px; font-weight: 700; }
             .mobile-nav-item-icon {
                 width: 32px;
                 height: 32px;
