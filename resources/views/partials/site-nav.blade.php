@@ -133,7 +133,7 @@
                 <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>
                 <span class="user-chip-id">{{ $currentUser->name }} ({{ $displayId }})</span>
             </a>
-            @if(auth()->user()->hasRoleForApartment('admin', $apartmentId))
+            @if(auth()->user()->hasRoleForApartment('admin', $apartmentId) || auth()->user()->hasRoleForApartment('admin'))
                 <a href="/admin">관리자</a>
             @endif
             <form method="post" action="/logout" class="inline-form">

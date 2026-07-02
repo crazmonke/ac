@@ -9,6 +9,7 @@ use App\Models\Board;
 use App\Models\BoardCategory;
 use App\Models\ResidentVerificationRequest;
 use App\Models\Report;
+use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ use Illuminate\Validation\Rule;
 
 class AdminDashboardController extends Controller
 {
+    private const VERIFIED_ROLES = ['resident', 'household_rep', 'owner_verified', 'tenant_verified'];
+
     public function __construct(private readonly ApartmentSelectionService $apartmentSelectionService)
     {
     }
@@ -59,6 +62,39 @@ class AdminDashboardController extends Controller
             'matchReviews' => $matchReviews,
             'verificationRequests' => $verificationRequests,
             'matchSuggestions' => $matchSuggestions,
+        ]);
+    }
+
+    public function users(Request $request)
+    {
+        $keyword = trim((string) $request->query('q', ''));
+
+        $users = User::query()
+            ->with('preferredApartment')
+            ->withCount(['posts', 'comments'])
+            ->withExists([
+                'userRoles as has_verified_role' => function ($query) {
+                    $query->whereIn('role', self::VERIFIED_ROLES)
+                        ->where(function ($subQuery) {
+                            $subQuery->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                        });
+                },
+            ])
+            ->when($keyword !== '', function ($query) use ($keyword) {
+                $query->where(function ($subQuery) use ($keyword) {
+                    $subQuery->where('name', 'like', '%'.$keyword.'%')
+                        ->orWhere('email', 'like', '%'.$keyword.'%')
+                        ->orWhere('home_apartment_name', 'like', '%'.$keyword.'%')
+                        ->orWhere('home_sigungu', 'like', '%'.$keyword.'%');
+                });
+            })
+            ->latest()
+            ->paginate(30)
+            ->withQueryString();
+
+        return view('admin.users', [
+            'users' => $users,
+            'q' => $keyword,
         ]);
     }
 
@@ -256,5 +292,127 @@ class AdminDashboardController extends Controller
         });
 
         return redirect('/admin/review-queue')->with('status', '입주민 인증 검수 상태가 업데이트되었습니다.');
+    }
+
+    public function updateUserVerification(Request $request, int $id)
+    {
+        $user = User::query()->with('preferredApartment')->findOrFail($id);
+
+        $data = $request->validate([
+            'action' => ['required', 'in:approve,reject'],
+        ]);
+
+        if (! $user->preferred_apartment_id) {
+            return back()->withErrors(['action' => '선택 아파트가 없는 회원은 인증 상태를 변경할 수 없습니다.']);
+        }
+
+        $apartmentId = (int) $user->preferred_apartment_id;
+        $adminUserId = (int) $request->user()->id;
+
+        DB::transaction(function () use ($user, $apartmentId, $adminUserId, $data) {
+            if ($data['action'] === 'approve') {
+                UserRole::query()->updateOrCreate([
+                    'user_id' => $user->id,
+                    'apartment_id' => $apartmentId,
+                    'role' => 'resident',
+                ], [
+                    'granted_at' => now(),
+                    'expires_at' => null,
+                    'granted_by' => $adminUserId,
+                ]);
+
+                $approved = ResidentVerificationRequest::query()->firstOrCreate([
+                    'user_id' => $user->id,
+                    'apartment_id' => $apartmentId,
+                    'status' => 'approved',
+                ], [
+                    'request_note' => '회원관리에서 승인 처리',
+                ]);
+
+                $approved->fill([
+                    'admin_note' => '회원관리에서 승인 처리',
+                    'reviewed_by' => $adminUserId,
+                    'reviewed_at' => now(),
+                ])->save();
+
+                ResidentVerificationRequest::query()
+                    ->where('user_id', $user->id)
+                    ->where('apartment_id', $apartmentId)
+                    ->where('status', 'pending')
+                    ->delete();
+            } else {
+                UserRole::query()
+                    ->where('user_id', $user->id)
+                    ->where('apartment_id', $apartmentId)
+                    ->whereIn('role', self::VERIFIED_ROLES)
+                    ->delete();
+
+                $rejected = ResidentVerificationRequest::query()->firstOrCreate([
+                    'user_id' => $user->id,
+                    'apartment_id' => $apartmentId,
+                    'status' => 'rejected',
+                ], [
+                    'request_note' => '회원관리에서 반려 처리',
+                ]);
+
+                $rejected->fill([
+                    'admin_note' => '회원관리에서 반려 처리',
+                    'reviewed_by' => $adminUserId,
+                    'reviewed_at' => now(),
+                ])->save();
+
+                ResidentVerificationRequest::query()
+                    ->where('user_id', $user->id)
+                    ->where('apartment_id', $apartmentId)
+                    ->where('status', 'pending')
+                    ->delete();
+            }
+        });
+
+        return back()->with('status', $data['action'] === 'approve' ? '회원 인증을 승인했습니다.' : '회원 인증을 반려했습니다.');
+    }
+
+    public function updateUserAccess(Request $request, int $id)
+    {
+        $user = User::query()->findOrFail($id);
+
+        $data = $request->validate([
+            'action' => ['required', 'in:allow,deny'],
+        ]);
+
+        $user->forceFill([
+            'access_allowed' => $data['action'] === 'allow',
+        ])->save();
+
+        return back()->with('status', $data['action'] === 'allow' ? '계정 접근을 허용했습니다.' : '계정 접근을 거부했습니다.');
+    }
+
+    public function withdrawUser(int $id)
+    {
+        $user = User::query()->findOrFail($id);
+
+        if (! $user->withdrawn_at) {
+            $user->forceFill([
+                'withdrawn_at' => now(),
+                'access_allowed' => false,
+            ])->save();
+        }
+
+        return back()->with('status', '회원을 탈퇴 처리했습니다.');
+    }
+
+    public function updateUserProfileLock(Request $request, int $id)
+    {
+        $user = User::query()->findOrFail($id);
+
+        $data = $request->validate([
+            'action' => ['required', 'in:lock,unlock'],
+        ]);
+
+        $user->forceFill([
+            'profile_locked' => $data['action'] === 'lock',
+        ])->save();
+
+        return back()->with('status', $data['action'] === 'lock' ? '프로필 수정이 잠금 처리되었습니다.' : '프로필 수정 잠금이 해제되었습니다.');
     }
 }

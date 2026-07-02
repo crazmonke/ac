@@ -28,6 +28,10 @@ class User extends Authenticatable
         'home_sigungu',
         'home_eupmyeondong',
         'home_apartment_name',
+        'last_login_at',
+        'access_allowed',
+        'withdrawn_at',
+        'profile_locked',
         'password',
     ];
 
@@ -50,6 +54,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'access_allowed' => 'boolean',
+            'withdrawn_at' => 'datetime',
+            'profile_locked' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -72,6 +80,16 @@ class User extends Authenticatable
     public function apartmentMatchReviews(): HasMany
     {
         return $this->hasMany(ApartmentMatchReview::class);
+    }
+
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
     }
 
     public function hasRoleForApartment(string $role, ?int $apartmentId = null): bool

@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/profile', [AccountSettingsController::class, 'updateProfile']);
     Route::put('/settings/password', [AccountSettingsController::class, 'updatePassword']);
     Route::post('/settings/resident-verification-request', [AccountSettingsController::class, 'requestResidentVerification']);
+    Route::post('/settings/withdraw-request', [AccountSettingsController::class, 'requestWithdrawal']);
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
@@ -72,6 +73,11 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::put('/review-queue/matches/{id}', [AdminDashboardController::class, 'updateMatchReview']);
     Route::put('/review-queue/verifications/{id}', [AdminDashboardController::class, 'updateVerificationRequest']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
+    Route::get('/users', [AdminDashboardController::class, 'users']);
+    Route::put('/users/{id}/verification', [AdminDashboardController::class, 'updateUserVerification']);
+    Route::put('/users/{id}/access', [AdminDashboardController::class, 'updateUserAccess']);
+    Route::put('/users/{id}/profile-lock', [AdminDashboardController::class, 'updateUserProfileLock']);
+    Route::delete('/users/{id}', [AdminDashboardController::class, 'withdrawUser']);
     Route::post('/boards', [AdminDashboardController::class, 'storeBoard']);
     Route::put('/boards/{id}', [AdminDashboardController::class, 'updateBoard']);
     Route::delete('/boards/{id}', [AdminDashboardController::class, 'destroyBoard']);

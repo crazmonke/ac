@@ -67,6 +67,7 @@
     <nav class="admin-links">
         <a href="/admin">대시보드</a>
         <a href="/admin/review-queue">검수 큐</a>
+        <a href="/admin/users">회원 관리</a>
         <a href="/admin/boards">게시판 관리</a>
         <a href="/admin/reports">신고 관리</a>
         <a class="user-mode" href="/?apartment_id={{ $apartmentId }}">유저모드</a>

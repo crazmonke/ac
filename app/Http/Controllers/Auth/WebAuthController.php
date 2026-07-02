@@ -40,6 +40,19 @@ class WebAuthController extends Controller
 
         $user = Auth::user();
 
+        if (! $this->canLoginUser($user)) {
+            Auth::logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => '현재 계정은 로그인할 수 없습니다. 관리자에게 문의해 주세요.',
+            ])->onlyInput('email');
+        }
+
+        $user?->forceFill(['last_login_at' => now()])->save();
+
         if ($this->isAdminUser($user)) {
             return redirect('/admin');
         }
@@ -140,5 +153,22 @@ class WebAuthController extends Controller
                 $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
             })
             ->exists();
+    }
+
+    private function canLoginUser(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (! (bool) ($user->access_allowed ?? true)) {
+            return false;
+        }
+
+        if ($user->withdrawn_at) {
+            return false;
+        }
+
+        return true;
     }
 }

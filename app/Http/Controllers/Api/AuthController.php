@@ -45,6 +45,12 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials.'], 422);
         }
 
+        if (! (bool) ($user->access_allowed ?? true) || $user->withdrawn_at) {
+            return response()->json(['message' => 'This account is not allowed to sign in.'], 403);
+        }
+
+        $user->forceFill(['last_login_at' => now()])->save();
+
         $token = $user->createToken('default')->plainTextToken;
 
         return response()->json([

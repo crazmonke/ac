@@ -8,6 +8,7 @@ use App\Models\ResidentVerificationRequest;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class AccountSettingsController extends Controller
@@ -41,6 +42,7 @@ class AccountSettingsController extends Controller
             'latestVerificationRequest' => $latestVerificationRequest,
             'latestMatchReview' => $latestMatchReview,
             'hasResidentRole' => $hasResidentRole,
+            'isProfileLocked' => (bool) ($user->profile_locked ?? true),
         ]);
     }
 
@@ -48,6 +50,11 @@ class AccountSettingsController extends Controller
     {
         $user = $request->user();
         $apartmentId = (int) $request->input('apartment_id', 1);
+
+        if ((bool) ($user->profile_locked ?? true)) {
+            return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
+                ->withErrors(['name' => '현재 계정은 프로필 수정이 잠금 상태입니다. 관리자에게 해제를 요청해 주세요.']);
+        }
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -79,6 +86,28 @@ class AccountSettingsController extends Controller
 
         return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
             ->with('status', $message);
+    }
+
+    public function requestWithdrawal(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->withdrawn_at) {
+            return redirect('/settings?apartment_id=' . max(1, (int) $request->input('apartment_id', 1)))
+                ->with('status', '이미 탈퇴 처리된 계정입니다.');
+        }
+
+        $user->forceFill([
+            'withdrawn_at' => now(),
+            'access_allowed' => false,
+        ])->save();
+
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/')->with('status', '탈퇴 요청이 접수되어 계정이 비활성화되었습니다.');
     }
 
     public function updatePassword(Request $request)

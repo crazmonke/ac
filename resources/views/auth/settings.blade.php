@@ -143,7 +143,7 @@
 
     <section class="card">
         <h2>프로필 정보</h2>
-        <p>상단 네비에 노출되는 사용자 이름과 계정 정보를 수정합니다.</p>
+        <p>프로필 잠금이 해제된 경우에만 이름/이메일/아파트를 수정할 수 있습니다.</p>
         <form method="post" action="/settings/profile" class="form-grid two">
             @csrf
             @method('put')
@@ -151,27 +151,33 @@
 
             <label>
                 이름
-                <input name="name" value="{{ old('name', $user->name) }}" maxlength="120" required>
+                <input name="name" value="{{ old('name', $user->name) }}" maxlength="120" required @readonly($isProfileLocked)>
             </label>
 
             <label>
                 이메일(아이디)
-                <input type="email" name="email" value="{{ old('email', $user->email) }}" maxlength="190" required>
+                <input type="email" name="email" value="{{ old('email', $user->email) }}" maxlength="190" required @readonly($isProfileLocked)>
             </label>
 
             <div style="grid-column: 1 / -1;">
                 <label>아파트 선택</label>
                 <div class="autocomplete">
-                    <input id="apartmentQuery" name="apartment_query" value="{{ old('apartment_query', $selectedApartment?->name) }}" placeholder="아파트명 또는 지역 검색" autocomplete="off" required>
-                    <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', $selectedApartment?->id) }}">
+                    <input id="apartmentQuery" name="apartment_query" value="{{ old('apartment_query', $selectedApartment?->name ?? $user->home_apartment_name) }}" placeholder="아파트명 또는 지역 검색" autocomplete="off" required @readonly($isProfileLocked)>
+                    <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', $selectedApartment?->id ?? $user->preferred_apartment_id) }}">
                     <div id="apartmentSuggestions" class="suggestions" style="display:none;"></div>
                 </div>
-                <div class="meta" style="margin-top:6px;">현재 선택: {{ $selectedApartment?->name ?? '미선택' }}</div>
+                <div class="meta" style="margin-top:6px;">현재 선택: {{ $selectedApartment?->name ?? $user->home_apartment_name ?? '미선택' }}</div>
             </div>
 
             <div class="row" style="grid-column: 1 / -1;">
-                <button class="btn btn-primary" type="submit">프로필 저장</button>
-                <span class="meta">변경 즉시 상단 네비 정보에 반영됩니다.</span>
+                <button class="btn btn-primary" type="submit" @disabled($isProfileLocked)>프로필 저장</button>
+                <span class="meta">
+                    @if($isProfileLocked)
+                        현재 프로필 잠금 상태입니다. 관리자 회원관리에서 해제 후 저장할 수 있습니다.
+                    @else
+                        변경 즉시 상단 네비 정보에 반영됩니다.
+                    @endif
+                </span>
             </div>
         </form>
         @if($errors->has('name') || $errors->has('email'))
@@ -237,6 +243,18 @@
             <button class="btn btn-danger" type="submit">입주민 인증 요청</button>
         </form>
     </section>
+
+    <section class="card">
+        <h2>계정 탈퇴</h2>
+        <p>탈퇴 요청 시 계정 접근이 비활성화되며 즉시 로그아웃됩니다.</p>
+        <form method="post" action="/settings/withdraw-request" onsubmit="return confirm('탈퇴 요청을 진행할까요?');">
+            @csrf
+            <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+            <button class="btn btn-danger" type="submit" @disabled((bool) $user->withdrawn_at)>
+                {{ $user->withdrawn_at ? '이미 탈퇴 처리됨' : '탈퇴 요청' }}
+            </button>
+        </form>
+    </section>
 </div>
 
 <script>
@@ -264,6 +282,10 @@
             timeout: 4000,
             maximumAge: 300000,
         });
+    }
+
+    if (!queryInput || !apartmentIdInput || !suggestionBox || queryInput.readOnly) {
+        return;
     }
 
     function closeSuggestions() {
