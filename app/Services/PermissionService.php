@@ -104,6 +104,10 @@ class PermissionService
 
         $scope = (string) ($post->audience_scope ?? 'all');
 
+        if (! $user && $scope === 'region' && (bool) $post->is_guest_visible) {
+            return true;
+        }
+
         // 단지 게시글은 게시판 read_role보다 우선해서 동일 단지 인증회원만 허용.
         if ($scope === 'apartment') {
             if (! $user) {
@@ -129,6 +133,10 @@ class PermissionService
         }
 
         $scope = (string) ($post->audience_scope ?? 'all');
+
+        if (! $user && $scope === 'region' && (bool) $post->is_guest_visible) {
+            return null;
+        }
 
         if (! $user) {
             return '회원 전용';

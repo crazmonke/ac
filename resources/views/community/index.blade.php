@@ -12,6 +12,12 @@
         .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
         .scope-tab { border: 1px solid #d5dfec; border-radius: 999px; padding: 7px 12px; text-decoration: none; color: #20344f; background: #fff; font-weight: 700; }
         .scope-tab.active { background: #0f6f67; border-color: #0f6f67; color: #fff; }
+        .scope-tabs-topic { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .scope-tabs-topic .scope-tab { font-size: 0.92rem; padding: 6px 11px; line-height: 1.15; white-space: nowrap; }
+        .topic-scroll { display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; flex: 1 1 auto; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-x; cursor: grab; }
+        .topic-scroll::-webkit-scrollbar { display: none; }
+        .topic-scroll.dragging { cursor: grabbing; user-select: none; }
+        .topic-scroll .scope-tab { flex: 0 0 auto; }
         .panel { margin-top: 14px; background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; }
         .post-list { list-style: none; margin: 0; padding: 0; }
         .post-item { border-top: 1px solid #edf2f8; padding: 12px 0; }
@@ -55,12 +61,14 @@
         <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">아파트</a>
     </div>
 
-    <div class="scope-tabs" style="margin-top:8px;">
-        <a class="scope-tab {{ $topic === '' ? 'active' : '' }}" href="/community?scope={{ $scope }}&apartment_id={{ $apartmentId }}">태그 전체</a>
-        @foreach($topicFacets as $facet)
-            <a class="scope-tab {{ $topic === $facet->slug ? 'active' : '' }}"
-               href="/community?scope={{ $scope }}&topic={{ $facet->slug }}&apartment_id={{ $apartmentId }}">#{{ $facet->name }}</a>
-        @endforeach
+    <div class="scope-tabs-topic">
+        <a class="scope-tab {{ $topic === '' ? 'active' : '' }}" href="/community?scope={{ $scope }}&apartment_id={{ $apartmentId }}">전체</a>
+        <div class="topic-scroll" data-topic-scroll>
+            @foreach($topicFacets as $facet)
+                <a class="scope-tab {{ $topic === $facet->slug ? 'active' : '' }}"
+                   href="/community?scope={{ $scope }}&topic={{ $facet->slug }}&apartment_id={{ $apartmentId }}">#{{ $facet->name }}</a>
+            @endforeach
+        </div>
     </div>
 
     <section class="panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -161,6 +169,80 @@ document.querySelectorAll('.requires-signup').forEach((link) => {
         }
     });
 });
+
+const topicScroll = document.querySelector('[data-topic-scroll]');
+if (topicScroll) {
+    let isDragging = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let didDrag = false;
+    const dragThreshold = 6;
+
+    topicScroll.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) {
+            return;
+        }
+
+        isDragging = true;
+        didDrag = false;
+        startX = event.clientX;
+        startScrollLeft = topicScroll.scrollLeft;
+        topicScroll.classList.add('dragging');
+
+        if (typeof topicScroll.setPointerCapture === 'function') {
+            topicScroll.setPointerCapture(event.pointerId);
+        }
+    });
+
+    topicScroll.addEventListener('pointermove', (event) => {
+        if (!isDragging) {
+            return;
+        }
+
+        const deltaX = event.clientX - startX;
+        if (Math.abs(deltaX) > dragThreshold) {
+            didDrag = true;
+        }
+
+        topicScroll.scrollLeft = startScrollLeft - deltaX;
+    });
+
+    const finishDrag = (event) => {
+        if (!isDragging) {
+            return;
+        }
+
+        isDragging = false;
+        topicScroll.classList.remove('dragging');
+
+        if (typeof topicScroll.releasePointerCapture === 'function') {
+            try {
+                topicScroll.releasePointerCapture(event.pointerId);
+            } catch (error) {
+                // Ignore invalid release attempts.
+            }
+        }
+    };
+
+    topicScroll.addEventListener('pointerup', finishDrag);
+    topicScroll.addEventListener('pointercancel', finishDrag);
+    topicScroll.addEventListener('pointerleave', (event) => {
+        if (event.pointerType === 'mouse') {
+            finishDrag(event);
+        }
+    });
+
+    topicScroll.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            if (!didDrag) {
+                return;
+            }
+
+            event.preventDefault();
+            didDrag = false;
+        });
+    });
+}
 </script>
 </body>
 </html>

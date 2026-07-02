@@ -80,11 +80,19 @@
             @endif
         </div>
         @forelse($posts as $post)
+            @php
+                $access = $postAccessMap[$post->id] ?? ['can_read' => true, 'access_label' => null, 'url' => '/community/posts/'.$post->id.'?apartment_id='.$apartmentId];
+            @endphp
             <article class="item">
                 <h3>
-                    <a href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">{{ $post->title }}</a>
+                    <a href="{{ $access['url'] }}">{{ $post->title }}</a>
                     @if($post->is_notice)
                         <span class="pill">공지</span>
+                    @endif
+                    @if(! $access['can_read'])
+                        <span class="pill">{{ $access['access_label'] ?? '상세 제한' }}</span>
+                    @elseif($post->is_guest_visible)
+                        <span class="pill">비회원 공개</span>
                     @endif
                 </h3>
                 <div class="meta">
@@ -96,7 +104,11 @@
                 @if($post->topic)
                     <div class="meta" style="margin-top:6px;">태그: <span class="pill">#{{ $post->topic->name }}</span></div>
                 @endif
-                <p>{{ \Illuminate\Support\Str::limit($post->body, 140) }}</p>
+                @if($access['can_read'])
+                    <p>{{ \Illuminate\Support\Str::limit($post->body, 140) }}</p>
+                @else
+                    <p class="meta">본문은 권한이 충족되면 열람할 수 있습니다.</p>
+                @endif
             </article>
         @empty
             <div class="item">게시글이 없습니다.</div>

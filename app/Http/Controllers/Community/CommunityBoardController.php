@@ -75,6 +75,18 @@ class CommunityBoardController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $postAccessMap = [];
+        foreach ($posts as $post) {
+            $canRead = $this->permissionService->canReadPostDetail($user, $post);
+            $postAccessMap[(int) $post->id] = [
+                'can_read' => $canRead,
+                'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
+                'url' => $canRead
+                    ? '/community/posts/'.$post->id.'?apartment_id='.$apartmentId
+                    : '/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id,
+            ];
+        }
+
         $topicOptions = $this->loadDistinctTopicOptions($apartmentId);
 
         return view('community.board', [
@@ -89,6 +101,7 @@ class CommunityBoardController extends Controller
             'sort' => $sort,
             'topic' => $topic,
             'topicOptions' => $topicOptions,
+            'postAccessMap' => $postAccessMap,
         ]);
     }
 
@@ -112,7 +125,7 @@ class CommunityBoardController extends Controller
         $user = $request->user();
 
         if (! $this->permissionService->canReadPostDetail($user, $post)) {
-            abort(403);
+            return redirect('/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id);
         }
 
         $post->increment('view_count');
