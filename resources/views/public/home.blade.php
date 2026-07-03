@@ -394,13 +394,13 @@
 
     <footer class="footer">
         <div class="footer-links">
-            <a href="/privacy">개인정보처리방침</a>
+            <a href="/privacy">개인정보</a>
             <a href="/terms">이용약관</a>
             <a href="/register">회원가입</a>
-            <a href="/service/signup-guide">가입 안내</a>
-            <a href="/reports/new?apartment_id={{ $apartment->id }}">신고 접수</a>
+            <a href="/service/signup-guide">가입안내</a>
+            <a href="/reports/new?apartment_id={{ $apartment->id }}">신고접수</a>
         </div>
-        <div class="footer-copy">© {{ now()->year }} 우리아파트 커뮤니티</div>
+        <div class="footer-copy">© {{ now()->year }} 아파인드 (Apaind)</div>
     </footer>
 </div>
 <script>
