@@ -45,6 +45,10 @@ class AccountSettingsController extends Controller
                 ->where('role', 'resident')
                 ->exists()
             : false;
+        $hasResidentRole = $hasResidentRole || (bool) UserResidence::query()
+            ->where('user_id', $user->id)
+            ->where('verification_status', 'verified')
+            ->exists();
 
         return view('auth.settings', [
             'apartmentId' => $apartmentId > 0 ? $apartmentId : 1,
@@ -168,6 +172,13 @@ class AccountSettingsController extends Controller
             ->where('apartment_id', $user->preferred_apartment_id)
             ->where('role', 'resident')
             ->exists();
+
+        if (! $hasResidentRole) {
+            $hasResidentRole = UserResidence::query()
+                ->where('user_id', $user->id)
+                ->where('verification_status', 'verified')
+                ->exists();
+        }
 
         if ($hasResidentRole) {
             return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))

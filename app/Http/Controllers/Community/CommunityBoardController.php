@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Community;
 
 use App\Http\Controllers\Controller;
+use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Comment;
 use App\Models\Poll;
@@ -199,12 +200,12 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
-        if (! $user->preferred_apartment_id) {
+        $writerApartmentId = (int) ($user->preferred_apartment_id ?: ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0));
+
+        if ($writerApartmentId <= 0) {
             return redirect('/settings?apartment_id='.$apartmentId)
                 ->withErrors(['apartment_query' => '글을 작성하려면 먼저 공동주택를 선택해 주세요.']);
         }
-
-        $writerApartmentId = (int) $user->preferred_apartment_id;
 
         $topicOptions = $this->loadDistinctTopicOptions($writerApartmentId);
 
@@ -250,18 +251,24 @@ class CommunityBoardController extends Controller
     {
         $apartmentId = $this->resolveContextApartmentId($request);
         $board = $this->resolveBoard($slug, $apartmentId);
-        $user = $request->user()->loadMissing('preferredApartment');
+        $user = $request->user()->loadMissing(['preferredApartment', 'preferredResidenceComplex']);
 
         if (! $this->canWriteInBoard($user, $board)) {
             abort(403);
         }
 
-        if (! $user->preferred_apartment_id || ! $user->preferredApartment) {
+        $writerApartment = $user->preferredApartment;
+
+        if (! $writerApartment) {
+            $legacyApartmentId = (int) ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0);
+            $writerApartment = $legacyApartmentId > 0 ? Apartment::query()->find($legacyApartmentId) : null;
+        }
+
+        if (! $writerApartment) {
             return redirect('/settings?apartment_id='.$apartmentId)
                 ->withErrors(['apartment_query' => '글을 작성하려면 먼저 공동주택를 선택해 주세요.']);
         }
 
-        $writerApartment = $user->preferredApartment;
         $writerApartmentId = (int) $writerApartment->id;
 
         $rules = [
