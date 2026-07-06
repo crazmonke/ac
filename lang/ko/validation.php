@@ -162,8 +162,8 @@ return [
             'unique' => '이미 사용 중인 이메일입니다.',
         ],
         'apartment_query' => [
-            'required' => '아파트를 검색해 선택해 주세요.',
-            'max' => '아파트 검색어는 :max자 이내로 입력해 주세요.',
+            'required' => '공동주택를 검색해 선택해 주세요.',
+            'max' => '공동주택 검색어는 :max자 이내로 입력해 주세요.',
         ],
         'password' => [
             'required' => '비밀번호를 입력해 주세요.',
@@ -181,8 +181,8 @@ return [
         'email' => '이메일',
         'password' => '비밀번호',
         'password_confirmation' => '비밀번호 확인',
-        'apartment_query' => '아파트',
-        'apartment_id' => '아파트',
+        'apartment_query' => '공동주택',
+        'apartment_id' => '공동주택',
         'title' => '제목',
         'content' => '내용',
         'board_id' => '게시판',

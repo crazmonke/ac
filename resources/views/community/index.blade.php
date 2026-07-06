@@ -103,9 +103,9 @@
         <h1 style="margin:0;">커뮤니티</h1>
         <div class="meta">
             @if(auth()->check() && $isVerified)
-                인증회원 모드: 전체/동네/아파트 상세 열람 + 글쓰기 가능
+                인증회원 모드: 전체/동네/공동주택 상세 열람 + 글쓰기 가능
             @elseif(auth()->check())
-                비인증회원 모드: 전체/동네 상세 열람 가능, 아파트는 제목만 열람
+                비인증회원 모드: 전체/동네 상세 열람 가능, 공동주택는 제목만 열람
             @else
                 비회원 모드: 전체 게시물 제목만 열람
             @endif
@@ -115,7 +115,7 @@
     <div class="scope-tabs">
         <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="/community?scope=all&apartment_id={{ $apartmentId }}">전체</a>
         <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="/community?scope=region&apartment_id={{ $apartmentId }}">동네</a>
-        <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">아파트</a>
+        <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">공동주택</a>
     </div>
 
     <div class="scope-tabs-topic">
@@ -154,7 +154,7 @@
                     .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.e($post['title']).'</a>'
                     .'<div class="chips">'
                     .'<span class="chip">'.e($post['board_name']).'</span>'
-                    .'<span class="chip">'.($post['audience_scope'] === 'region' ? '동네 전용' : ($post['audience_scope'] === 'apartment' ? '아파트 전용' : '전체')).'</span>'
+                    .'<span class="chip">'.($post['audience_scope'] === 'region' ? '동네 전용' : ($post['audience_scope'] === 'apartment' ? '공동주택 전용' : '전체')).'</span>'
                     .(!empty($post['topic_name']) ? '<span class="chip">#'.e($post['topic_name']).'</span>' : '')
                     .'<span class="chip">'.e(($post['sigungu'] ?: $post['sido']).' · '.$post['apartment_name']).'</span>'
                     .($post['is_guest_visible'] ? '<span class="chip guest-open">비회원 공개</span>' : (!empty($post['access_label']) ? '<span class="chip locked">'.e($post['access_label']).'</span>' : ''))
@@ -170,7 +170,7 @@
         @if($shouldSplitApartmentFeed)
             <section class="split-section">
                 <div class="split-head">
-                    <h3 class="split-title">{{ $preferredApartmentName !== '' ? $preferredApartmentName : '내 아파트' }} 게시글</h3>
+                    <h3 class="split-title">{{ $preferredApartmentName !== '' ? $preferredApartmentName : '내 공동주택' }} 게시글</h3>
                     <div class="split-sub">인증한 내 단지의 게시글이 먼저 노출됩니다.</div>
                 </div>
                 <div class="split-body">
@@ -178,7 +178,7 @@
                         @forelse($ownApartmentPosts as $post)
                             {!! $renderPostItem($post) !!}
                         @empty
-                            <li class="meta" style="padding:10px 0;">현재 페이지에 내 아파트 게시글이 없습니다.</li>
+                            <li class="meta" style="padding:10px 0;">현재 페이지에 내 공동주택 게시글이 없습니다.</li>
                         @endforelse
                     </ul>
                 </div>
@@ -187,15 +187,15 @@
             <div class="split-divider"></div>
             <section class="split-section">
                 <div class="split-head">
-                    <h3 class="split-title">동네/다른 아파트 게시글</h3>
-                    <div class="split-sub">같은 동네에 가까운 아파트 글을 우선 노출합니다.</div>
+                    <h3 class="split-title">동네/다른 공동주택 게시글</h3>
+                    <div class="split-sub">같은 동네에 가까운 공동주택 글을 우선 노출합니다.</div>
                 </div>
                 <div class="split-body">
                     <ul class="post-list">
                         @forelse($otherApartmentPosts as $post)
                             {!! $renderPostItem($post) !!}
                         @empty
-                            <li class="meta" style="padding:10px 0;">현재 페이지에 다른 아파트 게시글이 없습니다.</li>
+                            <li class="meta" style="padding:10px 0;">현재 페이지에 다른 공동주택 게시글이 없습니다.</li>
                         @endforelse
                     </ul>
                 </div>
@@ -207,7 +207,7 @@
                 @empty
                     @if($requiresSignupForScope)
                         <li class="empty-box">
-                            동네/아파트 범위 게시글은 회원가입 후 단지 인증을 완료하면 볼 수 있습니다.
+                            동네/공동주택 범위 게시글은 회원가입 후 단지 인증을 완료하면 볼 수 있습니다.
                             <br>
                             <a href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">회원가입 및 인증 진행하기</a>
                         </li>

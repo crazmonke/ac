@@ -201,7 +201,7 @@ class CommunityBoardController extends Controller
 
         if (! $user->preferred_apartment_id) {
             return redirect('/settings?apartment_id='.$apartmentId)
-                ->withErrors(['apartment_query' => '글을 작성하려면 먼저 아파트를 선택해 주세요.']);
+                ->withErrors(['apartment_query' => '글을 작성하려면 먼저 공동주택를 선택해 주세요.']);
         }
 
         $writerApartmentId = (int) $user->preferred_apartment_id;
@@ -258,7 +258,7 @@ class CommunityBoardController extends Controller
 
         if (! $user->preferred_apartment_id || ! $user->preferredApartment) {
             return redirect('/settings?apartment_id='.$apartmentId)
-                ->withErrors(['apartment_query' => '글을 작성하려면 먼저 아파트를 선택해 주세요.']);
+                ->withErrors(['apartment_query' => '글을 작성하려면 먼저 공동주택를 선택해 주세요.']);
         }
 
         $writerApartment = $user->preferredApartment;
@@ -287,7 +287,7 @@ class CommunityBoardController extends Controller
 
         $audienceScope = (string) $data['audience_scope'];
         if ($audienceScope === 'apartment' && ! $this->permissionService->hasVerifiedRole($user, $writerApartmentId)) {
-            return back()->withErrors(['audience_scope' => '아파트 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
+            return back()->withErrors(['audience_scope' => '공동주택 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
         }
 
         $postTopicId = $this->resolvePostTopicId(
@@ -359,7 +359,7 @@ class CommunityBoardController extends Controller
 
         $audienceScope = (string) $data['audience_scope'];
         if ($audienceScope === 'apartment' && ! $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id)) {
-            return back()->withErrors(['audience_scope' => '아파트 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
+            return back()->withErrors(['audience_scope' => '공동주택 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
         }
 
         $postTopicId = $this->resolvePostTopicId(

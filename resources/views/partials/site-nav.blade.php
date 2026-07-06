@@ -1,5 +1,5 @@
 @php
-    $requestedApartmentId = $apartmentId ?? request()->query('apartment_id', 1);
+    $requestedApartmentId = (int) ($apartmentId ?? request()->query('apartment_id', 0));
     $isLoggedIn = $isLoggedIn ?? auth()->check();
     $currentUser = auth()->user();
     $displayId = $currentUser ? explode('@', $currentUser->email)[0] : '';
@@ -7,9 +7,85 @@
     $avatarFirst = function_exists('mb_substr') ? mb_substr($avatarSource, 0, 1, 'UTF-8') : substr($avatarSource, 0, 1);
     $avatarLetter = function_exists('mb_strtoupper') ? mb_strtoupper($avatarFirst, 'UTF-8') : strtoupper($avatarFirst);
     $preferredApartment = $currentUser?->preferredApartment;
-    $contextApartment = $preferredApartment ?: \App\Models\Apartment::query()->find((int) $requestedApartmentId);
-    $apartmentId = (int) ($contextApartment?->id ?? $requestedApartmentId ?? 1);
-    $regionLabel = trim((string) ($contextApartment?->sigungu ?: $contextApartment?->eupmyeondong ?: $contextApartment?->sido));
+    $preferredResidenceComplex = $currentUser?->preferredResidenceComplex;
+
+    $residenceRegion = trim((string) ($currentUser?->home_sigungu ?? ''));
+    $residenceName = trim((string) ($currentUser?->home_apartment_name ?? ''));
+    $forceResidenceLabels = ! $preferredApartment && ($preferredResidenceComplex || $residenceName !== '' || $residenceRegion !== '');
+
+    $contextApartment = $preferredApartment;
+    if (! $contextApartment && ! $forceResidenceLabels && $requestedApartmentId > 0) {
+        $contextApartment = \App\Models\Apartment::query()->find($requestedApartmentId);
+    }
+
+    $extractRegion = function (?string $address): string {
+        $text = trim((string) $address);
+        if ($text === '') {
+            return '';
+        }
+
+        $tokens = preg_split('/\s+/u', str_replace(',', ' ', $text)) ?: [];
+        $city = '';
+        $district = '';
+
+        foreach ($tokens as $token) {
+            $token = trim((string) $token);
+            if ($token === '') {
+                continue;
+            }
+
+            if ($city === '' && preg_match('/(시|군)$/u', $token)) {
+                $city = $token;
+                continue;
+            }
+
+            if ($district === '' && preg_match('/구$/u', $token)) {
+                $district = $token;
+                continue;
+            }
+        }
+
+        if ($city !== '' && $district !== '') {
+            return trim($city . ' ' . $district);
+        }
+
+        if ($district !== '') {
+            return $district;
+        }
+
+        if ($city !== '') {
+            return $city;
+        }
+
+        foreach ($tokens as $token) {
+            $token = trim((string) $token);
+            if ($token === '') {
+                continue;
+            }
+
+            if (preg_match('/(동|읍|면|가)$/u', $token)) {
+                return $token;
+            }
+        }
+
+        return '';
+    };
+
+    if ($residenceRegion === '' && $preferredResidenceComplex) {
+        $residenceRegion = $extractRegion($preferredResidenceComplex->road_address ?: $preferredResidenceComplex->jibun_address);
+
+        if ($residenceRegion === '') {
+            $residenceRegion = $extractRegion($preferredResidenceComplex->jibun_address);
+        }
+    }
+
+    if ($residenceName === '' && $preferredResidenceComplex) {
+        $residenceName = $preferredResidenceComplex->displayName();
+    }
+
+    $apartmentId = (int) ($contextApartment?->id ?? ($requestedApartmentId > 0 ? $requestedApartmentId : 1));
+    $regionLabel = trim((string) ($contextApartment?->sigungu ?: $contextApartment?->eupmyeondong ?: $contextApartment?->sido ?: $residenceRegion));
+    $nameLabel = trim((string) ($contextApartment?->name ?: $residenceName));
 @endphp
 
 <style>
@@ -143,9 +219,9 @@
                 <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
                 <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
             @else
-                @if($contextApartment)
-                    <a class="filter-link" href="/community?scope=region&apartment_id={{ $contextApartment->id }}">{{ $regionLabel !== '' ? $regionLabel : '동네' }}</a>
-                    <a class="filter-link" href="/community?scope=apartment&apartment_id={{ $contextApartment->id }}">{{ $contextApartment->name }}</a>
+                @if($regionLabel !== '' || $nameLabel !== '')
+                    <a class="filter-link" href="/community?scope=region&apartment_id={{ $apartmentId }}">{{ $regionLabel !== '' ? $regionLabel : '동네' }}</a>
+                    <a class="filter-link" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">{{ $nameLabel !== '' ? $nameLabel : '공동주택' }}</a>
                 @endif
                 <a class="user-chip" href="/settings?apartment_id={{ $apartmentId }}" title="계정 설정">
                     <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>

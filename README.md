@@ -1,6 +1,6 @@
 # Apartment Community Platform (MVP)
 
-PHP 8.5 / Laravel 11 / SQLite 기반 아파트 입주민 커뮤니티 플랫폼 초기 구축 저장소입니다.
+PHP 8.5 / Laravel 11 / SQLite 기반 공동주택 입주민 커뮤니티 플랫폼 초기 구축 저장소입니다.
 
 ## 현재 구성
 
@@ -119,7 +119,7 @@ php artisan test
 ./vendor/bin/phpunit
 ```
 
-### 동기화(아파트 마스터)
+### 동기화(공동주택 마스터)
 
 ```bash
 # 정부 API 동기화 사전 확인 (DB 미반영)

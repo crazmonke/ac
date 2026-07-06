@@ -27,7 +27,7 @@ class PublicSiteController extends Controller
             ?? Apartment::query()->orderBy('id')->first();
 
         if (! $apartment) {
-            abort(404, '아파트 데이터가 없습니다.');
+            abort(404, '공동주택 데이터가 없습니다.');
         }
 
         $apartmentId = (int) $apartment->id;

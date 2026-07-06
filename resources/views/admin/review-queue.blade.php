@@ -34,7 +34,7 @@
     @endif
 
     <section class="section">
-        <h2>아파트 매칭 검수</h2>
+        <h2>공동주택 매칭 검수</h2>
         <div class="grid" style="margin-top:12px;">
             @forelse($matchReviews as $review)
                 <article class="card">
@@ -52,7 +52,7 @@
                         @csrf
                         @method('put')
                         <select name="resolved_apartment_id">
-                            <option value="">확정 아파트 선택</option>
+                            <option value="">확정 공동주택 선택</option>
                             @foreach(($matchSuggestions[$review->id] ?? collect()) as $suggestion)
                                 <option value="{{ $suggestion['id'] }}">{{ $suggestion['label'] }}</option>
                             @endforeach
@@ -65,7 +65,7 @@
                     </form>
                 </article>
             @empty
-                <article class="card">대기 중인 아파트 매칭 검수 요청이 없습니다.</article>
+                <article class="card">대기 중인 공동주택 매칭 검수 요청이 없습니다.</article>
             @endforelse
         </div>
     </section>
@@ -92,6 +92,66 @@
                 </article>
             @empty
                 <article class="card">대기 중인 입주민 인증 요청이 없습니다.</article>
+            @endforelse
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>공동주택 인증 검수</h2>
+        <div class="grid" style="margin-top:12px;">
+            @forelse($residenceVerificationRequests as $requestItem)
+                @php
+                    $meta = is_array($requestItem->evidence_meta ?? null) ? $requestItem->evidence_meta : [];
+                    $hasCoords = isset($meta['latitude'], $meta['longitude']) && is_numeric($meta['latitude']) && is_numeric($meta['longitude']);
+                @endphp
+                <article class="card">
+                    <h3>{{ $requestItem->user->name }} · {{ $requestItem->complex?->displayName() ?? '미지정' }}</h3>
+                    <p class="meta">이메일: {{ $requestItem->user->email }} · 상태 <span class="status">{{ $requestItem->verification_status }}</span></p>
+                    <p class="meta">건물: {{ $requestItem->building?->road_address ?? '-' }} · 세대: {{ $requestItem->unit?->unit_label_generated ?? '미입력' }}</p>
+                    <p class="meta">GPS 좌표: {{ $hasCoords ? '저장됨' : '없음' }}</p>
+                    <form method="post" action="/admin/review-queue/residence-verifications/{{ $requestItem->id }}" class="form-grid">
+                        @csrf
+                        @method('put')
+                        <div class="actions">
+                            <button class="btn btn-primary" type="submit" name="status" value="approved">승인</button>
+                            <button class="btn btn-danger" type="submit" name="status" value="rejected">반려</button>
+                        </div>
+                    </form>
+                    <form method="post" action="/admin/review-queue/residence-verifications/{{ $requestItem->id }}/retry" class="form-grid" style="margin-top:6px;">
+                        @csrf
+                        <div class="actions">
+                            <button class="btn" type="submit" style="background:#455a8f; color:#fff;" @disabled(! $hasCoords)>재검증</button>
+                        </div>
+                    </form>
+                </article>
+            @empty
+                <article class="card">대기 중인 공동주택 인증 요청이 없습니다.</article>
+            @endforelse
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>중복 공동주택 병합 검수</h2>
+        <div class="grid" style="margin-top:12px;">
+            @forelse($mergeCandidates as $candidate)
+                <article class="card">
+                    <h3>유사도 {{ number_format($candidate->score, 2) }}</h3>
+                    <p class="meta">source: {{ $candidate->sourceComplex?->displayName() ?? '-' }}</p>
+                    <p class="meta">target: {{ $candidate->targetComplex?->displayName() ?? '-' }}</p>
+                    @if(is_array($candidate->reason))
+                        <p class="meta">distance_m: {{ $candidate->reason['distance_m'] ?? '-' }} · name_similarity: {{ $candidate->reason['name_similarity'] ?? '-' }}</p>
+                    @endif
+                    <form method="post" action="/admin/review-queue/merges/{{ $candidate->id }}" class="form-grid">
+                        @csrf
+                        @method('put')
+                        <div class="actions">
+                            <button class="btn btn-primary" type="submit" name="status" value="approved">병합 승인</button>
+                            <button class="btn btn-danger" type="submit" name="status" value="rejected">병합 반려</button>
+                        </div>
+                    </form>
+                </article>
+            @empty
+                <article class="card">검토할 중복 병합 후보가 없습니다.</article>
             @endforelse
         </div>
     </section>

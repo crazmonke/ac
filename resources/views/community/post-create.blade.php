@@ -339,7 +339,7 @@
                 <label>노출 카테고리
                     <select name="audience_scope" class="form-select" style="margin-top:6px;">
                         <option value="region" @selected(old('audience_scope', 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
-                        <option value="apartment" @selected(old('audience_scope') === 'apartment')>아파트 (같은 단지 인증 회원만 상세)</option>
+                        <option value="apartment" @selected(old('audience_scope') === 'apartment')>공동주택 (같은 단지 인증 회원만 상세)</option>
                     </select>
                 </label>
                 <div class="meta" style="margin-top:-4px;">글쓰기는 인증회원만 가능합니다.</div>

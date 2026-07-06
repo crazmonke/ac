@@ -5,15 +5,26 @@ namespace App\Services;
 use App\Models\Apartment;
 use App\Models\ApartmentAlias;
 use App\Models\ApartmentMatchReview;
+use App\Models\ResidenceBuilding;
+use App\Models\ResidenceComplex;
+use App\Models\ResidenceMergeCandidate;
+use App\Models\ResidenceUnit;
 use App\Models\ResidentVerificationRequest;
 use App\Models\User;
+use App\Models\UserResidence;
 use App\Models\UserRole;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 
 class ApartmentSelectionService
 {
-    public function __construct(private readonly GoogleLocationVerificationService $locationVerificationService)
+    public function __construct(
+        private readonly GoogleLocationVerificationService $locationVerificationService,
+        private readonly ResidenceNamingService $residenceNamingService,
+        private readonly OperationalMetricsService $operationalMetricsService
+    )
     {
     }
 
@@ -23,6 +34,57 @@ class ApartmentSelectionService
 
         if ($keyword === '') {
             return collect();
+        }
+
+        $residences = ResidenceBuilding::query()
+            ->with('complex')
+            ->whereHas('complex', function (Builder $builder) {
+                $builder->where('status', 'active');
+            })
+            ->where(function (Builder $builder) use ($keyword) {
+                $builder->where('building_name', 'like', '%' . $keyword . '%')
+                    ->orWhere('road_address', 'like', '%' . $keyword . '%')
+                    ->orWhere('jibun_address', 'like', '%' . $keyword . '%')
+                    ->orWhereHas('complex', function (Builder $complexQuery) use ($keyword) {
+                        $complexQuery->where('official_name', 'like', '%' . $keyword . '%')
+                            ->orWhere('alias_name', 'like', '%' . $keyword . '%')
+                            ->orWhere('auto_display_name', 'like', '%' . $keyword . '%')
+                            ->orWhere('road_address', 'like', '%' . $keyword . '%')
+                            ->orWhere('jibun_address', 'like', '%' . $keyword . '%');
+                    });
+            })
+            ->orderBy('id')
+            ->limit($limit)
+            ->get()
+            ->map(function (ResidenceBuilding $building) {
+                $complex = $building->complex;
+                if (! $complex) {
+                    return null;
+                }
+
+                $displayName = $complex->displayName();
+
+                return [
+                    'id' => (int) ($complex->legacy_apartment_id ?? 0),
+                    'complex_id' => (int) $complex->id,
+                    'building_id' => (int) $building->id,
+                    'name' => $displayName,
+                    'label' => $displayName . ' · ' . ($building->road_address ?: $complex->road_address),
+                    'region' => trim((string) ($complex->jibun_address ?: $complex->road_address)),
+                    'road_address' => (string) ($building->road_address ?: $complex->road_address),
+                    'housing_type' => $complex->housing_type,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        if ($residences->isNotEmpty()) {
+            $this->operationalMetricsService->log('residence_search_hit', null, null, null, [
+                'keyword' => $keyword,
+                'count' => $residences->count(),
+            ]);
+
+            return $residences;
         }
 
         $apartments = Apartment::query()
@@ -40,44 +102,138 @@ class ApartmentSelectionService
             ->limit($limit)
             ->get();
 
-        return $apartments->map(function (Apartment $apartment) {
+        $apartmentRows = $apartments->map(function (Apartment $apartment) {
+            $complex = $this->findOrCreateComplexFromApartment($apartment);
+            $building = ResidenceBuilding::query()
+                ->where('complex_id', $complex->id)
+                ->orderBy('id')
+                ->first();
+
             return [
                 'id' => (int) $apartment->id,
+                'complex_id' => (int) $complex->id,
+                'building_id' => (int) ($building?->id ?? 0),
                 'name' => $apartment->name,
                 'label' => $apartment->name . ' · ' . $apartment->sido . ' ' . $apartment->sigungu,
                 'region' => trim($apartment->sido . ' ' . $apartment->sigungu . ' ' . $apartment->eupmyeondong),
                 'road_address' => $apartment->road_address,
+                'housing_type' => 'apartment',
             ];
         })->values();
+
+        if ($apartmentRows->isNotEmpty()) {
+            return $apartmentRows;
+        }
+
+        $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
+
+        if ($fallbackRows->isNotEmpty()) {
+            $this->operationalMetricsService->log('residence_search_fallback_hit', null, null, null, [
+                'keyword' => $keyword,
+                'count' => $fallbackRows->count(),
+            ]);
+        }
+
+        return $fallbackRows;
     }
 
-    public function applySelection(User $user, ?int $apartmentId, string $apartmentQuery, string $source, ?float $latitude = null, ?float $longitude = null): array
+    public function applySelection(
+        User $user,
+        ?int $apartmentId,
+        string $apartmentQuery,
+        string $source,
+        ?float $latitude = null,
+        ?float $longitude = null,
+        ?int $residenceBuildingId = null,
+        ?string $unitDong = null,
+        ?string $unitHo = null
+    ): array
     {
         $query = trim($apartmentQuery);
         $selectedApartment = null;
+        $selectedComplex = null;
+        $selectedBuilding = null;
+        $selectedUnit = null;
         $matchReview = null;
         $autoVerified = false;
         $verificationReason = null;
 
-        if ($apartmentId) {
+        if ($residenceBuildingId) {
+            $selectedBuilding = ResidenceBuilding::query()->with('complex')->findOrFail($residenceBuildingId);
+            $selectedComplex = $selectedBuilding->complex;
+            $selectedApartment = $selectedComplex?->legacyApartment;
+        } elseif ($apartmentId) {
             $selectedApartment = Apartment::query()->findOrFail($apartmentId);
-            $user->preferred_apartment_id = $selectedApartment->id;
-            $user->home_sido = $selectedApartment->sido;
-            $user->home_sigungu = $selectedApartment->sigungu;
-            $user->home_eupmyeondong = $selectedApartment->eupmyeondong;
-            $user->home_apartment_name = $selectedApartment->name;
+            $selectedComplex = $this->findOrCreateComplexFromApartment($selectedApartment);
+            $selectedBuilding = ResidenceBuilding::query()
+                ->where('complex_id', $selectedComplex->id)
+                ->orderBy('id')
+                ->first();
+        }
+
+        if ($selectedComplex && $selectedBuilding) {
+            $selectedUnit = $this->resolveUnit($selectedBuilding, $unitDong, $unitHo);
+            $regionSnapshot = $this->extractResidenceRegionSnapshot($selectedComplex, $selectedBuilding);
+
+            $user->preferred_apartment_id = $selectedApartment?->id;
+            $user->preferred_residence_complex_id = $selectedComplex->id;
+            $user->preferred_residence_building_id = $selectedBuilding->id;
+            $user->preferred_residence_unit_id = $selectedUnit?->id;
+            $user->home_sido = $selectedApartment?->sido ?: ($regionSnapshot['sido'] ?: null);
+            $user->home_sigungu = $selectedApartment?->sigungu ?: ($regionSnapshot['sigungu'] ?: null);
+            $user->home_eupmyeondong = $selectedApartment?->eupmyeondong ?: ($regionSnapshot['eupmyeondong'] ?: null);
+            $user->home_apartment_name = $selectedComplex->displayName();
             $user->save();
 
+            UserResidence::query()
+                ->where('user_id', $user->id)
+                ->where('is_primary', true)
+                ->update(['is_primary' => false]);
+
+            $userResidence = UserResidence::query()->updateOrCreate([
+                'user_id' => $user->id,
+                'complex_id' => $selectedComplex->id,
+            ], [
+                'building_id' => $selectedBuilding->id,
+                'unit_id' => $selectedUnit?->id,
+                'verification_method' => 'gps',
+                'verification_status' => 'pending',
+                'is_primary' => true,
+            ]);
+
             if ($latitude !== null && $longitude !== null) {
-                $verification = $this->tryAutoApproveResidentByLocation(
+                $verification = $this->tryAutoApproveResidentByResidence(
                     $user,
-                    $selectedApartment,
+                    $selectedComplex,
+                    $selectedBuilding,
                     $latitude,
                     $longitude,
-                    $source
+                    $source,
+                    $selectedApartment
                 );
                 $autoVerified = (bool) ($verification['approved'] ?? false);
                 $verificationReason = (string) ($verification['reason'] ?? 'region_not_matched');
+
+                if ($autoVerified) {
+                    $userResidence->fill([
+                        'verification_status' => 'verified',
+                        'gps_verified_at' => now(),
+                        'distance_m' => isset($verification['details']['distance_meters'])
+                            ? (int) $verification['details']['distance_meters']
+                            : null,
+                        'evidence_meta' => $verification['details'] ?? null,
+                    ])->save();
+                } else {
+                    $userResidence->fill([
+                        'verification_status' => 'pending',
+                        'evidence_meta' => [
+                            'latitude' => $latitude,
+                            'longitude' => $longitude,
+                            'reason' => $verificationReason,
+                            'details' => $verification['details'] ?? null,
+                        ],
+                    ])->save();
+                }
             }
 
             ApartmentMatchReview::query()
@@ -85,9 +241,15 @@ class ApartmentSelectionService
                 ->where('status', 'pending')
                 ->update([
                     'status' => 'resolved',
-                    'resolved_apartment_id' => $selectedApartment->id,
+                    'resolved_apartment_id' => $selectedApartment?->id,
                     'resolved_at' => now(),
                 ]);
+
+            $this->queueMergeCandidates($selectedComplex);
+            $this->operationalMetricsService->log('residence_selected', $user->id, $selectedComplex->id, $selectedBuilding->id, [
+                'source' => $source,
+                'auto_verified' => $autoVerified,
+            ]);
         } elseif ($query !== '') {
             $matchReview = ApartmentMatchReview::query()->updateOrCreate(
                 [
@@ -102,10 +264,18 @@ class ApartmentSelectionService
                     'admin_note' => null,
                 ]
             );
+
+            $this->operationalMetricsService->log('residence_selection_pending_review', $user->id, null, null, [
+                'query' => $query,
+                'source' => $source,
+            ]);
         }
 
         return [
             'selected_apartment' => $selectedApartment,
+            'selected_complex' => $selectedComplex,
+            'selected_building' => $selectedBuilding,
+            'selected_unit' => $selectedUnit,
             'match_review' => $matchReview,
             'auto_verified' => $autoVerified,
             'verification_reason' => $verificationReason,
@@ -119,9 +289,71 @@ class ApartmentSelectionService
         float $longitude,
         string $source = 'unknown'
     ): array {
-        $verification = $this->locationVerificationService->verifyNearApartment($latitude, $longitude, $apartment);
+        $complex = $this->findOrCreateComplexFromApartment($apartment);
+        $building = ResidenceBuilding::query()->firstOrCreate([
+            'normalized_key' => $this->residenceNamingService->normalize(
+                $complex->normalized_key . '|' . $apartment->name . '|' . $apartment->road_address
+            ),
+        ], [
+            'complex_id' => $complex->id,
+            'building_name' => $apartment->name,
+            'road_address' => $apartment->road_address,
+            'jibun_address' => $apartment->jibun_address,
+        ]);
+
+        return $this->tryAutoApproveResidentByResidence(
+            $user,
+            $complex,
+            $building,
+            $latitude,
+            $longitude,
+            $source,
+            $apartment
+        );
+    }
+
+    public function tryAutoApproveResidentByResidence(
+        User $user,
+        ResidenceComplex $complex,
+        ResidenceBuilding $building,
+        float $latitude,
+        float $longitude,
+        string $source = 'unknown',
+        ?Apartment $legacyApartment = null
+    ): array {
+        $legacyApartment ??= $complex->legacyApartment;
+        $regionSnapshot = $this->extractResidenceRegionSnapshot($complex, $building);
+
+        $verificationSido = (string) ($legacyApartment?->sido ?: ($regionSnapshot['sido'] ?? ''));
+        $verificationSigungu = (string) ($legacyApartment?->sigungu ?: ($regionSnapshot['sigungu'] ?? ''));
+        $verificationDong = (string) ($legacyApartment?->eupmyeondong ?: ($regionSnapshot['eupmyeondong'] ?? ''));
+
+        $distanceThreshold = match ($complex->housing_type) {
+            'apartment' => 300,
+            'officetel' => 120,
+            'villa' => 100,
+            'urban_living' => 100,
+            default => 150,
+        };
+
+        $verification = $this->locationVerificationService->verifyNearResidenceProfile(
+            $latitude,
+            $longitude,
+            $verificationSido,
+            $verificationSigungu,
+            $verificationDong,
+            (string) ($building->road_address ?: $complex->road_address),
+            $building->latitude,
+            $building->longitude,
+            $distanceThreshold
+        );
 
         if (($verification['verified'] ?? false) !== true) {
+            $this->operationalMetricsService->log('gps_verification_failed', $user->id, $complex->id, $building->id, [
+                'reason' => (string) ($verification['reason'] ?? 'region_not_matched'),
+                'source' => $source,
+            ]);
+
             return [
                 'approved' => false,
                 'reason' => (string) ($verification['reason'] ?? 'region_not_matched'),
@@ -129,33 +361,42 @@ class ApartmentSelectionService
             ];
         }
 
-        UserRole::query()->firstOrCreate([
-            'user_id' => $user->id,
-            'apartment_id' => $apartment->id,
-            'role' => 'resident',
-        ], [
-            'granted_at' => now(),
-            'granted_by' => null,
-        ]);
+        if ($legacyApartment) {
+            UserRole::query()->firstOrCreate([
+                'user_id' => $user->id,
+                'apartment_id' => $legacyApartment->id,
+                'role' => 'resident',
+            ], [
+                'granted_at' => now(),
+                'granted_by' => null,
+            ]);
 
-        ResidentVerificationRequest::query()->updateOrCreate([
-            'user_id' => $user->id,
-            'apartment_id' => $apartment->id,
-            'status' => 'approved',
-        ], [
-            'request_note' => 'GPS 기반 자동 인증 승인',
-            'admin_note' => 'Google Geocoding 위치 매칭으로 자동 승인됨 (source: '.$source.')',
-            'reviewed_by' => null,
-            'reviewed_at' => now(),
-        ]);
+            ResidentVerificationRequest::query()->updateOrCreate([
+                'user_id' => $user->id,
+                'apartment_id' => $legacyApartment->id,
+                'status' => 'approved',
+            ], [
+                'residence_complex_id' => $complex->id,
+                'residence_building_id' => $building->id,
+                'verification_method' => 'gps',
+                'distance_m' => isset($verification['distance_meters']) ? (int) $verification['distance_meters'] : null,
+                'request_note' => 'GPS 기반 자동 인증 승인',
+                'admin_note' => 'Google Geocoding 위치 매칭으로 자동 승인됨 (source: '.$source.')',
+                'reviewed_by' => null,
+                'reviewed_at' => now(),
+            ]);
 
-        // Unique(user_id, apartment_id, status) 제약 때문에 pending을 approved로 변경하면
-        // 기존 approved 행과 충돌할 수 있어, 대기 요청은 자동승인 이후 정리한다.
-        ResidentVerificationRequest::query()
-            ->where('user_id', $user->id)
-            ->where('apartment_id', $apartment->id)
-            ->where('status', 'pending')
-            ->delete();
+            ResidentVerificationRequest::query()
+                ->where('user_id', $user->id)
+                ->where('apartment_id', $legacyApartment->id)
+                ->where('status', 'pending')
+                ->delete();
+        }
+
+        $this->operationalMetricsService->log('gps_verification_succeeded', $user->id, $complex->id, $building->id, [
+            'reason' => (string) ($verification['reason'] ?? 'matched_by_google_geocode'),
+            'source' => $source,
+        ]);
 
         return [
             'approved' => true,
@@ -180,5 +421,336 @@ class ApartmentSelectionService
         $text = preg_replace('/[\s\-\_\(\)\[\]\.,]+/u', '', $text);
 
         return $text ?? '';
+    }
+
+    private function findOrCreateComplexFromApartment(Apartment $apartment): ResidenceComplex
+    {
+        $normalizedKey = $this->residenceNamingService->normalize(implode('|', [
+            (string) $apartment->sido,
+            (string) $apartment->sigungu,
+            (string) $apartment->eupmyeondong,
+            (string) $apartment->road_address,
+            (string) $apartment->name,
+        ]));
+
+        $name = $this->residenceNamingService->buildDisplayName(
+            $apartment->name,
+            null,
+            $apartment->road_address,
+            $apartment->jibun_address,
+            'apartment'
+        );
+
+        $complex = ResidenceComplex::query()->updateOrCreate([
+            'legacy_apartment_id' => $apartment->id,
+        ], [
+            'housing_type' => 'apartment',
+            'official_name' => $apartment->name,
+            'alias_name' => null,
+            'auto_display_name' => $name['display_name'],
+            'display_name_source' => $name['source'],
+            'road_address' => $apartment->road_address,
+            'jibun_address' => $apartment->jibun_address,
+            'normalized_key' => $normalizedKey,
+            'status' => ((bool) ($apartment->is_active ?? true)) ? 'active' : 'hidden',
+        ]);
+
+        ResidenceBuilding::query()->firstOrCreate([
+            'normalized_key' => $this->residenceNamingService->normalize($normalizedKey . '|' . $apartment->name),
+        ], [
+            'complex_id' => $complex->id,
+            'building_name' => $apartment->name,
+            'road_address' => $apartment->road_address,
+            'jibun_address' => $apartment->jibun_address,
+        ]);
+
+        return $complex;
+    }
+
+    private function resolveUnit(ResidenceBuilding $building, ?string $unitDong, ?string $unitHo): ?ResidenceUnit
+    {
+        $dong = trim((string) $unitDong);
+        $ho = trim((string) $unitHo);
+
+        if ($dong === '' && $ho === '') {
+            return null;
+        }
+
+        $normalized = $this->residenceNamingService->normalize($dong . '-' . $ho);
+        $label = trim(implode(' ', array_filter([$dong !== '' ? ($dong . '동') : null, $ho !== '' ? ($ho . '호') : null])));
+
+        return ResidenceUnit::query()->updateOrCreate([
+            'building_id' => $building->id,
+            'normalized_unit_key' => $normalized,
+        ], [
+            'dong' => $dong !== '' ? $dong : null,
+            'ho' => $ho !== '' ? $ho : null,
+            'unit_label_generated' => $label !== '' ? $label : '세대 미지정',
+        ]);
+    }
+
+    private function queueMergeCandidates(ResidenceComplex $complex): void
+    {
+        $nearby = ResidenceComplex::query()
+            ->where('id', '!=', $complex->id)
+            ->where('status', 'active')
+            ->when($complex->legal_dong_code, function (Builder $builder) use ($complex) {
+                $builder->where('legal_dong_code', $complex->legal_dong_code);
+            })
+            ->limit(20)
+            ->get();
+
+        $nameA = $this->residenceNamingService->normalize($complex->displayName());
+
+        foreach ($nearby as $target) {
+            $score = 0.0;
+            $distance = null;
+
+            if ($complex->latitude !== null && $complex->longitude !== null && $target->latitude !== null && $target->longitude !== null) {
+                $distance = $this->haversineMeters(
+                    (float) $complex->latitude,
+                    (float) $complex->longitude,
+                    (float) $target->latitude,
+                    (float) $target->longitude
+                );
+
+                if ($distance <= 80) {
+                    $score += 50;
+                } elseif ($distance <= 150) {
+                    $score += 30;
+                }
+            }
+
+            $nameB = $this->residenceNamingService->normalize($target->displayName());
+            similar_text($nameA, $nameB, $nameSimilarity);
+            $score += $nameSimilarity * 0.5;
+
+            if ($complex->normalized_key === $target->normalized_key) {
+                $score += 30;
+            }
+
+            if ($score < 60) {
+                continue;
+            }
+
+            ResidenceMergeCandidate::query()->updateOrCreate([
+                'source_complex_id' => min($complex->id, $target->id),
+                'target_complex_id' => max($complex->id, $target->id),
+            ], [
+                'score' => round($score, 2),
+                'reason' => [
+                    'distance_m' => $distance,
+                    'name_similarity' => round($nameSimilarity, 2),
+                    'key_match' => $complex->normalized_key === $target->normalized_key,
+                ],
+                'status' => 'pending',
+            ]);
+        }
+    }
+
+    private function haversineMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371000.0;
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
+        return 2 * $earthRadius * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    private function extractResidenceRegionSnapshot(ResidenceComplex $complex, ResidenceBuilding $building): array
+    {
+        $sourceAddress = trim((string) ($building->road_address ?: $complex->road_address ?: $building->jibun_address ?: $complex->jibun_address));
+
+        if ($sourceAddress === '') {
+            return [
+                'sido' => null,
+                'sigungu' => null,
+                'eupmyeondong' => null,
+            ];
+        }
+
+        $tokens = preg_split('/\s+/u', str_replace(',', ' ', $sourceAddress)) ?: [];
+        $tokens = array_values(array_filter(array_map(function ($token) {
+            $token = trim((string) $token);
+
+            return $token !== '' ? $token : null;
+        }, $tokens)));
+
+        $tokens = array_values(array_filter($tokens, fn ($token) => $token !== '대한민국'));
+
+        $sido = null;
+        $cityToken = null;
+        $districtToken = null;
+        $dong = null;
+
+        foreach ($tokens as $token) {
+            if ($sido === null && preg_match('/(도|특별시|광역시|자치시)$/u', $token)) {
+                $sido = $token;
+                continue;
+            }
+
+            if ($cityToken === null && preg_match('/시$/u', $token)) {
+                $cityToken = $token;
+                continue;
+            }
+
+            if ($districtToken === null && preg_match('/(구|군)$/u', $token)) {
+                $districtToken = $token;
+                continue;
+            }
+
+            if ($dong === null && preg_match('/(동|읍|면|가)$/u', $token)) {
+                $dong = $token;
+            }
+        }
+
+        if ($sido === null && $cityToken !== null) {
+            $sido = $cityToken;
+        }
+
+        $sigungu = null;
+        if ($cityToken !== null && $districtToken !== null) {
+            $sigungu = trim($cityToken . ' ' . $districtToken);
+        } elseif ($districtToken !== null) {
+            $sigungu = $districtToken;
+        } elseif ($cityToken !== null) {
+            $sigungu = $cityToken;
+        }
+
+        return [
+            'sido' => $sido,
+            'sigungu' => $sigungu,
+            'eupmyeondong' => $dong,
+        ];
+    }
+
+    private function searchRoadCandidatesFromGoogle(string $keyword, int $limit): Collection
+    {
+        $apiKey = trim((string) config('services.google_maps.api_key'));
+
+        if ($apiKey === '') {
+            return collect();
+        }
+
+        $response = Http::timeout(8)
+            ->retry(1, 400, throw: false)
+            ->get('https://maps.googleapis.com/maps/api/geocode/json', [
+                'address' => $keyword,
+                'language' => 'ko',
+                'region' => 'kr',
+                'key' => $apiKey,
+            ]);
+
+        if (! $response->successful()) {
+            return collect();
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload) || (string) Arr::get($payload, 'status') !== 'OK') {
+            return collect();
+        }
+
+        $results = collect((array) Arr::get($payload, 'results', []))->take($limit);
+
+        return $results->map(function ($row) {
+            $formattedAddress = trim((string) Arr::get($row, 'formatted_address', ''));
+            if ($formattedAddress === '') {
+                return null;
+            }
+
+            $components = collect((array) Arr::get($row, 'address_components', []));
+            $find = function (array $types) use ($components): ?string {
+                $entry = $components->first(function ($component) use ($types) {
+                    $componentTypes = (array) ($component['types'] ?? []);
+                    foreach ($types as $type) {
+                        if (in_array($type, $componentTypes, true)) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                });
+
+                $name = trim((string) ($entry['long_name'] ?? ''));
+
+                return $name !== '' ? $name : null;
+            };
+
+            $road = trim(implode(' ', array_filter([
+                $find(['route']),
+                $find(['street_number']),
+            ])));
+
+            $jibun = trim(implode(' ', array_filter([
+                $find(['sublocality_level_1', 'sublocality_level_2', 'sublocality', 'neighborhood']),
+                $find(['premise']),
+            ])));
+
+            $lat = Arr::get($row, 'geometry.location.lat');
+            $lng = Arr::get($row, 'geometry.location.lng');
+
+            $normalizedKey = $this->residenceNamingService->normalize($formattedAddress);
+            if ($normalizedKey === '') {
+                return null;
+            }
+
+            $name = $this->residenceNamingService->buildDisplayName(
+                null,
+                null,
+                $road !== '' ? $road : $formattedAddress,
+                $jibun !== '' ? $jibun : null,
+                'mixed'
+            );
+
+            $complex = ResidenceComplex::query()->firstOrCreate([
+                'normalized_key' => $normalizedKey,
+            ], [
+                'housing_type' => 'mixed',
+                'official_name' => null,
+                'alias_name' => null,
+                'auto_display_name' => $name['display_name'],
+                'display_name_source' => $name['source'],
+                'road_address' => $road !== '' ? $road : $formattedAddress,
+                'jibun_address' => $jibun !== '' ? $jibun : null,
+                'legal_dong_code' => null,
+                'postal_code' => null,
+                'latitude' => is_numeric($lat) ? (float) $lat : null,
+                'longitude' => is_numeric($lng) ? (float) $lng : null,
+                'status' => 'active',
+            ]);
+
+            $buildingKey = $this->residenceNamingService->normalize($complex->normalized_key . '|' . (string) ($road !== '' ? $road : $formattedAddress));
+
+            $building = ResidenceBuilding::query()->firstOrCreate([
+                'normalized_key' => $buildingKey,
+            ], [
+                'complex_id' => $complex->id,
+                'building_no' => null,
+                'building_name' => null,
+                'road_address' => $road !== '' ? $road : $formattedAddress,
+                'jibun_address' => $jibun !== '' ? $jibun : null,
+                'bld_main_no' => null,
+                'bld_sub_no' => null,
+                'legal_dong_code' => null,
+                'latitude' => is_numeric($lat) ? (float) $lat : null,
+                'longitude' => is_numeric($lng) ? (float) $lng : null,
+            ]);
+
+            return [
+                'id' => (int) ($complex->legacy_apartment_id ?? 0),
+                'complex_id' => (int) $complex->id,
+                'building_id' => (int) $building->id,
+                'name' => $complex->displayName(),
+                'label' => $complex->displayName() . ' · ' . ($building->road_address ?: $complex->road_address),
+                'region' => trim((string) ($complex->jibun_address ?: $complex->road_address)),
+                'road_address' => (string) ($building->road_address ?: $complex->road_address),
+                'housing_type' => $complex->housing_type,
+            ];
+        })->filter()->values();
     }
 }

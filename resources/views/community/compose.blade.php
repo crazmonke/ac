@@ -54,7 +54,7 @@
                 @endforeach
             </div>
         @else
-            <div class="empty">인증된 아파트에서 작성 가능한 게시판이 없습니다. 관리자에게 게시판 설정을 요청해 주세요.</div>
+            <div class="empty">인증된 공동주택에서 작성 가능한 게시판이 없습니다. 관리자에게 게시판 설정을 요청해 주세요.</div>
         @endif
     </section>
 </div>

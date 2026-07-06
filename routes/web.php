@@ -22,7 +22,7 @@ Route::get('/terms', [PublicSiteController::class, 'terms']);
 Route::get('/privacy', [PublicSiteController::class, 'privacy']);
 
 Route::view('/apartments', 'placeholder', [
-    'title' => '아파트 검색',
+    'title' => '공동주택 검색',
     'description' => '단지 검색과 선택을 위한 페이지입니다.',
 ]);
 Route::get('/apartments/search', [ApartmentSearchController::class, 'index']);
@@ -73,6 +73,9 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/review-queue', [AdminDashboardController::class, 'reviewQueue']);
     Route::put('/review-queue/matches/{id}', [AdminDashboardController::class, 'updateMatchReview']);
     Route::put('/review-queue/verifications/{id}', [AdminDashboardController::class, 'updateVerificationRequest']);
+    Route::put('/review-queue/residence-verifications/{id}', [AdminDashboardController::class, 'updateResidenceVerification']);
+    Route::post('/review-queue/residence-verifications/{id}/retry', [AdminDashboardController::class, 'retryResidenceVerification']);
+    Route::put('/review-queue/merges/{id}', [AdminDashboardController::class, 'updateMergeCandidate']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
     Route::get('/users', [AdminDashboardController::class, 'users']);
     Route::put('/users/{id}/verification', [AdminDashboardController::class, 'updateUserVerification']);

@@ -24,6 +24,9 @@ class User extends Authenticatable
         'name',
         'email',
         'preferred_apartment_id',
+        'preferred_residence_complex_id',
+        'preferred_residence_building_id',
+        'preferred_residence_unit_id',
         'home_sido',
         'home_sigungu',
         'home_eupmyeondong',
@@ -72,6 +75,21 @@ class User extends Authenticatable
         return $this->belongsTo(Apartment::class, 'preferred_apartment_id');
     }
 
+    public function preferredResidenceComplex(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceComplex::class, 'preferred_residence_complex_id');
+    }
+
+    public function preferredResidenceBuilding(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceBuilding::class, 'preferred_residence_building_id');
+    }
+
+    public function preferredResidenceUnit(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceUnit::class, 'preferred_residence_unit_id');
+    }
+
     public function residentVerificationRequests(): HasMany
     {
         return $this->hasMany(ResidentVerificationRequest::class);
@@ -80,6 +98,11 @@ class User extends Authenticatable
     public function apartmentMatchReviews(): HasMany
     {
         return $this->hasMany(ApartmentMatchReview::class);
+    }
+
+    public function userResidences(): HasMany
+    {
+        return $this->hasMany(UserResidence::class);
     }
 
     public function posts(): HasMany

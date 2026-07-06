@@ -143,11 +143,10 @@
 
     <section class="card">
         <h2>프로필 정보</h2>
-        <p>프로필 잠금이 해제된 경우에만 이름/이메일/아파트를 수정할 수 있습니다.</p>
+        <p>프로필 잠금이 해제된 경우에만 이름/이메일/공동주택를 수정할 수 있습니다.</p>
         <form method="post" action="/settings/profile" class="form-grid two">
             @csrf
             @method('put')
-            <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
 
             <label>
                 이름
@@ -160,13 +159,24 @@
             </label>
 
             <div style="grid-column: 1 / -1;">
-                <label>아파트 선택</label>
+                <label>공동주택 선택</label>
                 <div class="autocomplete">
-                    <input id="apartmentQuery" name="apartment_query" value="{{ old('apartment_query', $selectedApartment?->name ?? $user->home_apartment_name) }}" placeholder="아파트명 또는 지역 검색" autocomplete="off" required @readonly($isProfileLocked)>
+                    <input id="apartmentQuery" name="apartment_query" value="{{ old('apartment_query', $selectedApartment?->name ?? $user->home_apartment_name) }}" placeholder="공동주택/오피스텔/빌라/도로명 검색" autocomplete="off" required @readonly($isProfileLocked)>
                     <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', $selectedApartment?->id ?? $user->preferred_apartment_id) }}">
+                    <input id="residenceBuildingId" type="hidden" name="residence_building_id" value="{{ old('residence_building_id', $user->preferred_residence_building_id) }}">
                     <div id="apartmentSuggestions" class="suggestions" style="display:none;"></div>
                 </div>
-                <div class="meta" style="margin-top:6px;">현재 선택: {{ $selectedApartment?->name ?? $user->home_apartment_name ?? '미선택' }}</div>
+                <div class="meta" style="margin-top:6px;">현재 선택: {{ $user->home_apartment_name ?? '미선택' }}</div>
+            </div>
+
+            <label>
+                동 (선택)
+                <input name="residence_dong" value="{{ old('residence_dong', $user->preferredResidenceUnit?->dong) }}" maxlength="40" @readonly($isProfileLocked)>
+            </label>
+
+            <label>
+                호 (선택)
+                <input name="residence_ho" value="{{ old('residence_ho', $user->preferredResidenceUnit?->ho) }}" maxlength="40" @readonly($isProfileLocked)>
             </div>
 
             <div class="row" style="grid-column: 1 / -1;">
@@ -219,16 +229,19 @@
 
     <section class="card">
         <h2>입주민 인증</h2>
-        <p>선택된 아파트 기준으로 입주민 인증이 진행됩니다. 검수 상태는 아래에서 확인할 수 있습니다.</p>
+        <p>선택된 공동주택 기준으로 인증이 진행됩니다. 검수 상태는 아래에서 확인할 수 있습니다.</p>
         <div class="row" style="margin-bottom:10px;">
-            <span class="badge">선택 아파트: {{ $selectedApartment?->name ?? '미선택' }}</span>
+            <span class="badge">선택 공동주택: {{ $user->home_apartment_name ?? '미선택' }}</span>
             <span class="badge">입주민 권한: {{ $hasResidentRole ? '승인됨' : '미승인' }}</span>
         </div>
         @if($latestMatchReview)
-            <p class="meta">최근 아파트 매칭 검수: {{ $latestMatchReview->status }} · {{ $latestMatchReview->raw_apartment_name }}</p>
+            <p class="meta">최근 공동주택 매칭 검수: {{ $latestMatchReview->status }} · {{ $latestMatchReview->raw_apartment_name }}</p>
         @endif
         @if($latestVerificationRequest)
             <p class="meta">최근 인증 요청: {{ $latestVerificationRequest->status }} · {{ $latestVerificationRequest->apartment->name ?? '미지정' }}</p>
+        @endif
+        @if($latestResidenceVerification)
+            <p class="meta">최근 공동주택 인증 상태: {{ $latestResidenceVerification->verification_status }} · {{ $latestResidenceVerification->complex?->displayName() ?? '미지정' }}</p>
         @endif
         <form method="post" action="/settings/resident-verification-request">
             @csrf
@@ -261,6 +274,7 @@
 (function () {
     const queryInput = document.getElementById('apartmentQuery');
     const apartmentIdInput = document.getElementById('apartmentId');
+    const residenceBuildingId = document.getElementById('residenceBuildingId');
     const verificationLatitude = document.getElementById('verificationLatitude');
     const verificationLongitude = document.getElementById('verificationLongitude');
     const suggestionBox = document.getElementById('apartmentSuggestions');
@@ -296,6 +310,9 @@
     queryInput.addEventListener('input', async () => {
         const keyword = queryInput.value.trim();
         apartmentIdInput.value = '';
+        if (residenceBuildingId) {
+            residenceBuildingId.value = '';
+        }
 
         if (lastController) {
             lastController.abort();
@@ -329,9 +346,9 @@
             }
 
             suggestionBox.innerHTML = rows.map((row) => `
-                <div class="suggestion" data-id="${row.id}" data-name="${row.name}">
+                <div class="suggestion" data-id="${row.id || ''}" data-building-id="${row.building_id || ''}" data-name="${row.name}">
                     ${row.name}
-                    <small>${row.region} · ${row.road_address}</small>
+                    <small>${row.housing_type || 'residence'} · ${row.region} · ${row.road_address}</small>
                 </div>
             `).join('');
             suggestionBox.style.display = 'block';
@@ -347,6 +364,9 @@
         }
 
         apartmentIdInput.value = item.dataset.id;
+        if (residenceBuildingId) {
+            residenceBuildingId.value = item.dataset.buildingId;
+        }
         queryInput.value = item.dataset.name;
         closeSuggestions();
     });
