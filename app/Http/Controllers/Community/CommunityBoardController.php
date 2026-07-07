@@ -753,7 +753,7 @@ class CommunityBoardController extends Controller
     public function uploadEditorPhoto(Request $request)
     {
         $data = $request->validate([
-            'file' => ['required', 'image', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp'],
+            'file' => ['required', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,heic,heif,avif'],
         ]);
 
         $uploadedFile = $data['file'];
@@ -774,6 +774,102 @@ class CommunityBoardController extends Controller
             'url' => '/uploads/editor-images/'.$dateSegment.'/'.$storedName,
             'name' => (string) $uploadedFile->getClientOriginalName(),
         ]);
+    }
+
+    public function uploadEditorVideo(Request $request)
+    {
+        $data = $request->validate([
+            'file' => ['required', 'file', 'max:102400', 'mimes:mp4,mov,webm,m4v'],
+        ]);
+
+        $uploadedFile = $data['file'];
+        $dateSegment = now()->format('Y/m');
+        $targetDirectory = public_path('uploads/editor-videos/'.$dateSegment);
+
+        if (! is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        $maxOutputBytes = 10 * 1024 * 1024;
+        $originalExtension = Str::lower((string) $uploadedFile->getClientOriginalExtension());
+        $tempName = Str::uuid().'.'.($originalExtension !== '' ? $originalExtension : 'mp4');
+        $tempPath = $targetDirectory.'/'.$tempName;
+        $uploadedFile->move($targetDirectory, $tempName);
+
+        $storedName = Str::uuid().'.mp4';
+        $finalPath = $targetDirectory.'/'.$storedName;
+        $outputPath = $tempPath;
+        $compressed = false;
+
+        if (@filesize($tempPath) > $maxOutputBytes) {
+            $compressed = $this->compressVideoToTargetSize($tempPath, $finalPath, $maxOutputBytes);
+            if (! $compressed) {
+                @unlink($tempPath);
+                return response()->json([
+                    'message' => '영상 자동 압축에 실패했습니다. 10MB 이하 영상으로 다시 시도해 주세요.',
+                ], 422);
+            }
+
+            $outputPath = $finalPath;
+            @unlink($tempPath);
+        } else {
+            $safeExtension = $originalExtension !== '' ? $originalExtension : 'mp4';
+            $storedName = Str::uuid().'.'.$safeExtension;
+            $finalPath = $targetDirectory.'/'.$storedName;
+            rename($tempPath, $finalPath);
+            $outputPath = $finalPath;
+        }
+
+        if (@filesize($outputPath) > $maxOutputBytes) {
+            @unlink($outputPath);
+            return response()->json([
+                'message' => '압축 후에도 10MB를 초과합니다. 더 짧거나 낮은 해상도의 영상을 선택해 주세요.',
+            ], 422);
+        }
+
+        return response()->json([
+            'url' => '/uploads/editor-videos/'.$dateSegment.'/'.$storedName,
+            'name' => (string) $uploadedFile->getClientOriginalName(),
+            'type' => 'video',
+        ]);
+    }
+
+    private function compressVideoToTargetSize(string $sourcePath, string $targetPath, int $targetBytes): bool
+    {
+        $ffmpeg = trim((string) @shell_exec('command -v ffmpeg'));
+        if ($ffmpeg === '') {
+            return false;
+        }
+
+        $profiles = [
+            ['crf' => 30, 'maxrate' => '1600k', 'bufsize' => '3200k', 'audio' => '96k', 'scale' => 'min(1280,iw):-2'],
+            ['crf' => 34, 'maxrate' => '1100k', 'bufsize' => '2200k', 'audio' => '72k', 'scale' => 'min(960,iw):-2'],
+            ['crf' => 37, 'maxrate' => '850k', 'bufsize' => '1700k', 'audio' => '64k', 'scale' => 'min(854,iw):-2'],
+        ];
+
+        foreach ($profiles as $profile) {
+            @unlink($targetPath);
+
+            $command = sprintf(
+                '%s -y -i %s -vf %s -c:v libx264 -preset veryfast -crf %d -maxrate %s -bufsize %s -pix_fmt yuv420p -c:a aac -b:a %s -movflags +faststart %s 2>&1',
+                escapeshellarg($ffmpeg),
+                escapeshellarg($sourcePath),
+                escapeshellarg('scale='.$profile['scale']),
+                (int) $profile['crf'],
+                escapeshellarg($profile['maxrate']),
+                escapeshellarg($profile['bufsize']),
+                escapeshellarg($profile['audio']),
+                escapeshellarg($targetPath)
+            );
+
+            @shell_exec($command);
+
+            if (is_file($targetPath) && @filesize($targetPath) > 0 && @filesize($targetPath) <= $targetBytes) {
+                return true;
+            }
+        }
+
+        return is_file($targetPath) && @filesize($targetPath) > 0 && @filesize($targetPath) <= $targetBytes;
     }
 
     private function resolveBoard(string $slug, int $apartmentId): Board
@@ -1042,10 +1138,12 @@ class CommunityBoardController extends Controller
             return strip_tags($html);
         }
 
-        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'span', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'pre', 'code', 'a', 'img'];
+        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'span', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'pre', 'code', 'a', 'img', 'video', 'source'];
         $allowedAttrMap = [
             'a' => ['href', 'target', 'rel', 'style'],
             'img' => ['src', 'alt'],
+            'video' => ['src', 'controls', 'playsinline', 'preload', 'muted', 'loop', 'poster'],
+            'source' => ['src', 'type'],
             'span' => ['style'],
             'p' => ['style'],
             'li' => ['style'],
@@ -1120,7 +1218,7 @@ class CommunityBoardController extends Controller
                     $element->removeAttribute('target');
                     $element->removeAttribute('rel');
                 }
-            } elseif ($tag === 'img') {
+            } elseif ($tag === 'img' || $tag === 'video' || $tag === 'source') {
                 $src = trim((string) $element->getAttribute('src'));
                 if ($src === '' || ! preg_match('/^(https?:\/\/|\/)/i', $src)) {
                     $parent = $element->parentNode;

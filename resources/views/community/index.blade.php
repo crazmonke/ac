@@ -6,7 +6,7 @@
     <title>{{ $apartmentName }} 커뮤니티</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f7f9; color: #171717; }
-        .wrap { max-width: 760px; margin: 0 auto; padding: 14px 12px 110px; }
+        .wrap { max-width: 760px; margin: 0 auto; padding: 14px 12px 24px; }
         .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
         .meta { color: #5b6d82; font-size: 0.92rem; }
         .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -19,8 +19,44 @@
         .topic-scroll.dragging { cursor: grabbing; user-select: none; }
         .topic-scroll .scope-tab { flex: 0 0 auto; }
         .desktop-write-cta { display: inline-flex; }
-        .mobile-bottom-nav { display: none; }
-        .has-mobile-bottom-nav { }
+        .mobile-write-fab {
+            display: none;
+            position: fixed;
+            right: 16px;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            z-index: 140;
+            width: 56px;
+            height: 56px;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0e1726;
+            box-shadow: 0 10px 20px rgba(15, 23, 38, 0.2);
+            text-decoration: none;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+        }
+        .mobile-write-fab-icon {
+            width: 38px;
+            height: 38px;
+            display: block;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.1;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
         .panel { margin-top: 12px; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 12px; }
         .post-list { list-style: none; margin: 0; padding: 0; }
         .post-item { border-top: 1px solid #e3e6eb; padding: 12px 0; }
@@ -127,6 +163,7 @@
             position: absolute;
             top: 16px;
             right: 16px;
+            z-index: 5;
             width: 40px;
             height: 40px;
             border-radius: 999px;
@@ -139,6 +176,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            touch-action: manipulation;
         }
         .media-lightbox-content {
             max-width: min(980px, 96vw);
@@ -147,9 +185,30 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            touch-action: pan-y;
+            overscroll-behavior: contain;
         }
-        .media-lightbox-content img,
-        .media-lightbox-content video {
+        .media-lightbox-track {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            transform: translate3d(-100%, 0, 0);
+            will-change: transform;
+        }
+        .media-lightbox-frame {
+            flex: 0 0 100%;
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1px;
+        }
+        .media-lightbox-frame img,
+        .media-lightbox-frame video {
             max-width: 100%;
             max-height: calc(100vh - 84px);
             width: auto;
@@ -161,6 +220,7 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
+            z-index: 5;
             width: 44px;
             height: 44px;
             border-radius: 999px;
@@ -173,6 +233,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            touch-action: manipulation;
         }
         .media-lightbox-nav.prev { left: 16px; }
         .media-lightbox-nav.next { right: 16px; }
@@ -182,6 +243,7 @@
             bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 4;
             color: rgba(255, 255, 255, 0.9);
             font-size: 0.85rem;
             font-weight: 700;
@@ -256,7 +318,7 @@
         .empty-box a { color: #0f6f67; font-weight: 700; text-decoration: none; }
 
         @media (max-width: 768px) {
-            .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+            .wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
             .post-row { gap: 10px; }
             .post-thumb { flex-basis: 86px; width: 86px; border-radius: 9px; }
             .post-actions {
@@ -279,40 +341,13 @@
                 font-size: 0.92rem;
             }
             .desktop-write-cta { display: none; }
-            .mobile-bottom-nav {
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 120;
-                display: block;
-                padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-                background: linear-gradient(180deg, #eef4ff, #f7faff);
-                border-top: 1px solid rgba(220, 243, 246, 0.42);
-                backdrop-filter: blur(8px);
-            }
-            .mobile-bottom-nav-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 58px; }
-            .mobile-nav-item { text-decoration: none; color: #02451b; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 2px 6px; font-weight: 700; }
-            .mobile-nav-item-icon {
-                width: 32px;
-                height: 32px;
-                border-radius: 10px;
-                background: linear-gradient(145deg, #d9f7ee 0%, #aeead8 100%);
-                color: #0f5f61;
-                border: 1px solid rgba(217, 247, 238, 0.75);
-                box-shadow: 0 6px 14px rgba(6, 45, 51, 0.22);
+            .mobile-write-fab {
                 display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.35rem;
-                line-height: 1;
-                margin-bottom: 3px;
             }
-            .mobile-nav-item-label { font-size: 0.78rem; line-height: 1.1; letter-spacing: -0.01em; }
         }
     </style>
 </head>
-<body class="{{ $canCreatePost ? 'has-mobile-bottom-nav' : '' }}">
+<body>
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
@@ -500,14 +535,14 @@
 </div>
 
 @if($canCreatePost)
-    <nav class="mobile-bottom-nav" aria-label="모바일 하단 메뉴">
-        <div class="mobile-bottom-nav-inner">
-            <a class="mobile-nav-item" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
-                <span class="mobile-nav-item-icon">+</span>
-                <span class="mobile-nav-item-label">글쓰기</span>
-            </a>
-        </div>
-    </nav>
+    <a class="mobile-write-fab" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
+        <svg class="mobile-write-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.2"></circle>
+            <path d="M12 7.6v8.8"></path>
+            <path d="M7.6 12h8.8"></path>
+        </svg>
+        <span class="sr-only">글쓰기</span>
+    </a>
 @endif
 
 <script>
@@ -520,6 +555,14 @@
     const lightboxCounter = document.getElementById('media-lightbox-counter');
     let lightboxItems = [];
     let lightboxIndex = 0;
+    let lightboxTrack = null;
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let swipeStartAt = 0;
+    let swipeDeltaX = 0;
+    let swipeAxisLock = '';
+    let swipeTracking = false;
+    let lightboxAnimating = false;
 
     const closeLightbox = () => {
         if (!lightbox || !lightboxContent) {
@@ -528,6 +571,11 @@
 
         lightboxItems = [];
         lightboxIndex = 0;
+        lightboxTrack = null;
+        swipeTracking = false;
+        swipeAxisLock = '';
+        swipeDeltaX = 0;
+        lightboxAnimating = false;
         lightbox.classList.remove('open');
         lightbox.setAttribute('aria-hidden', 'true');
         lightboxContent.innerHTML = '';
@@ -553,30 +601,99 @@
         }
     };
 
-    const renderLightboxItem = () => {
-        if (!lightbox || !lightboxContent || !lightboxItems.length) {
+    const getLightboxItem = (indexOffset = 0) => {
+        if (!lightboxItems.length) {
+            return null;
+        }
+
+        const targetIndex = (lightboxIndex + indexOffset + lightboxItems.length) % lightboxItems.length;
+        return lightboxItems[targetIndex] || null;
+    };
+
+    const createLightboxMediaElement = (item, shouldAutoplay = false) => {
+        if (!item || !item.src) {
+            return null;
+        }
+
+        if (item.type === 'video') {
+            const video = document.createElement('video');
+            video.src = item.src;
+            video.controls = true;
+            video.playsInline = true;
+            if (shouldAutoplay) {
+                video.autoplay = true;
+            }
+            return video;
+        }
+
+        const image = document.createElement('img');
+        image.src = item.src;
+        image.alt = 'media';
+        return image;
+    };
+
+    const applyLightboxTrackPosition = (deltaX = 0, animate = false) => {
+        if (!lightboxTrack || !lightboxContent) {
             return;
         }
 
-        const currentItem = lightboxItems[lightboxIndex] || null;
+        if (lightboxItems.length <= 1) {
+            lightboxTrack.style.transition = 'none';
+            lightboxTrack.style.transform = 'translate3d(0, 0, 0)';
+            return;
+        }
+
+        const width = lightboxContent.clientWidth || 1;
+        lightboxTrack.style.transition = animate ? 'transform 230ms cubic-bezier(0.22, 0.7, 0.24, 1)' : 'none';
+        lightboxTrack.style.transform = `translate3d(${(-width + deltaX)}px, 0, 0)`;
+    };
+
+    const buildLightboxTrack = () => {
+        if (!lightboxContent || !lightboxItems.length) {
+            return;
+        }
+
+        const hasMultiple = lightboxItems.length > 1;
+        const previousItem = getLightboxItem(-1);
+        const currentItem = getLightboxItem(0);
+        const nextItem = getLightboxItem(1);
+
         if (!currentItem || !currentItem.src) {
             return;
         }
 
         lightboxContent.innerHTML = '';
-        if (currentItem.type === 'video') {
-            const video = document.createElement('video');
-            video.src = currentItem.src;
-            video.controls = true;
-            video.autoplay = true;
-            video.playsInline = true;
-            lightboxContent.appendChild(video);
+        const track = document.createElement('div');
+        track.className = 'media-lightbox-track';
+
+        const itemsToRender = hasMultiple ? [previousItem, currentItem, nextItem] : [currentItem];
+
+        itemsToRender.forEach((item, index) => {
+            const frame = document.createElement('div');
+            frame.className = 'media-lightbox-frame';
+            const mediaElement = createLightboxMediaElement(item, hasMultiple ? index === 1 : true);
+            if (mediaElement) {
+                frame.appendChild(mediaElement);
+            }
+            track.appendChild(frame);
+        });
+
+        lightboxContent.appendChild(track);
+        lightboxTrack = track;
+        if (hasMultiple) {
+            applyLightboxTrackPosition(0, false);
         } else {
-            const image = document.createElement('img');
-            image.src = currentItem.src;
-            image.alt = 'media';
-            lightboxContent.appendChild(image);
+            lightboxTrack.style.transition = 'none';
+            lightboxTrack.style.transform = 'translate3d(0, 0, 0)';
         }
+    };
+
+    const renderLightboxItem = () => {
+        if (!lightbox || !lightboxContent || !lightboxItems.length) {
+            return;
+        }
+
+        buildLightboxTrack();
 
         updateLightboxControls();
     };
@@ -588,21 +705,153 @@
 
         lightboxItems = items;
         lightboxIndex = Math.max(0, Math.min(index, items.length - 1));
-        renderLightboxItem();
-
         lightbox.classList.add('open');
         lightbox.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => {
+            renderLightboxItem();
+        });
     };
 
     const moveLightbox = (delta) => {
-        if (lightboxItems.length <= 1) {
+        if (lightboxItems.length <= 1 || !lightboxContent || lightboxAnimating) {
             return;
         }
 
-        lightboxIndex = (lightboxIndex + delta + lightboxItems.length) % lightboxItems.length;
-        renderLightboxItem();
+        const direction = delta > 0 ? 1 : -1;
+        const width = lightboxContent.clientWidth || 1;
+
+        if (!lightboxTrack) {
+            lightboxIndex = (lightboxIndex + direction + lightboxItems.length) % lightboxItems.length;
+            renderLightboxItem();
+            return;
+        }
+
+        if (width <= 1) {
+            lightboxIndex = (lightboxIndex + direction + lightboxItems.length) % lightboxItems.length;
+            renderLightboxItem();
+            return;
+        }
+
+        lightboxAnimating = true;
+        applyLightboxTrackPosition(direction === 1 ? -width : width, true);
+
+        const handleTransitionEnd = () => {
+            if (!lightboxTrack) {
+                lightboxAnimating = false;
+                return;
+            }
+
+            lightboxTrack.removeEventListener('transitionend', handleTransitionEnd);
+            lightboxIndex = (lightboxIndex + direction + lightboxItems.length) % lightboxItems.length;
+            renderLightboxItem();
+            lightboxAnimating = false;
+        };
+
+        lightboxTrack.addEventListener('transitionend', handleTransitionEnd, { once: true });
     };
+
+    if (lightboxContent) {
+        lightboxContent.addEventListener('touchstart', (event) => {
+            if (event.touches.length !== 1 || lightboxAnimating || lightboxItems.length <= 1) {
+                swipeTracking = false;
+                return;
+            }
+
+            swipeTracking = true;
+            swipeStartX = event.touches[0].clientX;
+            swipeStartY = event.touches[0].clientY;
+            swipeStartAt = performance.now();
+            swipeDeltaX = 0;
+            swipeAxisLock = '';
+        }, { passive: true });
+
+        lightboxContent.addEventListener('touchmove', (event) => {
+            if (!swipeTracking || event.touches.length !== 1 || !lightboxTrack || lightboxItems.length <= 1) {
+                return;
+            }
+
+            const deltaX = event.touches[0].clientX - swipeStartX;
+            const deltaY = event.touches[0].clientY - swipeStartY;
+
+            if (swipeAxisLock === '') {
+                if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) {
+                    return;
+                }
+                swipeAxisLock = Math.abs(deltaX) >= Math.abs(deltaY) ? 'x' : 'y';
+            }
+
+            if (swipeAxisLock !== 'x') {
+                return;
+            }
+
+            event.preventDefault();
+            const width = lightboxContent.clientWidth || 1;
+            const limitedDeltaX = Math.max(-width * 0.95, Math.min(width * 0.95, deltaX));
+            swipeDeltaX = limitedDeltaX;
+            applyLightboxTrackPosition(swipeDeltaX, false);
+        }, { passive: false });
+
+        lightboxContent.addEventListener('touchend', (event) => {
+            if (!swipeTracking || event.changedTouches.length !== 1) {
+                swipeTracking = false;
+                return;
+            }
+
+            if (lightboxItems.length <= 1) {
+                swipeTracking = false;
+                swipeAxisLock = '';
+                swipeDeltaX = 0;
+                applyLightboxTrackPosition(0, false);
+                return;
+            }
+
+            const deltaX = swipeDeltaX !== 0 ? swipeDeltaX : event.changedTouches[0].clientX - swipeStartX;
+            const deltaY = event.changedTouches[0].clientY - swipeStartY;
+            const elapsed = Math.max(1, performance.now() - swipeStartAt);
+            const velocityX = Math.abs(deltaX) / elapsed;
+
+            swipeTracking = false;
+            swipeStartAt = 0;
+            swipeDeltaX = 0;
+
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+            const isFastFlick = elapsed <= 220 && absX >= 18;
+            const isVelocitySwipe = velocityX >= 0.5 && absX >= 16;
+            const isDistanceSwipe = absX >= 36;
+
+            if (swipeAxisLock !== 'x') {
+                swipeAxisLock = '';
+                applyLightboxTrackPosition(0, true);
+                return;
+            }
+
+            swipeAxisLock = '';
+
+            if (absY > 64 || (!isDistanceSwipe && !isFastFlick && !isVelocitySwipe)) {
+                applyLightboxTrackPosition(0, true);
+                return;
+            }
+
+            moveLightbox(deltaX < 0 ? 1 : -1);
+        }, { passive: true });
+
+        lightboxContent.addEventListener('touchcancel', () => {
+            swipeTracking = false;
+            swipeAxisLock = '';
+            swipeDeltaX = 0;
+            applyLightboxTrackPosition(0, true);
+        }, { passive: true });
+    }
+
+    window.addEventListener('resize', () => {
+        if (!lightbox || !lightbox.classList.contains('open')) {
+            return;
+        }
+
+        applyLightboxTrackPosition(0, false);
+    });
 
     document.addEventListener('click', (event) => {
         const trigger = event.target.closest('[data-media-trigger]');

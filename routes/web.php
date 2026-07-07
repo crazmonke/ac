@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
     Route::post('/community/editor/photos', [CommunityBoardController::class, 'uploadEditorPhoto']);
+    Route::post('/community/editor/videos', [CommunityBoardController::class, 'uploadEditorVideo']);
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);
