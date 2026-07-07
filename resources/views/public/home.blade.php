@@ -123,85 +123,68 @@
         }
         .status-open { background: #e5f6f3; color: #085b57; }
         .status-lock { background: var(--warm); color: var(--warn); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td {
-            border-bottom: 1px solid #e4ebf2;
-            text-align: left;
-            padding: 10px 6px;
-            font-size: 0.93rem;
-            vertical-align: top;
-        }
-        th { font-size: 0.8rem; color: var(--muted); }
-        .post-table { table-layout: fixed; }
-        .best-table th:nth-child(1), .best-table td:nth-child(1) { width: 94px; }
-        .best-table th:nth-child(3), .best-table td:nth-child(3) { width: 54px; }
-        .latest-table th:nth-child(1), .latest-table td:nth-child(1) { width: 74px; }
-        .latest-table th:nth-child(3), .latest-table td:nth-child(3) { width: 48px; }
-        .latest-table th:nth-child(4), .latest-table td:nth-child(4) { width: 52px; }
-        .board-name {
-            display: inline-block;
-            max-width: 100%;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-weight: 700;
-        }
-        .title-cell .title-link {
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-            overflow: hidden;
-            line-height: 1.35;
-            word-break: break-word;
-        }
-        .title-submeta {
-            margin-top: 2px;
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .title-link {
-            color: var(--ink);
-            text-decoration: none;
-            font-weight: 700;
-        }
-        .lock {
-            color: var(--warn);
-            font-size: 0.8rem;
-            margin-left: 6px;
-        }
-        .region-brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .region-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            padding: 3px 8px;
-            font-size: 0.76rem;
-            border: 1px solid #d0daea;
-            background: #f8fbff;
-            color: #3a4c68;
-            font-weight: 700;
-        }
-        .brand-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(145deg, #2e4fb8, #0f7a72);
+        .feed-list { list-style: none; margin: 0; padding: 0; }
+        .feed-item { border-top: 1px solid #e4ebf2; padding: 12px 0; }
+        .feed-item:first-child { border-top: 0; padding-top: 2px; }
+        .feed-row { display: flex; gap: 10px; align-items: flex-start; }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #182230, #3b4a62);
             color: #fff;
-            font-size: 0.68rem;
+            font-size: 0.85rem;
             font-weight: 800;
-            letter-spacing: 0.02em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 36px;
         }
+        .feed-main { flex: 1 1 auto; min-width: 0; }
+        .author { display: inline-flex; align-items: center; gap: 6px; }
+        .author strong { font-size: 0.92rem; }
+        .title-link { color: var(--ink); text-decoration: none; font-weight: 700; line-height: 1.45; display: block; margin-top: 4px; }
+        .body-preview { margin-top: 6px; color: #233145; font-size: 0.92rem; line-height: 1.5; }
+        .chips { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+        .chip { font-size: 0.74rem; border-radius: 999px; padding: 3px 8px; background: #eef1f6; color: #344054; }
+        .chip.locked { background: #fff2e7; color: #9a4a16; }
+        .media-strip {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        .media-card {
+            flex: 0 0 min(340px, 78vw);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #d9e1ec;
+            background: #edf2f8;
+            scroll-snap-align: start;
+        }
+        .media-card img,
+        .media-card video {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            display: block;
+        }
+        .actions { margin-top: 9px; display: flex; gap: 10px; align-items: center; }
+        .icon-action {
+            border: 0;
+            background: transparent;
+            color: #334155;
+            cursor: pointer;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.82rem;
+            text-decoration: none;
+        }
+        .icon-action.hearted { color: #d01e39; }
         .notice-list { list-style: none; margin: 0; padding: 0; }
         .notice-list li {
             border-top: 1px solid #e8eef5;
@@ -249,13 +232,8 @@
         .danger-text { color: var(--danger); font-size: 0.86rem; margin: 8px 0 0; }
 
         @media (max-width: 640px) {
-            th, td { padding: 8px 4px; font-size: 0.86rem; }
-            .best-table th:nth-child(1), .best-table td:nth-child(1) { width: 82px; }
-            .latest-table th:nth-child(1), .latest-table td:nth-child(1) { width: 58px; }
-            .latest-table th:nth-child(3), .latest-table td:nth-child(3) { width: 40px; }
-            .latest-table th:nth-child(4), .latest-table td:nth-child(4) { width: 44px; }
-            .board-name { font-size: 0.8rem; }
-            .lock { display: inline-block; margin-left: 0; }
+            .feed-row { gap: 8px; }
+            .media-card { flex-basis: min(320px, 84vw); }
         }
 
         @media (min-width: 900px) {
@@ -301,40 +279,59 @@
         <h2 class="section-title">🆕 {{ $feedTitle }}</h2>
         <p class="meta" style="margin:0 0 8px;">{{ $feedDescription }}</p>
         <article class="card">
-            <table class="post-table latest-table">
-                <thead>
-                <tr>
-                    <th>게시판</th>
-                    <th>제목</th>
-                    <th>조회</th>
-                    <th>일자</th>
-                </tr>
-                </thead>
-                <tbody>
+            <ul class="feed-list">
                 @forelse($feedPosts as $item)
-                    <tr>
-                        <td class="board-col"><span class="board-name">{{ $item['board_name'] }}</span></td>
-                        <td class="title-cell">
-                            <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
-                            <div class="title-submeta">
-                                @if($item['comment_count'] > 0)
-                                    <span class="meta">댓글 {{ $item['comment_count'] }}</span>
+                    <li class="feed-item">
+                        <div class="feed-row">
+                            <span class="avatar">{{ $item['author_initial'] }}</span>
+                            <div class="feed-main">
+                                <div class="author"><strong>{{ $item['author_name'] }}</strong><span class="meta">· {{ $item['created_label'] }}</span></div>
+                                <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+                                @if(!empty($item['body_preview']))
+                                    <div class="body-preview">{{ $item['body_preview'] }}</div>
                                 @endif
-                                @if(!empty($item['access_label']))
-                                    <span class="lock">{{ $item['access_label'] }}</span>
+                                @if(!empty($item['media_items']))
+                                    <div class="media-strip">
+                                        @foreach($item['media_items'] as $media)
+                                            <a class="media-card" href="{{ $item['url'] }}">
+                                                @if(($media['type'] ?? 'image') === 'video')
+                                                    <video src="{{ $media['url'] }}" controls preload="metadata"></video>
+                                                @else
+                                                    <img src="{{ $media['url'] }}" alt="{{ $media['name'] ?? 'media' }}">
+                                                @endif
+                                            </a>
+                                        @endforeach
+                                    </div>
                                 @endif
+                                <div class="chips">
+                                    <span class="chip">{{ $item['board_name'] }}</span>
+                                    <span class="chip">{{ $item['apartment_name'] }}</span>
+                                    @if(!empty($item['access_label']))
+                                        <span class="chip locked">{{ $item['access_label'] }}</span>
+                                    @endif
+                                </div>
+                                <div class="actions">
+                                    @auth
+                                        <form method="post" action="/community/posts/{{ $item['id'] }}/likes">
+                                            @csrf
+                                            @if(($item['liked_by_me'] ?? false) === true)
+                                                @method('delete')
+                                            @endif
+                                            <button class="icon-action {{ ($item['liked_by_me'] ?? false) ? 'hearted' : '' }}" type="submit">{{ ($item['liked_by_me'] ?? false) ? '❤' : '♡' }} {{ $item['like_count'] ?? 0 }}</button>
+                                        </form>
+                                    @else
+                                        <a class="icon-action" href="/login">♡ {{ $item['like_count'] ?? 0 }}</a>
+                                    @endauth
+                                    <a class="icon-action" href="{{ $item['url'] }}#comments">💬 {{ $item['comment_count'] }}</a>
+                                    <span class="meta">조회 {{ $item['view_count'] }}</span>
+                                </div>
                             </div>
-                        </td>
-                        <td>{{ $item['view_count'] }}</td>
-                        <td>{{ $item['display_date'] }}</td>
-                    </tr>
+                        </div>
+                    </li>
                 @empty
-                    <tr>
-                        <td colspan="4" class="meta">현재 노출 가능한 게시글이 없습니다.</td>
-                    </tr>
+                    <li class="meta">현재 노출 가능한 게시글이 없습니다.</li>
                 @endforelse
-                </tbody>
-            </table>
+            </ul>
             @include('partials.pagination', ['paginator' => $feedPosts])
         </article>
     </section>

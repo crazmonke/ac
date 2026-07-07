@@ -57,6 +57,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
     Route::post('/community/posts/{id}/poll-votes', [CommunityBoardController::class, 'storePollVote']);
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
+    Route::post('/community/posts/{id}/likes', [CommunityBoardController::class, 'likePost']);
+    Route::delete('/community/posts/{id}/likes', [CommunityBoardController::class, 'unlikePost']);
     Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);
     Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);

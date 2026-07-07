@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $apartmentName }} 커뮤니티</title>
     <style>
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f8fb; color: #17263d; }
-        .wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f7f9; color: #171717; }
+        .wrap { max-width: 760px; margin: 0 auto; padding: 14px 12px 110px; }
         .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
         .meta { color: #5b6d82; font-size: 0.92rem; }
         .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -21,12 +21,30 @@
         .desktop-write-cta { display: inline-flex; }
         .mobile-bottom-nav { display: none; }
         .has-mobile-bottom-nav { }
-        .panel { margin-top: 14px; background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; }
+        .panel { margin-top: 12px; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 12px; }
         .post-list { list-style: none; margin: 0; padding: 0; }
-        .post-item { border-top: 1px solid #edf2f8; padding: 12px 0; }
-        .post-item:first-child { border-top: 0; padding-top: 0; }
-        .post-row { display: flex; align-items: flex-start; gap: 12px; }
+        .post-item { border-top: 1px solid #e3e6eb; padding: 12px 0; }
+        .post-item:first-child { border-top: 0; padding-top: 2px; }
+        .post-row { display: flex; align-items: flex-start; gap: 10px; }
+        .author-avatar {
+            flex: 0 0 36px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #182230, #3b4a62);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
         .post-main { flex: 1 1 auto; min-width: 0; }
+        .post-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+        .author-line { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+        .author-line strong { font-size: 0.93rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .author-line .meta { font-size: 0.8rem; }
         .split-section { margin-top: 10px; border: 1px solid #d7e2f1; border-radius: 12px; overflow: hidden; background: #fbfdff; }
         .split-head { padding: 10px 12px; background: linear-gradient(180deg, #eef4ff, #f7faff); border-bottom: 1px solid #d7e2f1; }
         .split-title { margin: 0; font-size: 0.98rem; font-weight: 900; color: #173662; letter-spacing: -0.01em; }
@@ -34,7 +52,33 @@
         .split-body { padding: 10px 12px 8px; }
         .split-section .post-list .post-item:first-child { padding-top: 8px; }
         .split-divider { margin: 14px 0 10px; border-top: 2px dashed #c7d6ea; }
-        .post-title { color: #17263d; text-decoration: none; font-weight: 700; }
+        .post-title { color: #121212; text-decoration: none; font-weight: 700; line-height: 1.42; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+        .body-preview { margin-top: 6px; color: #222b37; font-size: 0.92rem; line-height: 1.5; }
+        .media-strip {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        .media-card {
+            flex: 0 0 min(340px, 78vw);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #d9e1ec;
+            background: #edf2f8;
+            scroll-snap-align: start;
+        }
+        .media-card img,
+        .media-card video {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            display: block;
+            background: #dce5f0;
+        }
         .post-thumb {
             flex: 0 0 94px;
             width: 94px;
@@ -50,10 +94,25 @@
             object-fit: cover;
             display: block;
         }
-        .chips { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
-        .chip { font-size: 0.78rem; border-radius: 999px; padding: 3px 8px; background: #ecf2ff; color: #294f8f; }
+        .chips { margin-top: 7px; display: flex; gap: 5px; flex-wrap: wrap; }
+        .chip { font-size: 0.74rem; border-radius: 999px; padding: 3px 8px; background: #eef1f6; color: #344054; }
         .chip.guest-open { background: #e9f8ef; color: #18603a; }
         .chip.locked { background: #fff4e8; color: #8d4a1c; }
+        .post-actions { margin-top: 8px; display: flex; gap: 10px; }
+        .post-actions .meta { font-size: 0.79rem; }
+        .icon-action {
+            border: 0;
+            background: transparent;
+            color: #334155;
+            cursor: pointer;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.82rem;
+            text-decoration: none;
+        }
+        .icon-action.hearted { color: #d01e39; }
         .empty-box { border: 1px solid #ffd7b5; background: #fff4e9; color: #7f4310; border-radius: 10px; padding: 12px; }
         .empty-box a { color: #0f6f67; font-weight: 700; text-decoration: none; }
 
@@ -146,12 +205,38 @@
             $renderPostItem = function (array $post) {
                 $titleClass = !auth()->check() && !$post['can_read'] ? 'requires-signup' : '';
                 $signupAttr = !auth()->check() && !$post['can_read'] ? 'data-signup-url="'.e($post['url']).'"' : '';
-                $thumbnail = $post['thumbnail_url'] ?? null;
+                $isLiked = (bool) ($post['liked_by_me'] ?? false);
+                $likeCount = (int) ($post['like_count'] ?? 0);
+                $commentCount = (int) ($post['comment_count'] ?? 0);
+                $bodyPreview = trim((string) ($post['body_preview'] ?? ''));
+                $mediaItems = (array) ($post['media_items'] ?? []);
+                $likeMethod = $isLiked ? 'delete' : 'post';
+                $csrf = csrf_token();
 
                 return '<li class="post-item">'
                     .'<div class="post-row">'
+                    .'<span class="author-avatar">'.e($post['author_initial']).'</span>'
                     .'<div class="post-main">'
+                    .'<div class="post-head">'
+                    .'<div class="author-line"><strong>'.e($post['author_name']).'</strong><span class="meta">· '.e($post['created_label']).'</span></div>'
+                    .'</div>'
                     .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.e($post['title']).'</a>'
+                    .($bodyPreview !== '' ? '<div class="body-preview">'.e($bodyPreview).'</div>' : '')
+                    .(!empty($mediaItems) ? '<div class="media-strip">'.collect($mediaItems)->map(function ($item) use ($signupAttr) {
+                        $url = e((string) ($item['url'] ?? ''));
+                        $name = e((string) ($item['name'] ?? 'media'));
+                        $type = (string) ($item['type'] ?? 'image');
+
+                        if ($url === '') {
+                            return '';
+                        }
+
+                        if ($type === 'video') {
+                            return '<a class="media-card" href="'.$url.'" '.$signupAttr.'><video src="'.$url.'" controls preload="metadata"></video></a>';
+                        }
+
+                        return '<a class="media-card" href="'.$url.'" '.$signupAttr.'><img src="'.$url.'" alt="'.$name.'"></a>';
+                    })->implode('').'</div>' : '')
                     .'<div class="chips">'
                     .'<span class="chip">'.e($post['board_name']).'</span>'
                     .'<span class="chip">'.($post['audience_scope'] === 'region' ? '동네 전용' : ($post['audience_scope'] === 'apartment' ? '공동주택 전용' : '전체')).'</span>'
@@ -159,9 +244,18 @@
                     .'<span class="chip">'.e(($post['sigungu'] ?: $post['sido']).' · '.$post['apartment_name']).'</span>'
                     .($post['is_guest_visible'] ? '<span class="chip guest-open">비회원 공개</span>' : (!empty($post['access_label']) ? '<span class="chip locked">'.e($post['access_label']).'</span>' : ''))
                     .'</div>'
-                    .'<div class="meta" style="margin-top:6px;">'.e((string) $post['created_at']).' · 조회 '.e((string) $post['view_count']).' · 댓글 '.e((string) $post['comment_count']).'</div>'
+                    .'<div class="post-actions">'
+                    .(auth()->check()
+                        ? '<form method="post" action="/community/posts/'.e((string) $post['id']).'/likes">'
+                            .'<input type="hidden" name="_token" value="'.$csrf.'">'
+                            .($likeMethod === 'delete' ? '<input type="hidden" name="_method" value="delete">' : '')
+                            .'<button class="icon-action '.($isLiked ? 'hearted' : '').'" type="submit" aria-label="좋아요">'.($isLiked ? '❤' : '♡').' '.e((string) $likeCount).'</button>'
+                        .'</form>'
+                        : '<a class="icon-action" href="/login">♡ '.e((string) $likeCount).'</a>')
+                    .'<a class="icon-action" href="'.e($post['url']).'#comments" aria-label="댓글">💬 '.e((string) $commentCount).'</a>'
+                    .'<span class="meta">조회 '.e((string) $post['view_count']).'</span>'
                     .'</div>'
-                    .($thumbnail ? '<a class="post-thumb" href="'.e($post['url']).'" '.$signupAttr.' aria-label="'.e($post['title']).' 대표 이미지"><img src="'.e($thumbnail).'" alt="'.e($post['title']).'"></a>' : '')
+                    .'</div>'
                     .'</div>'
                     .'</li>';
             };

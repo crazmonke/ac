@@ -7,6 +7,7 @@ use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Post;
 use App\Models\PostFile;
+use App\Models\PostLike;
 use App\Models\PostTopic;
 use App\Models\User;
 use App\Services\PermissionService;
@@ -55,7 +56,8 @@ class CommunityPageController extends Controller
         }
 
         $postsQuery = Post::query()
-            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files'])
+            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user'])
+            ->withCount('likes')
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', fn ($query) => $query->where('is_active', true))
             ->latest();
@@ -156,19 +158,28 @@ class CommunityPageController extends Controller
 
         $posts->through(function (Post $post) use ($user, $apartmentId) {
             $canRead = $this->permissionService->canReadPostDetail($user, $post);
+            $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
+            $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
 
             return [
                 'id' => (int) $post->id,
                 'title' => $post->title,
                 'created_at' => $post->created_at,
+                'created_label' => $post->created_at?->diffForHumans() ?? '-',
+                'author_name' => $authorName,
+                'author_initial' => mb_strtoupper($authorInitial),
                 'board_name' => $post->board->name,
                 'topic_name' => $post->topic?->name,
                 'apartment_name' => $post->apartment?->name ?: ($post->residenceComplex?->displayName() ?: '공동주택'),
+                'body_preview' => $this->buildBodyPreview($post->body),
+                'media_items' => $canRead ? $this->extractMediaItems($post) : [],
                 'sido' => $post->apartment?->sido ?: ($post->region_sido ?? ''),
                 'sigungu' => $post->apartment?->sigungu ?: ($post->region_sigungu ?? ''),
                 'apartment_id' => (int) $post->apartment_id,
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
+                'like_count' => (int) ($post->likes_count ?? 0),
+                'liked_by_me' => $user ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists() : false,
                 'audience_scope' => (string) ($post->audience_scope ?? 'all'),
                 'can_read' => $canRead,
                 'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
@@ -203,6 +214,33 @@ class CommunityPageController extends Controller
             'ownApartmentPosts' => $ownApartmentPosts,
             'otherApartmentPosts' => $otherApartmentPosts,
         ]);
+    }
+
+    private function buildBodyPreview(?string $html): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $html)) ?: '');
+
+        return mb_strimwidth($text, 0, 220, '...');
+    }
+
+    private function extractMediaItems(Post $post): array
+    {
+        $items = [];
+
+        foreach ($post->files as $file) {
+            $mime = Str::lower((string) ($file->mime_type ?? ''));
+            if (! Str::startsWith($mime, 'image/') && ! Str::startsWith($mime, 'video/')) {
+                continue;
+            }
+
+            $items[] = [
+                'type' => Str::startsWith($mime, 'video/') ? 'video' : 'image',
+                'url' => '/community/files/'.$file->id,
+                'name' => (string) ($file->original_name ?? 'media'),
+            ];
+        }
+
+        return array_slice($items, 0, 8);
     }
 
     private function resolveUserApartmentId(?User $user): int

@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
+use App\Models\PostLike;
 use App\Models\PostTopic;
 use App\Models\PostFile;
 use App\Models\Post;
@@ -285,7 +286,7 @@ class CommunityBoardController extends Controller
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
-            'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
+            'attachments.*' => ['file', 'max:51200', 'mimes:jpg,jpeg,png,gif,pdf,mp4,mov,webm'],
         ];
 
         if ($board->board_type === 'poll') {
@@ -373,7 +374,7 @@ class CommunityBoardController extends Controller
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
-            'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
+            'attachments.*' => ['file', 'max:51200', 'mimes:jpg,jpeg,png,gif,pdf,mp4,mov,webm'],
         ];
 
         if ($post->board->board_type === 'poll') {
@@ -483,6 +484,38 @@ class CommunityBoardController extends Controller
         $post->increment('comment_count');
 
         return back()->with('status', '댓글이 등록되었습니다.');
+    }
+
+    public function likePost(Request $request, int $id)
+    {
+        $post = Post::query()->with('board')->findOrFail($id);
+
+        if (! $this->permissionService->canReadPostDetail($request->user(), $post)) {
+            abort(403);
+        }
+
+        PostLike::query()->firstOrCreate([
+            'post_id' => $post->id,
+            'user_id' => $request->user()->id,
+        ]);
+
+        return back();
+    }
+
+    public function unlikePost(Request $request, int $id)
+    {
+        $post = Post::query()->with('board')->findOrFail($id);
+
+        if (! $this->permissionService->canReadPostDetail($request->user(), $post)) {
+            abort(403);
+        }
+
+        PostLike::query()
+            ->where('post_id', $post->id)
+            ->where('user_id', $request->user()->id)
+            ->delete();
+
+        return back();
     }
 
     public function updateComment(Request $request, int $id)

@@ -115,6 +115,11 @@ class User extends Authenticatable
         return $this->hasMany(Comment::class);
     }
 
+    public function postLikes(): HasMany
+    {
+        return $this->hasMany(PostLike::class);
+    }
+
     public function hasRoleForApartment(string $role, ?int $apartmentId = null): bool
     {
         $query = $this->userRoles()->where('role', $role);
