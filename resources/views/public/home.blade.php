@@ -145,6 +145,11 @@
         .author strong { font-size: 0.92rem; }
         .title-link { color: var(--ink); text-decoration: none; font-weight: 700; line-height: 1.45; display: block; margin-top: 4px; }
         .body-preview { margin-top: 6px; color: #233145; font-size: 0.92rem; line-height: 1.5; }
+        .body-link {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
         .chips { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
         .chip { font-size: 0.74rem; border-radius: 999px; padding: 3px 8px; background: #eef1f6; color: #344054; }
         .chip.locked { background: #fff2e7; color: #9a4a16; }
@@ -171,6 +176,84 @@
             object-fit: cover;
             display: block;
         }
+        .media-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(10, 14, 20, 0.96);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+        .media-lightbox.open { display: flex; }
+        .media-lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(20, 24, 32, 0.78);
+            color: #fff;
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .media-lightbox-content {
+            max-width: min(980px, 96vw);
+            max-height: calc(100vh - 84px);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .media-lightbox-content img,
+        .media-lightbox-content video {
+            max-width: 100%;
+            max-height: calc(100vh - 84px);
+            width: auto;
+            height: auto;
+            border-radius: 10px;
+            background: #0f141d;
+        }
+        .media-lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(20, 24, 32, 0.78);
+            color: #fff;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .media-lightbox-nav.prev { left: 16px; }
+        .media-lightbox-nav.next { right: 16px; }
+        .media-lightbox-nav.hidden { display: none; }
+        .media-lightbox-counter {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: rgba(20, 24, 32, 0.64);
+        }
         .actions { margin-top: 9px; display: flex; gap: 10px; align-items: center; }
         .icon-action {
             border: 0;
@@ -185,6 +268,34 @@
             text-decoration: none;
         }
         .icon-action.hearted { color: #d01e39; }
+        .icon-action svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-action.hearted svg {
+            fill: currentColor;
+            stroke: currentColor;
+        }
+        .icon-count { font-weight: 600; }
+        .feed-loader {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px dashed #d4ddea;
+            color: var(--muted);
+            text-align: center;
+            font-size: 0.86rem;
+            background: #f8fbff;
+        }
+        .feed-loader.done {
+            border-style: solid;
+            background: #f3f7fc;
+        }
         .notice-list { list-style: none; margin: 0; padding: 0; }
         .notice-list li {
             border-top: 1px solid #e8eef5;
@@ -279,7 +390,7 @@
         <h2 class="section-title">🆕 {{ $feedTitle }}</h2>
         <p class="meta" style="margin:0 0 8px;">{{ $feedDescription }}</p>
         <article class="card">
-            <ul class="feed-list">
+            <ul class="feed-list" id="home-feed-list">
                 @forelse($feedPosts as $item)
                     <li class="feed-item">
                         <div class="feed-row">
@@ -288,16 +399,16 @@
                                 <div class="author"><strong>{{ $item['author_name'] }}</strong><span class="meta">· {{ $item['created_label'] }}</span></div>
                                 <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                                 @if(!empty($item['body_preview']))
-                                    <div class="body-preview">{{ $item['body_preview'] }}</div>
+                                    <a class="body-link" href="{{ $item['url'] }}"><div class="body-preview">{{ $item['body_preview'] }}</div></a>
                                 @endif
                                 @if(!empty($item['media_items']))
                                     <div class="media-strip">
                                         @foreach($item['media_items'] as $media)
                                             <a class="media-card" href="{{ $item['url'] }}">
                                                 @if(($media['type'] ?? 'image') === 'video')
-                                                    <video src="{{ $media['url'] }}" controls preload="metadata"></video>
+                                                    <video src="{{ $media['url'] }}" controls preload="metadata" data-media-trigger data-media-type="video" data-media-src="{{ $media['url'] }}"></video>
                                                 @else
-                                                    <img src="{{ $media['url'] }}" alt="{{ $media['name'] ?? 'media' }}">
+                                                    <img src="{{ $media['url'] }}" alt="{{ $media['name'] ?? 'media' }}" data-media-trigger data-media-type="image" data-media-src="{{ $media['url'] }}">
                                                 @endif
                                             </a>
                                         @endforeach
@@ -312,18 +423,30 @@
                                 </div>
                                 <div class="actions">
                                     @auth
-                                        <form method="post" action="/community/posts/{{ $item['id'] }}/likes">
+                                        <form method="post" action="/community/posts/{{ $item['id'] }}/likes" data-like-form data-liked="{{ ($item['liked_by_me'] ?? false) ? '1' : '0' }}">
                                             @csrf
                                             @if(($item['liked_by_me'] ?? false) === true)
                                                 @method('delete')
                                             @endif
-                                            <button class="icon-action {{ ($item['liked_by_me'] ?? false) ? 'hearted' : '' }}" type="submit">{{ ($item['liked_by_me'] ?? false) ? '❤' : '♡' }} {{ $item['like_count'] ?? 0 }}</button>
+                                            <button class="icon-action {{ ($item['liked_by_me'] ?? false) ? 'hearted' : '' }}" type="submit" aria-label="좋아요">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                                                <span class="icon-count" data-like-count>{{ $item['like_count'] ?? 0 }}</span>
+                                            </button>
                                         </form>
                                     @else
-                                        <a class="icon-action" href="/login">♡ {{ $item['like_count'] ?? 0 }}</a>
+                                        <a class="icon-action" href="/login" aria-label="좋아요">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                                            <span class="icon-count">{{ $item['like_count'] ?? 0 }}</span>
+                                        </a>
                                     @endauth
-                                    <a class="icon-action" href="{{ $item['url'] }}#comments">💬 {{ $item['comment_count'] }}</a>
-                                    <span class="meta">조회 {{ $item['view_count'] }}</span>
+                                    <a class="icon-action" href="{{ $item['url'] }}#comments" aria-label="댓글">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
+                                        <span class="icon-count">{{ $item['comment_count'] }}</span>
+                                    </a>
+                                    <span class="icon-action" aria-label="조회수">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        <span class="icon-count">{{ $item['view_count'] }}</span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -332,7 +455,12 @@
                     <li class="meta">현재 노출 가능한 게시글이 없습니다.</li>
                 @endforelse
             </ul>
-            @include('partials.pagination', ['paginator' => $feedPosts])
+            <div class="feed-loader{{ $feedPosts->hasMorePages() ? '' : ' done' }}" id="home-feed-loader" data-next-url="{{ $feedPosts->nextPageUrl() }}">
+                {{ $feedPosts->hasMorePages() ? '아래로 스크롤하면 다음 게시글을 불러옵니다.' : '마지막 게시글까지 모두 확인했습니다.' }}
+            </div>
+            <noscript>
+                @include('partials.pagination', ['paginator' => $feedPosts])
+            </noscript>
         </article>
     </section>
 
@@ -347,5 +475,323 @@
         <div class="footer-copy">© {{ now()->year }} 아파인드 (Apaind)</div>
     </footer>
 </div>
+<div class="media-lightbox" id="media-lightbox" aria-hidden="true">
+    <button type="button" class="media-lightbox-close" id="media-lightbox-close" aria-label="닫기">×</button>
+    <button type="button" class="media-lightbox-nav prev hidden" id="media-lightbox-prev" aria-label="이전">‹</button>
+    <button type="button" class="media-lightbox-nav next hidden" id="media-lightbox-next" aria-label="다음">›</button>
+    <div class="media-lightbox-content" id="media-lightbox-content"></div>
+    <div class="media-lightbox-counter" id="media-lightbox-counter" hidden></div>
+</div>
+<script>
+(() => {
+    const lightbox = document.getElementById('media-lightbox');
+    const lightboxContent = document.getElementById('media-lightbox-content');
+    const lightboxClose = document.getElementById('media-lightbox-close');
+    const lightboxPrev = document.getElementById('media-lightbox-prev');
+    const lightboxNext = document.getElementById('media-lightbox-next');
+    const lightboxCounter = document.getElementById('media-lightbox-counter');
+    let lightboxItems = [];
+    let lightboxIndex = 0;
+
+    const closeLightbox = () => {
+        if (!lightbox || !lightboxContent) {
+            return;
+        }
+
+        lightboxItems = [];
+        lightboxIndex = 0;
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        lightboxContent.innerHTML = '';
+        document.body.style.overflow = '';
+    };
+
+    const updateLightboxControls = () => {
+        const hasMultiple = lightboxItems.length > 1;
+        if (lightboxPrev) {
+            lightboxPrev.classList.toggle('hidden', !hasMultiple);
+        }
+        if (lightboxNext) {
+            lightboxNext.classList.toggle('hidden', !hasMultiple);
+        }
+        if (lightboxCounter) {
+            if (hasMultiple) {
+                lightboxCounter.hidden = false;
+                lightboxCounter.textContent = `${lightboxIndex + 1} / ${lightboxItems.length}`;
+            } else {
+                lightboxCounter.hidden = true;
+                lightboxCounter.textContent = '';
+            }
+        }
+    };
+
+    const renderLightboxItem = () => {
+        if (!lightbox || !lightboxContent || !lightboxItems.length) {
+            return;
+        }
+
+        const currentItem = lightboxItems[lightboxIndex] || null;
+        if (!currentItem || !currentItem.src) {
+            return;
+        }
+
+        lightboxContent.innerHTML = '';
+        if (currentItem.type === 'video') {
+            const video = document.createElement('video');
+            video.src = currentItem.src;
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            lightboxContent.appendChild(video);
+        } else {
+            const image = document.createElement('img');
+            image.src = currentItem.src;
+            image.alt = 'media';
+            lightboxContent.appendChild(image);
+        }
+
+        updateLightboxControls();
+    };
+
+    const openLightbox = (items, index) => {
+        if (!Array.isArray(items) || !items.length || !lightbox) {
+            return;
+        }
+
+        lightboxItems = items;
+        lightboxIndex = Math.max(0, Math.min(index, items.length - 1));
+        renderLightboxItem();
+
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const moveLightbox = (delta) => {
+        if (lightboxItems.length <= 1) {
+            return;
+        }
+
+        lightboxIndex = (lightboxIndex + delta + lightboxItems.length) % lightboxItems.length;
+        renderLightboxItem();
+    };
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-media-trigger]');
+        if (!trigger) {
+            return;
+        }
+
+        const mediaStrip = trigger.closest('.media-strip');
+        if (!mediaStrip) {
+            return;
+        }
+
+        const triggers = Array.from(mediaStrip.querySelectorAll('[data-media-trigger]'));
+        const items = triggers
+            .map((node) => ({
+                type: node.dataset.mediaType || 'image',
+                src: node.dataset.mediaSrc || '',
+            }))
+            .filter((item) => item.src !== '');
+        const index = triggers.indexOf(trigger);
+
+        if (!items.length) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        openLightbox(items, index >= 0 ? index : 0);
+    });
+
+    if (lightboxClose) {
+        lightboxClose.addEventListener('click', closeLightbox);
+    }
+
+    if (lightboxPrev) {
+        lightboxPrev.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveLightbox(-1);
+        });
+    }
+
+    if (lightboxNext) {
+        lightboxNext.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveLightbox(1);
+        });
+    }
+
+    if (lightbox) {
+        lightbox.addEventListener('click', (event) => {
+            if (event.target === lightbox) {
+                closeLightbox();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeLightbox();
+            return;
+        }
+
+        if (event.key === 'ArrowLeft') {
+            moveLightbox(-1);
+            return;
+        }
+
+        if (event.key === 'ArrowRight') {
+            moveLightbox(1);
+        }
+    });
+
+    document.addEventListener('submit', async (event) => {
+        const form = event.target.closest('form[data-like-form]');
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (form.dataset.loading === '1') {
+            return;
+        }
+
+        form.dataset.loading = '1';
+        const button = form.querySelector('button[type="submit"]');
+        const methodInput = form.querySelector('input[name="_method"]');
+        const isLiked = form.dataset.liked === '1';
+
+        if (button) {
+            button.disabled = true;
+        }
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('request failed');
+            }
+
+            const payload = await response.json();
+            const liked = Boolean(payload.liked);
+            const likeCount = Number(payload.like_count ?? 0);
+
+            form.dataset.liked = liked ? '1' : '0';
+
+            if (button) {
+                button.classList.toggle('hearted', liked);
+                const countNode = button.querySelector('[data-like-count]');
+                if (countNode) {
+                    countNode.textContent = String(likeCount);
+                }
+            }
+
+            if (liked && !methodInput) {
+                const hiddenMethod = document.createElement('input');
+                hiddenMethod.type = 'hidden';
+                hiddenMethod.name = '_method';
+                hiddenMethod.value = 'delete';
+                form.appendChild(hiddenMethod);
+            }
+
+            if (!liked && methodInput) {
+                methodInput.remove();
+            }
+        } catch (error) {
+            form.dataset.liked = isLiked ? '1' : '0';
+            window.alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            if (button) {
+                button.disabled = false;
+            }
+            form.dataset.loading = '0';
+        }
+    });
+
+    const list = document.getElementById('home-feed-list');
+    const loader = document.getElementById('home-feed-loader');
+
+    if (!list || !loader || !('IntersectionObserver' in window)) {
+        return;
+    }
+
+    let loading = false;
+
+    const setDone = () => {
+        loader.classList.add('done');
+        loader.textContent = '마지막 게시글까지 모두 확인했습니다.';
+        observer.disconnect();
+    };
+
+    const observer = new IntersectionObserver(async (entries) => {
+        const target = entries[0];
+        if (!target || !target.isIntersecting || loading) {
+            return;
+        }
+
+        const nextUrl = loader.dataset.nextUrl;
+        if (!nextUrl) {
+            setDone();
+            return;
+        }
+
+        loading = true;
+        loader.textContent = '게시글을 불러오는 중입니다...';
+
+        try {
+            const response = await fetch(nextUrl, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('failed to load next page');
+            }
+
+            const html = await response.text();
+            const documentFragment = new DOMParser().parseFromString(html, 'text/html');
+            const nextList = documentFragment.getElementById('home-feed-list');
+            const nextLoader = documentFragment.getElementById('home-feed-loader');
+
+            if (!nextList) {
+                setDone();
+                return;
+            }
+
+            nextList.querySelectorAll('.feed-item').forEach((item) => {
+                list.appendChild(item);
+            });
+
+            loader.dataset.nextUrl = nextLoader ? (nextLoader.dataset.nextUrl || '') : '';
+
+            if (!loader.dataset.nextUrl) {
+                setDone();
+            } else {
+                loader.classList.remove('done');
+                loader.textContent = '아래로 스크롤하면 다음 게시글을 불러옵니다.';
+            }
+        } catch (error) {
+            loader.textContent = '불러오기에 실패했습니다. 잠시 후 다시 스크롤해 주세요.';
+        } finally {
+            loading = false;
+        }
+    }, { rootMargin: '240px 0px' });
+
+    observer.observe(loader);
+})();
+</script>
 </body>
 </html>

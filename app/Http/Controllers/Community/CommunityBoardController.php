@@ -152,6 +152,12 @@ class CommunityBoardController extends Controller
             $pollTotalVotes = (int) $post->poll->options->sum('vote_count');
         }
 
+        $likeCount = (int) PostLike::query()->where('post_id', $post->id)->count();
+        $likedByMe = (bool) PostLike::query()
+            ->where('post_id', $post->id)
+            ->where('user_id', $user->id)
+            ->exists();
+
         return view('community.post', [
             'post' => $post,
             'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
@@ -165,6 +171,8 @@ class CommunityBoardController extends Controller
             'bestCommentIds' => $bestCommentIds,
             'userVoteOptionIds' => $userVoteOptionIds,
             'pollTotalVotes' => $pollTotalVotes,
+            'likeCount' => $likeCount,
+            'likedByMe' => $likedByMe,
         ]);
     }
 
@@ -499,6 +507,14 @@ class CommunityBoardController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'liked' => true,
+                'like_count' => (int) PostLike::query()->where('post_id', $post->id)->count(),
+            ]);
+        }
+
         return back();
     }
 
@@ -514,6 +530,14 @@ class CommunityBoardController extends Controller
             ->where('post_id', $post->id)
             ->where('user_id', $request->user()->id)
             ->delete();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'liked' => false,
+                'like_count' => (int) PostLike::query()->where('post_id', $post->id)->count(),
+            ]);
+        }
 
         return back();
     }
@@ -594,7 +618,7 @@ class CommunityBoardController extends Controller
         $file = PostFile::query()->with('post.board')->findOrFail($id);
         $post = $file->post;
 
-        if (! $post || ! $this->permissionService->hasBoardPermission($request->user(), $post->board, 'read')) {
+        if (! $post || ! $this->permissionService->canReadPostDetail($request->user(), $post)) {
             abort(403);
         }
 
@@ -602,7 +626,23 @@ class CommunityBoardController extends Controller
             abort(404);
         }
 
-        return Storage::disk($file->disk)->download($file->path, $file->original_name);
+        $disk = Storage::disk($file->disk);
+        $absolutePath = $disk->path($file->path);
+        $mime = trim((string) ($file->mime_type ?? ''));
+
+        if ($mime === '') {
+            $mime = (string) mime_content_type($absolutePath);
+        }
+
+        if ($mime === '') {
+            $mime = 'application/octet-stream';
+        }
+
+        return response()->file($absolutePath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.addslashes((string) $file->original_name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function destroyFile(Request $request, int $id)

@@ -149,6 +149,42 @@
         .ghost { background: #e9eef7; color: #23334b; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
         .post-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .post-like-center {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+        }
+        .like-toggle-form { display: inline-flex; }
+        .like-toggle-btn {
+            border: 1px solid #d7e1ee;
+            background: #fff;
+            color: #24364e;
+            border-radius: 999px;
+            padding: 8px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .like-toggle-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .like-toggle-btn.hearted {
+            color: #d01e39;
+            border-color: #efc0c8;
+            background: #fff6f8;
+        }
+        .like-toggle-btn.hearted svg {
+            fill: currentColor;
+            stroke: currentColor;
+        }
         .comment { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; }
         .comment:first-child { border-top: 0; }
         .comment-body { min-width: 0; overflow: hidden; }
@@ -327,6 +363,19 @@
         </div>
 
         <div style="margin-top:16px;" class="body">{!! $post->body !!}</div>
+
+        <div class="post-like-center">
+            <form method="post" action="/community/posts/{{ $post->id }}/likes" class="like-toggle-form" data-like-form data-liked="{{ $likedByMe ? '1' : '0' }}">
+                @csrf
+                @if($likedByMe)
+                    @method('DELETE')
+                @endif
+                <button class="like-toggle-btn {{ $likedByMe ? 'hearted' : '' }}" type="submit" aria-label="좋아요">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                    <span data-like-count>{{ $likeCount }}</span>
+                </button>
+            </form>
+        </div>
 
         <?php if ($post->board->board_type === 'poll' && $post->poll): ?>
             <?php
@@ -577,6 +626,78 @@
 
 <script>
 (() => {
+    document.addEventListener('submit', async (event) => {
+        const form = event.target.closest('form[data-like-form]');
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (form.dataset.loading === '1') {
+            return;
+        }
+
+        form.dataset.loading = '1';
+        const button = form.querySelector('button[type="submit"]');
+        const methodInput = form.querySelector('input[name="_method"]');
+        const prevLiked = form.dataset.liked === '1';
+
+        if (button) {
+            button.disabled = true;
+        }
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('request failed');
+            }
+
+            const payload = await response.json();
+            const liked = Boolean(payload.liked);
+            const likeCount = Number(payload.like_count ?? 0);
+
+            form.dataset.liked = liked ? '1' : '0';
+
+            if (button) {
+                button.classList.toggle('hearted', liked);
+                const countNode = button.querySelector('[data-like-count]');
+                if (countNode) {
+                    countNode.textContent = String(likeCount);
+                }
+            }
+
+            if (liked && !methodInput) {
+                const hiddenMethod = document.createElement('input');
+                hiddenMethod.type = 'hidden';
+                hiddenMethod.name = '_method';
+                hiddenMethod.value = 'delete';
+                form.appendChild(hiddenMethod);
+            }
+
+            if (!liked && methodInput) {
+                methodInput.remove();
+            }
+        } catch (error) {
+            form.dataset.liked = prevLiked ? '1' : '0';
+            window.alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            if (button) {
+                button.disabled = false;
+            }
+            form.dataset.loading = '0';
+        }
+    });
+
     const shareButton = document.getElementById('shareButton');
     if (!shareButton) return;
 

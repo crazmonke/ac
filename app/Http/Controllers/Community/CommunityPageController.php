@@ -226,21 +226,96 @@ class CommunityPageController extends Controller
     private function extractMediaItems(Post $post): array
     {
         $items = [];
+        $seenUrls = [];
 
         foreach ($post->files as $file) {
-            $mime = Str::lower((string) ($file->mime_type ?? ''));
-            if (! Str::startsWith($mime, 'image/') && ! Str::startsWith($mime, 'video/')) {
+            $mediaType = $this->resolveMediaType($file);
+            if (! $mediaType) {
                 continue;
             }
 
+            $url = '/community/files/'.$file->id;
+            if (isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+
             $items[] = [
-                'type' => Str::startsWith($mime, 'video/') ? 'video' : 'image',
-                'url' => '/community/files/'.$file->id,
+                'type' => $mediaType,
+                'url' => $url,
                 'name' => (string) ($file->original_name ?? 'media'),
             ];
         }
 
+        foreach ($this->extractEmbeddedBodyMedia((string) $post->body) as $embeddedMedia) {
+            $url = (string) ($embeddedMedia['url'] ?? '');
+            if ($url === '' || isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+            $items[] = $embeddedMedia;
+        }
+
         return array_slice($items, 0, 8);
+    }
+
+    private function extractEmbeddedBodyMedia(string $html): array
+    {
+        $items = [];
+        $patterns = [
+            ['regex' => '/<img[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'image'],
+            ['regex' => '/<video[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+            ['regex' => '/<source[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (! preg_match_all($pattern['regex'], $html, $matches)) {
+                continue;
+            }
+
+            foreach (($matches[1] ?? []) as $src) {
+                $url = trim((string) $src);
+                if ($url === '') {
+                    continue;
+                }
+
+                $items[] = [
+                    'type' => $pattern['type'],
+                    'url' => $url,
+                    'name' => 'embedded-media',
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    private function resolveMediaType(PostFile $file): ?string
+    {
+        $mime = Str::lower(trim((string) ($file->mime_type ?? '')));
+
+        if (Str::startsWith($mime, 'image/')) {
+            return 'image';
+        }
+
+        if (Str::startsWith($mime, 'video/')) {
+            return 'video';
+        }
+
+        $sourceName = Str::lower((string) ($file->original_name ?: $file->path ?: ''));
+        $extension = pathinfo($sourceName, PATHINFO_EXTENSION);
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true)) {
+            return 'image';
+        }
+
+        if (in_array($extension, ['mp4', 'mov', 'webm', 'm4v'], true)) {
+            return 'video';
+        }
+
+        return null;
     }
 
     private function resolveUserApartmentId(?User $user): int
@@ -319,7 +394,7 @@ class CommunityPageController extends Controller
     private function resolvePostThumbnailUrl(Post $post): ?string
     {
         $imageFile = $post->files
-            ->first(fn (PostFile $file) => Str::startsWith(Str::lower((string) $file->mime_type), 'image/'));
+            ->first(fn (PostFile $file) => $this->resolveMediaType($file) === 'image');
 
         if ($imageFile) {
             return '/community/files/'.$imageFile->id;
