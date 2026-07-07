@@ -38,7 +38,7 @@ class PublicSiteController extends Controller
         }
 
         $candidates = Post::query()
-            ->with(['board', 'apartment', 'files', 'user'])
+            ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
             ->withCount('likes')
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', function ($query) {
@@ -179,6 +179,7 @@ class PublicSiteController extends Controller
         $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
         $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
         $likeCount = (int) ($post->likes_count ?? 0);
+        $pollPreview = $this->buildPollPreview($post);
         $likedByMe = $user
             ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists()
             : false;
@@ -200,6 +201,10 @@ class PublicSiteController extends Controller
             'author_name' => $authorName,
             'author_initial' => mb_strtoupper($authorInitial),
             'board_name' => $post->board->name,
+            'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
+            'poll_question' => (string) ($pollPreview['question'] ?? ''),
+            'poll_options_preview' => (array) ($pollPreview['options'] ?? []),
+            'poll_total_votes' => (int) ($pollPreview['total_votes'] ?? 0),
             'apartment_name' => $post->apartment->name,
             'body_preview' => $this->buildBodyPreview($post->body),
             'media_items' => $canRead ? $this->extractMediaItems($post) : [],
@@ -260,6 +265,34 @@ class PublicSiteController extends Controller
         }
 
         return array_slice($items, 0, 8);
+    }
+
+    private function buildPollPreview(Post $post): array
+    {
+        if ((string) ($post->board?->board_type ?? '') !== 'poll' || ! $post->poll) {
+            return [
+                'is_poll' => false,
+                'question' => '',
+                'options' => [],
+                'total_votes' => 0,
+            ];
+        }
+
+        $options = $post->poll->options
+            ->sortBy('sort_order')
+            ->take(3)
+            ->pluck('label')
+            ->map(fn ($label) => trim((string) $label))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'is_poll' => true,
+            'question' => trim((string) ($post->poll->question ?? '')),
+            'options' => $options,
+            'total_votes' => (int) $post->poll->options->sum('vote_count'),
+        ];
     }
 
     private function extractEmbeddedBodyMedia(string $html): array

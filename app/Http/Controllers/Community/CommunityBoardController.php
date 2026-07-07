@@ -204,6 +204,8 @@ class CommunityBoardController extends Controller
         $apartmentId = $this->resolveContextApartmentId($request);
         $board = $this->resolveBoard($slug, $apartmentId);
         $user = $request->user()->loadMissing(['preferredApartment', 'preferredResidenceComplex']);
+        $requestedScope = (string) $request->query('scope', '');
+        $requestedTopicSlug = trim((string) $request->query('topic', ''));
 
         if (! $this->canWriteInBoard($user, $board)) {
             abort(403);
@@ -222,11 +224,28 @@ class CommunityBoardController extends Controller
             ? $this->permissionService->hasVerifiedResidenceComplex($user, $writerResidenceComplexId)
             : $this->permissionService->hasVerifiedRole($user, $writerApartmentId);
 
+        $defaultAudienceScope = $requestedScope === 'apartment' ? 'apartment' : 'region';
+        if (! $canUseRestrictedAudience && $defaultAudienceScope === 'apartment') {
+            $defaultAudienceScope = 'region';
+        }
+
+        $defaultTopicId = null;
+        if ($requestedTopicSlug !== '') {
+            $defaultTopic = $topicOptions->first(fn ($topic) => (string) $topic->slug === $requestedTopicSlug);
+            if ($defaultTopic) {
+                $defaultTopicId = (int) $defaultTopic->id;
+            }
+        }
+
         return view('community.post-create', [
             'board' => $board,
             'apartmentId' => $apartmentId,
             'topicOptions' => $topicOptions,
             'canUseRestrictedAudience' => $canUseRestrictedAudience,
+            'defaultAudienceScope' => $defaultAudienceScope,
+            'defaultTopicId' => $defaultTopicId,
+            'requestedScope' => $requestedScope,
+            'requestedTopicSlug' => $requestedTopicSlug,
         ]);
     }
 
@@ -234,6 +253,8 @@ class CommunityBoardController extends Controller
     {
         $apartmentId = $this->resolveContextApartmentId($request);
         $user = $request->user();
+        $scope = (string) $request->query('scope', '');
+        $topic = trim((string) $request->query('topic', ''));
 
         $candidateBoards = Board::query()
             ->where('is_active', true)
@@ -251,12 +272,22 @@ class CommunityBoardController extends Controller
                 ? (int) $targetBoard->apartment_id
                 : ((int) ($user->preferred_apartment_id ?: $apartmentId));
 
-            return redirect('/community/boards/'.$targetBoard->slug.'/create?apartment_id='.$targetApartmentId);
+            $query = ['apartment_id' => $targetApartmentId];
+            if (in_array($scope, ['all', 'region', 'apartment'], true)) {
+                $query['scope'] = $scope;
+            }
+            if ($topic !== '') {
+                $query['topic'] = $topic;
+            }
+
+            return redirect('/community/boards/'.$targetBoard->slug.'/create?'.http_build_query($query));
         }
 
         return view('community.compose', [
             'apartmentId' => $apartmentId,
             'writableBoards' => $writableBoards,
+            'scope' => $scope,
+            'topic' => $topic,
         ]);
     }
 

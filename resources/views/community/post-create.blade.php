@@ -186,7 +186,7 @@
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
     @php($communityScope = request('scope', ($board->apartment_id ? 'apartment' : 'region')))
     <section class="card">
-        <p class="meta"><a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">← 커뮤니티로</a></p>
+        <p class="meta"><a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}@if(!empty($requestedTopicSlug))&topic={{ urlencode($requestedTopicSlug) }}@endif">← 커뮤니티로</a></p>
         <h1 style="margin-top:0;">새 글 작성</h1>
         <p class="meta">게시판: {{ $board->name }}</p>
 
@@ -338,8 +338,8 @@
                 <div class="meta">에디터 로딩에 실패하면 기본 입력창으로 자동 전환됩니다.</div>
                 <label>노출 카테고리
                     <select name="audience_scope" class="form-select" style="margin-top:6px;">
-                        <option value="region" @selected(old('audience_scope', 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
-                        <option value="apartment" @selected(old('audience_scope') === 'apartment')>공동주택 (같은 단지 인증 회원만 상세)</option>
+                        <option value="region" @selected(old('audience_scope', $defaultAudienceScope ?? 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
+                        <option value="apartment" @selected(old('audience_scope', $defaultAudienceScope ?? 'region') === 'apartment')>공동주택 (같은 단지 인증 회원만 상세)</option>
                     </select>
                 </label>
                 <div class="meta" style="margin-top:-4px;">글쓰기는 인증회원만 가능합니다.</div>
@@ -347,7 +347,7 @@
                     <select name="post_topic_id" class="form-select" style="margin-top:6px;">
                         <option value="">선택 안 함</option>
                         @foreach($topicOptions as $topic)
-                            <option value="{{ $topic->id }}" @selected((string) old('post_topic_id') === (string) $topic->id)>#{{ $topic->name }}</option>
+                            <option value="{{ $topic->id }}" @selected((string) old('post_topic_id', $defaultTopicId ?? '') === (string) $topic->id)>#{{ $topic->name }}</option>
                         @endforeach
                     </select>
                 </label>
@@ -375,7 +375,7 @@
                         </div>
                         <div class="publish-actions">
                             <button type="submit">등록</button>
-                            <a class="btn secondary" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">취소</a>
+                            <a class="btn secondary" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}@if(!empty($requestedTopicSlug))&topic={{ urlencode($requestedTopicSlug) }}@endif">취소</a>
                         </div>
                     </div>
                 </div>

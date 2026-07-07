@@ -56,7 +56,7 @@ class CommunityPageController extends Controller
         }
 
         $postsQuery = Post::query()
-            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user'])
+            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user', 'poll.options'])
             ->withCount('likes')
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', fn ($query) => $query->where('is_active', true))
@@ -160,6 +160,7 @@ class CommunityPageController extends Controller
             $canRead = $this->permissionService->canReadPostDetail($user, $post);
             $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
             $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
+            $pollPreview = $this->buildPollPreview($post);
 
             return [
                 'id' => (int) $post->id,
@@ -169,6 +170,10 @@ class CommunityPageController extends Controller
                 'author_name' => $authorName,
                 'author_initial' => mb_strtoupper($authorInitial),
                 'board_name' => $post->board->name,
+                'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
+                'poll_question' => (string) ($pollPreview['question'] ?? ''),
+                'poll_options_preview' => (array) ($pollPreview['options'] ?? []),
+                'poll_total_votes' => (int) ($pollPreview['total_votes'] ?? 0),
                 'topic_name' => $post->topic?->name,
                 'apartment_name' => $post->apartment?->name ?: ($post->residenceComplex?->displayName() ?: '공동주택'),
                 'body_preview' => $this->buildBodyPreview($post->body),
@@ -214,6 +219,34 @@ class CommunityPageController extends Controller
             'ownApartmentPosts' => $ownApartmentPosts,
             'otherApartmentPosts' => $otherApartmentPosts,
         ]);
+    }
+
+    private function buildPollPreview(Post $post): array
+    {
+        if ((string) ($post->board?->board_type ?? '') !== 'poll' || ! $post->poll) {
+            return [
+                'is_poll' => false,
+                'question' => '',
+                'options' => [],
+                'total_votes' => 0,
+            ];
+        }
+
+        $options = $post->poll->options
+            ->sortBy('sort_order')
+            ->take(3)
+            ->pluck('label')
+            ->map(fn ($label) => trim((string) $label))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'is_poll' => true,
+            'question' => trim((string) ($post->poll->question ?? '')),
+            'options' => $options,
+            'total_votes' => (int) $post->poll->options->sum('vote_count'),
+        ];
     }
 
     private function buildBodyPreview(?string $html): string

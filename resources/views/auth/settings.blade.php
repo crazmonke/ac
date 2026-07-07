@@ -124,6 +124,13 @@
         .suggestion:first-child { border-top: 0; }
         .suggestion small { display: block; color: var(--muted); margin-top: 4px; }
         .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #eef2f8; color: #22344f; font-size: 0.8rem; font-weight: 700; }
+        .account-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 12px;
+        }
         @media (min-width: 740px) {
             .form-grid.two {
                 grid-template-columns: 1fr 1fr;
@@ -136,6 +143,13 @@
 
 <div class="shell">
     <h1 class="page-title">계정 설정</h1>
+
+    <div class="account-actions">
+        <form method="post" action="/logout" style="margin:0;">
+            @csrf
+            <button class="btn btn-danger" type="submit">로그아웃</button>
+        </form>
+    </div>
 
     @if(session('status'))
         <div class="flash">{{ session('status') }}</div>
@@ -177,7 +191,7 @@
             <label>
                 호 (선택)
                 <input name="residence_ho" value="{{ old('residence_ho', $user->preferredResidenceUnit?->ho) }}" maxlength="40" @readonly($isProfileLocked)>
-            </div>
+            </label>
 
             <div class="row" style="grid-column: 1 / -1;">
                 <button class="btn btn-primary" type="submit" @disabled($isProfileLocked)>프로필 저장</button>

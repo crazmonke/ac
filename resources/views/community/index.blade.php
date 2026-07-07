@@ -55,6 +55,38 @@
         .post-title { color: #121212; text-decoration: none; font-weight: 700; line-height: 1.42; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
         .body-preview { margin-top: 6px; color: #222b37; font-size: 0.92rem; line-height: 1.5; }
         .body-link { display: block; text-decoration: none; color: inherit; }
+        .poll-preview {
+            margin-top: 8px;
+            border: 1px solid #d9e4f3;
+            border-radius: 12px;
+            background: #f7fbff;
+            padding: 9px 10px;
+        }
+        .poll-preview-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #1f3f72;
+        }
+        .poll-preview-options {
+            margin-top: 7px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .poll-preview-option {
+            font-size: 0.76rem;
+            border-radius: 999px;
+            padding: 3px 8px;
+            background: #e8f0fd;
+            color: #244171;
+        }
+        .poll-preview-meta {
+            margin-top: 6px;
+            font-size: 0.76rem;
+            color: #516681;
+            font-weight: 700;
+        }
         .media-strip {
             margin-top: 8px;
             display: flex;
@@ -227,6 +259,25 @@
             .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
             .post-row { gap: 10px; }
             .post-thumb { flex-basis: 86px; width: 86px; border-radius: 9px; }
+            .post-actions {
+                margin-top: 10px;
+                gap: 18px;
+                align-items: center;
+            }
+            .icon-action {
+                gap: 6px;
+                font-size: 0.95rem;
+                padding: 4px 2px;
+                min-height: 34px;
+            }
+            .icon-action svg {
+                width: 22px;
+                height: 22px;
+                stroke-width: 2.1;
+            }
+            .icon-count {
+                font-size: 0.92rem;
+            }
             .desktop-write-cta { display: none; }
             .mobile-bottom-nav {
                 position: fixed;
@@ -268,6 +319,7 @@
     <div class="top">
         <h1 style="margin:0;">커뮤니티</h1>
         <div class="meta">
+            <!--
             @if(auth()->check() && $isVerified)
                 인증회원 모드: 전국(동네)/동네(내 지역)/공동주택(내 단지) 열람 + 글쓰기 가능
             @elseif(auth()->check())
@@ -275,6 +327,7 @@
             @else
                 비회원 모드: 전국 동네 공개 게시글 열람
             @endif
+            -->
         </div>
     </div>
 
@@ -299,7 +352,7 @@
             작성할 게시판을 고르고 태그를 지정해 글을 등록할 수 있습니다.
         </div>
         @if($canCreatePost)
-            <a class="scope-tab active desktop-write-cta" href="/community/compose?apartment_id={{ $apartmentId }}">글쓰기</a>
+            <a class="scope-tab active desktop-write-cta" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif">글쓰기</a>
         @elseif(auth()->check())
             <div class="empty-box" style="margin:0; padding:8px 10px;">글쓰기는 인증회원만 가능합니다. 단지 인증을 완료해 주세요.</div>
         @else
@@ -317,6 +370,10 @@
                 $commentCount = (int) ($post['comment_count'] ?? 0);
                 $bodyPreview = trim((string) ($post['body_preview'] ?? ''));
                 $mediaItems = (array) ($post['media_items'] ?? []);
+                $isPoll = (bool) ($post['is_poll'] ?? false);
+                $pollQuestion = trim((string) ($post['poll_question'] ?? ''));
+                $pollOptions = (array) ($post['poll_options_preview'] ?? []);
+                $pollTotalVotes = (int) ($post['poll_total_votes'] ?? 0);
                 $likeMethod = $isLiked ? 'delete' : 'post';
                 $csrf = csrf_token();
                 $heartIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>';
@@ -332,6 +389,9 @@
                     .'</div>'
                     .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.e($post['title']).'</a>'
                     .($bodyPreview !== '' ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="body-preview">'.e($bodyPreview).'</div></a>' : '')
+                    .($isPoll ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="poll-preview"><p class="poll-preview-title">📊 '.e($pollQuestion !== '' ? $pollQuestion : '투표 게시글').'</p>'
+                        .(!empty($pollOptions) ? '<div class="poll-preview-options">'.collect($pollOptions)->map(fn ($opt) => '<span class="poll-preview-option">'.e((string) $opt).'</span>')->implode('').'</div>' : '')
+                        .'<div class="poll-preview-meta">총 '.e((string) $pollTotalVotes).'표 · 자세히 보려면 눌러주세요</div></div></a>' : '')
                     .(!empty($mediaItems) ? '<div class="media-strip">'.collect($mediaItems)->map(function ($item) use ($signupAttr) {
                         $url = e((string) ($item['url'] ?? ''));
                         $name = e((string) ($item['name'] ?? 'media'));
@@ -442,7 +502,7 @@
 @if($canCreatePost)
     <nav class="mobile-bottom-nav" aria-label="모바일 하단 메뉴">
         <div class="mobile-bottom-nav-inner">
-            <a class="mobile-nav-item" href="/community/compose?apartment_id={{ $apartmentId }}" aria-label="글쓰기">
+            <a class="mobile-nav-item" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
                 <span class="mobile-nav-item-icon">+</span>
                 <span class="mobile-nav-item-label">글쓰기</span>
             </a>

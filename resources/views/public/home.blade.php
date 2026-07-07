@@ -150,6 +150,38 @@
             text-decoration: none;
             color: inherit;
         }
+        .poll-preview {
+            margin-top: 8px;
+            border: 1px solid #d9e4f3;
+            border-radius: 12px;
+            background: #f7fbff;
+            padding: 9px 10px;
+        }
+        .poll-preview-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #1f3f72;
+        }
+        .poll-preview-options {
+            margin-top: 7px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .poll-preview-option {
+            font-size: 0.76rem;
+            border-radius: 999px;
+            padding: 3px 8px;
+            background: #e8f0fd;
+            color: #244171;
+        }
+        .poll-preview-meta {
+            margin-top: 6px;
+            font-size: 0.76rem;
+            color: #516681;
+            font-weight: 700;
+        }
         .chips { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
         .chip { font-size: 0.74rem; border-radius: 999px; padding: 3px 8px; background: #eef1f6; color: #344054; }
         .chip.locked { background: #fff2e7; color: #9a4a16; }
@@ -345,6 +377,24 @@
         @media (max-width: 640px) {
             .feed-row { gap: 8px; }
             .media-card { flex-basis: min(320px, 84vw); }
+            .actions {
+                margin-top: 10px;
+                gap: 18px;
+            }
+            .icon-action {
+                gap: 6px;
+                font-size: 0.95rem;
+                padding: 4px 2px;
+                min-height: 34px;
+            }
+            .icon-action svg {
+                width: 22px;
+                height: 22px;
+                stroke-width: 2.1;
+            }
+            .icon-count {
+                font-size: 0.92rem;
+            }
         }
 
         @media (min-width: 900px) {
@@ -400,6 +450,21 @@
                                 <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                                 @if(!empty($item['body_preview']))
                                     <a class="body-link" href="{{ $item['url'] }}"><div class="body-preview">{{ $item['body_preview'] }}</div></a>
+                                @endif
+                                @if(($item['is_poll'] ?? false) === true)
+                                    <a class="body-link" href="{{ $item['url'] }}">
+                                        <div class="poll-preview">
+                                            <p class="poll-preview-title">📊 {{ $item['poll_question'] !== '' ? $item['poll_question'] : '투표 게시글' }}</p>
+                                            @if(!empty($item['poll_options_preview']))
+                                                <div class="poll-preview-options">
+                                                    @foreach($item['poll_options_preview'] as $pollOption)
+                                                        <span class="poll-preview-option">{{ $pollOption }}</span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                            <div class="poll-preview-meta">총 {{ $item['poll_total_votes'] ?? 0 }}표 · 자세히 보려면 눌러주세요</div>
+                                        </div>
+                                    </a>
                                 @endif
                                 @if(!empty($item['media_items']))
                                     <div class="media-strip">
