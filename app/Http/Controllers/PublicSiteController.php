@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Post;
+use App\Models\User;
 use App\Services\PermissionService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
@@ -22,6 +23,10 @@ class PublicSiteController extends Controller
         $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
         $user = $request->user();
 
+        if ($user) {
+            $user->loadMissing('preferredResidenceComplex');
+        }
+
         $apartment = ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
             ?? Apartment::query()->find($requestedApartmentId)
             ?? Apartment::query()->orderBy('id')->first();
@@ -30,72 +35,54 @@ class PublicSiteController extends Controller
             abort(404, '공동주택 데이터가 없습니다.');
         }
 
-        $apartmentId = (int) $apartment->id;
-
-        $boards = Board::query()
-            ->with('category')
-            ->where(function ($query) use ($apartmentId) {
-                $query->whereNull('apartment_id')
-                    ->orWhere('apartment_id', $apartmentId);
-            })
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get();
-
-        $publicBoards = $boards->filter(fn (Board $board) => $this->permissionService->hasBoardPermission($user, $board, 'read'));
-        $lockedBoards = $boards->reject(fn (Board $board) => $this->permissionService->hasBoardPermission($user, $board, 'read'));
-
-        $notices = Post::query()
-            ->with(['board', 'apartment'])
-            ->where(function ($query) {
-                $this->applyNoticeFilter($query);
-            })
-            ->latest()
-            ->paginate(20, ['*'], 'notice_page')
-            ->withQueryString();
-        $notices = $this->mapPostPaginator($notices, $user);
-
-        $bestCandidatePosts = Post::query()
+        $candidates = Post::query()
             ->with(['board', 'apartment'])
             ->where('visibility', '!=', 'deleted')
-            ->where(function ($query) {
-                $this->applyNonNoticeFilter($query);
-            })
             ->whereHas('board', function ($query) {
                 $query->where('is_active', true);
             })
-            ->whereIn('audience_scope', ['region', 'apartment'])
-            ->orderByDesc('view_count')
-            ->orderByDesc('comment_count')
             ->latest()
-            ->limit(300)
+            ->limit(500)
             ->get();
 
-        $bestTopics = $bestCandidatePosts
-            ->filter(fn (Post $post) => $this->permissionService->canReadPostDetail($user, $post))
-            ->take(10)
+        $feedPosts = $candidates
+            ->filter(fn (Post $post) => $this->shouldShowOnHomeFeed($post, $user, $apartment))
             ->values();
 
-        $latestPosts = Post::query()
-            ->with(['board', 'apartment'])
-            ->where(function ($query) {
-                $this->applyNonNoticeFilter($query);
-            })
-            ->whereHas('board', function ($query) {
-                $query->where('is_active', true);
-            })
-            ->latest()
-            ->limit(20)
-            ->get();
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 20;
+        $feedPaginator = new LengthAwarePaginator(
+            $feedPosts->forPage($page, $perPage)->values(),
+            $feedPosts->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+        $feedPaginator = $this->mapPostPaginator($feedPaginator, $user);
+
+        $isLoggedIn = (bool) $user;
+        $isVerifiedUser = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
+
+        $feedTitle = ! $isLoggedIn
+            ? '전국 동네 공개 피드'
+            : ($isVerifiedUser ? '인증 회원 맞춤 피드' : '비인증 회원 피드');
+
+        $feedDescription = ! $isLoggedIn
+            ? '비회원도 읽을 수 있는 동네 공개 게시글을 최신순으로 제공합니다.'
+            : ($isVerifiedUser
+                ? '인증된 동네 게시글과 내 공동주택 게시글을 최신순으로 보여드립니다.'
+                : '동네 영역 게시글과 비인증 회원도 읽을 수 있는 게시글을 최신순으로 보여드립니다.');
 
         return view('public.home', [
             'apartment' => $apartment,
-            'publicBoards' => $publicBoards,
-            'lockedBoards' => $lockedBoards,
-            'notices' => $notices,
-            'bestTopics' => $this->mapPostCards($bestTopics, $user),
-            'latestPosts' => $this->mapPostCards($latestPosts, $user),
-            'isLoggedIn' => (bool) $user,
+            'feedPosts' => $feedPaginator,
+            'feedTitle' => $feedTitle,
+            'feedDescription' => $feedDescription,
+            'isLoggedIn' => $isLoggedIn,
+            'isVerifiedUser' => $isVerifiedUser,
         ]);
     }
 
@@ -212,6 +199,100 @@ class PublicSiteController extends Controller
             'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
             'url' => $url,
         ];
+    }
+
+    private function shouldShowOnHomeFeed(Post $post, ?User $user, Apartment $fallbackApartment): bool
+    {
+        if (! $this->permissionService->canReadPostDetail($user, $post)) {
+            return false;
+        }
+
+        $scope = (string) ($post->audience_scope ?? 'all');
+
+        if (! $user) {
+            return $scope === 'region';
+        }
+
+        if (! $this->permissionService->hasVerifiedRole($user)) {
+            return $scope === 'region' || $this->permissionService->canReadPostDetail($user, $post);
+        }
+
+        if ($scope === 'apartment') {
+            return (int) $post->apartment_id === $this->resolveUserApartmentId($user, $fallbackApartment);
+        }
+
+        if ($scope === 'region') {
+            return $this->isSameNeighborhood($post, $user, $fallbackApartment);
+        }
+
+        return false;
+    }
+
+    private function resolveUserApartmentId(User $user, Apartment $fallbackApartment): int
+    {
+        $preferredApartmentId = (int) ($user->preferred_apartment_id ?? 0);
+        if ($preferredApartmentId > 0) {
+            return $preferredApartmentId;
+        }
+
+        $legacyApartmentId = (int) ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0);
+        if ($legacyApartmentId > 0) {
+            return $legacyApartmentId;
+        }
+
+        return 0;
+    }
+
+    private function isSameNeighborhood(Post $post, User $user, Apartment $fallbackApartment): bool
+    {
+        $targetSido = trim((string) ($user->home_sido ?: ''));
+        $targetSigungu = trim((string) ($user->home_sigungu ?: ''));
+        $targetDong = trim((string) ($user->home_eupmyeondong ?: ''));
+
+        $postSido = trim((string) ($post->region_sido ?: $post->apartment?->sido));
+        $postSigungu = trim((string) ($post->region_sigungu ?: $post->apartment?->sigungu));
+        $postDong = trim((string) ($post->region_eupmyeondong ?: $post->apartment?->eupmyeondong));
+
+        if ($targetSido !== '' && $postSido !== '' && ! $this->regionTokenMatches($targetSido, $postSido, false)) {
+            return false;
+        }
+
+        if ($targetSigungu !== '' && $postSigungu !== '' && ! $this->regionTokenMatches($targetSigungu, $postSigungu, true)) {
+            return false;
+        }
+
+        if ($targetDong !== '' && $postDong !== '' && ! $this->regionTokenMatches($targetDong, $postDong, false)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function regionTokenMatches(string $left, string $right, bool $normalizeCityToken): bool
+    {
+        $lhs = $this->normalizeRegionToken($left, $normalizeCityToken);
+        $rhs = $this->normalizeRegionToken($right, $normalizeCityToken);
+
+        if ($lhs === '' || $rhs === '') {
+            return true;
+        }
+
+        if ($lhs === $rhs) {
+            return true;
+        }
+
+        return str_contains($lhs, $rhs) || str_contains($rhs, $lhs);
+    }
+
+    private function normalizeRegionToken(string $value, bool $normalizeCityToken): string
+    {
+        $normalized = preg_replace('/\s+/u', '', trim($value)) ?: '';
+
+        if (! $normalizeCityToken) {
+            return $normalized;
+        }
+
+        return str_replace('시', '', $normalized);
     }
 
     private function applyNoticeFilter($query): void

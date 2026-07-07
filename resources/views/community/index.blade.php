@@ -103,17 +103,17 @@
         <h1 style="margin:0;">커뮤니티</h1>
         <div class="meta">
             @if(auth()->check() && $isVerified)
-                인증회원 모드: 전체/동네/공동주택 상세 열람 + 글쓰기 가능
+                인증회원 모드: 전국(동네)/동네(내 지역)/공동주택(내 단지) 열람 + 글쓰기 가능
             @elseif(auth()->check())
-                비인증회원 모드: 전체/동네 상세 열람 가능, 공동주택는 제목만 열람
+                비인증회원 모드: 전국(동네)/동네(내 지역) 상세 열람 가능, 공동주택은 인증 후 열람 가능
             @else
-                비회원 모드: 전체 게시물 제목만 열람
+                비회원 모드: 전국 동네 공개 게시글 열람
             @endif
         </div>
     </div>
 
     <div class="scope-tabs">
-        <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="/community?scope=all&apartment_id={{ $apartmentId }}">전체</a>
+        <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="/community?scope=all&apartment_id={{ $apartmentId }}">전국</a>
         <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="/community?scope=region&apartment_id={{ $apartmentId }}">동네</a>
         <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">공동주택</a>
     </div>

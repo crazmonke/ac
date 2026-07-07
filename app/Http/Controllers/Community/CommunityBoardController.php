@@ -194,26 +194,30 @@ class CommunityBoardController extends Controller
     {
         $apartmentId = $this->resolveContextApartmentId($request);
         $board = $this->resolveBoard($slug, $apartmentId);
-        $user = $request->user();
+        $user = $request->user()->loadMissing(['preferredApartment', 'preferredResidenceComplex']);
 
         if (! $this->canWriteInBoard($user, $board)) {
             abort(403);
         }
 
-        $writerApartmentId = (int) ($user->preferred_apartment_id ?: ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0));
+        $writerApartmentId = (int) ($user->preferred_apartment_id ?? 0);
+        $writerResidenceComplexId = (int) ($user->preferred_residence_complex_id ?? 0);
 
-        if ($writerApartmentId <= 0) {
+        if ($writerApartmentId <= 0 && $writerResidenceComplexId <= 0) {
             return redirect('/settings?apartment_id='.$apartmentId)
                 ->withErrors(['apartment_query' => '글을 작성하려면 먼저 공동주택를 선택해 주세요.']);
         }
 
-        $topicOptions = $this->loadDistinctTopicOptions($writerApartmentId);
+        $topicOptions = $this->loadDistinctTopicOptions($writerApartmentId > 0 ? $writerApartmentId : $apartmentId);
+        $canUseRestrictedAudience = $writerResidenceComplexId > 0
+            ? $this->permissionService->hasVerifiedResidenceComplex($user, $writerResidenceComplexId)
+            : $this->permissionService->hasVerifiedRole($user, $writerApartmentId);
 
         return view('community.post-create', [
             'board' => $board,
             'apartmentId' => $apartmentId,
             'topicOptions' => $topicOptions,
-            'canUseRestrictedAudience' => $this->permissionService->hasVerifiedRole($user, $writerApartmentId),
+            'canUseRestrictedAudience' => $canUseRestrictedAudience,
         ]);
     }
 
@@ -259,17 +263,16 @@ class CommunityBoardController extends Controller
 
         $writerApartment = $user->preferredApartment;
 
-        if (! $writerApartment) {
-            $legacyApartmentId = (int) ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0);
-            $writerApartment = $legacyApartmentId > 0 ? Apartment::query()->find($legacyApartmentId) : null;
-        }
+        $writerResidenceComplex = $user->preferredResidenceComplex;
+        $writerResidenceComplexId = (int) ($writerResidenceComplex?->id ?? 0);
 
-        if (! $writerApartment) {
+        if (! $writerApartment && $writerResidenceComplexId <= 0) {
             return redirect('/settings?apartment_id='.$apartmentId)
                 ->withErrors(['apartment_query' => '글을 작성하려면 먼저 공동주택를 선택해 주세요.']);
         }
 
-        $writerApartmentId = (int) $writerApartment->id;
+        $writerApartmentId = (int) ($writerApartment?->id ?? 0);
+        $storageApartmentId = $writerApartmentId > 0 ? $writerApartmentId : $apartmentId;
 
         $rules = [
             'title' => ['required', 'string', 'max:160'],
@@ -293,24 +296,40 @@ class CommunityBoardController extends Controller
         $data = $request->validate($rules);
 
         $audienceScope = (string) $data['audience_scope'];
-        if ($audienceScope === 'apartment' && ! $this->permissionService->hasVerifiedRole($user, $writerApartmentId)) {
+        $canUseApartmentScope = $writerResidenceComplexId > 0
+            ? $this->permissionService->hasVerifiedResidenceComplex($user, $writerResidenceComplexId)
+            : $this->permissionService->hasVerifiedRole($user, $writerApartmentId);
+
+        if ($audienceScope === 'apartment' && ! $canUseApartmentScope) {
             return back()->withErrors(['audience_scope' => '공동주택 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
         }
 
         $postTopicId = $this->resolvePostTopicId(
             $request,
-            $writerApartmentId,
+            $storageApartmentId,
             $data['post_topic_id'] ?? null,
             $data['new_topic'] ?? null
         );
 
+        $region = $writerApartment
+            ? [
+                'sido' => $writerApartment->sido,
+                'sigungu' => $writerApartment->sigungu,
+                'dong' => $writerApartment->eupmyeondong,
+            ]
+            : $this->extractRegionFromAddress(
+                (string) ($writerResidenceComplex?->road_address ?: ''),
+                (string) ($writerResidenceComplex?->jibun_address ?: '')
+            );
+
         $post = Post::query()->create([
             'board_id' => $board->id,
             'post_topic_id' => $postTopicId,
-            'apartment_id' => $writerApartmentId,
-            'region_sido' => $writerApartment->sido,
-            'region_sigungu' => $writerApartment->sigungu,
-            'region_eupmyeondong' => $writerApartment->eupmyeondong,
+            'apartment_id' => $storageApartmentId,
+            'residence_complex_id' => $writerResidenceComplexId > 0 ? $writerResidenceComplexId : null,
+            'region_sido' => $region['sido'],
+            'region_sigungu' => $region['sigungu'],
+            'region_eupmyeondong' => $region['dong'],
             'user_id' => $user->id,
             'title' => $data['title'],
             'body' => $this->sanitizeEditorHtml((string) $data['body']),
@@ -365,7 +384,11 @@ class CommunityBoardController extends Controller
         $data = $request->validate($rules);
 
         $audienceScope = (string) $data['audience_scope'];
-        if ($audienceScope === 'apartment' && ! $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id)) {
+        $canUseApartmentScope = (int) ($post->residence_complex_id ?? 0) > 0
+            ? $this->permissionService->hasVerifiedResidenceComplex($request->user(), (int) $post->residence_complex_id)
+            : $this->permissionService->hasVerifiedRole($request->user(), (int) $post->apartment_id);
+
+        if ($audienceScope === 'apartment' && ! $canUseApartmentScope) {
             return back()->withErrors(['audience_scope' => '공동주택 공개 글은 인증 회원만 작성할 수 있습니다.'])->withInput();
         }
 
@@ -802,6 +825,68 @@ class CommunityBoardController extends Controller
             ->first();
 
         return $topic ? (int) $topic->id : null;
+    }
+
+    private function extractRegionFromAddress(string $roadAddress, string $jibunAddress = ''): array
+    {
+        $address = trim($roadAddress !== '' ? $roadAddress : $jibunAddress);
+
+        if ($address === '') {
+            return ['sido' => null, 'sigungu' => null, 'dong' => null];
+        }
+
+        $tokens = preg_split('/\s+/u', str_replace(',', ' ', $address)) ?: [];
+        $tokens = array_values(array_filter(array_map(function ($token) {
+            $token = trim((string) $token);
+
+            return $token !== '' ? $token : null;
+        }, $tokens)));
+        $tokens = array_values(array_filter($tokens, fn ($token) => $token !== '대한민국'));
+
+        $sido = null;
+        $cityToken = null;
+        $districtToken = null;
+        $dong = null;
+
+        foreach ($tokens as $token) {
+            if ($sido === null && preg_match('/(도|특별시|광역시|자치시)$/u', $token)) {
+                $sido = $token;
+                continue;
+            }
+
+            if ($cityToken === null && preg_match('/시$/u', $token)) {
+                $cityToken = $token;
+                continue;
+            }
+
+            if ($districtToken === null && preg_match('/(구|군)$/u', $token)) {
+                $districtToken = $token;
+                continue;
+            }
+
+            if ($dong === null && preg_match('/(동|읍|면|가)$/u', $token)) {
+                $dong = $token;
+            }
+        }
+
+        if ($sido === null && $cityToken !== null) {
+            $sido = $cityToken;
+        }
+
+        $sigungu = null;
+        if ($cityToken !== null && $districtToken !== null) {
+            $sigungu = trim($cityToken . ' ' . $districtToken);
+        } elseif ($districtToken !== null) {
+            $sigungu = $districtToken;
+        } elseif ($cityToken !== null) {
+            $sigungu = $cityToken;
+        }
+
+        return [
+            'sido' => $sido,
+            'sigungu' => $sigungu,
+            'dong' => $dong,
+        ];
     }
 
     private function syncPollFromRequest(Request $request, Post $post, array $data): void

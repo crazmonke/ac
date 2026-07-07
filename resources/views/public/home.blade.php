@@ -274,11 +274,11 @@
 
     <section class="hero">
         <article class="hero-main">
-            <span class="hero-badge">비회원 둘러보기 + 회원 전용 커뮤니티</span>
-            <h1>비회원도 핵심 메뉴는 보고, 주민 전용 글은 제목 미리보기로 가입을 유도합니다.</h1>
+            <span class="hero-badge">상태별 맞춤 게시글 노출</span>
+            <h1>로그인/인증 상태에 맞춰 읽을 수 있는 게시글만 최신순으로 보여줍니다.</h1>
             <p>
-                기본 공지/서비스 메뉴는 누구나 접근할 수 있고, 주민 전용 게시물은 제목/메타까지만 노출됩니다.
-                상세 내용을 열람하려면 회원가입과 단지 인증이 필요합니다.
+                로그인 전에는 전국 동네 공개 게시글을, 로그인 후에는 계정 상태에 맞는 게시글을 최신순으로 제공합니다.
+                인증 회원은 인증 동네 + 내 공동주택 게시글, 비인증 회원은 동네/비인증 열람 가능 게시글 중심으로 확인할 수 있습니다.
             </p>
         </article>
 
@@ -298,62 +298,8 @@
     </section>
 
     <section class="section">
-        <h2 class="section-title">📢 공지 / 서비스 공지</h2>
-        <article class="card">
-            <ul class="notice-list">
-                @forelse($notices as $item)
-                    <li>
-                        <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
-                        <span class="meta">{{ $item['display_date'] }}</span>
-                    </li>
-                @empty
-                    <li class="meta">등록된 공지사항이 없습니다.</li>
-                @endforelse
-            </ul>
-            @include('partials.pagination', ['paginator' => $notices])
-        </article>
-    </section>
-
-    <section class="section">
-        <h2 class="section-title">🏆 커뮤니티 토픽 베스트 (조회수 TOP 10)</h2>
-        <article class="card">
-            <table class="post-table best-table">
-                <thead>
-                <tr>
-                    <th>지역/브랜드</th>
-                    <th>제목</th>
-                    <th>일자</th>
-                </tr>
-                </thead>
-                <tbody>
-                @forelse($bestTopics as $item)
-                    <tr>
-                        <td>
-                            <span class="region-brand">
-                                <span class="region-pill">{{ $item['region_label'] }}</span>
-                                <span class="brand-icon">{{ $item['brand_token'] }}</span>
-                            </span>
-                        </td>
-                        <td class="title-cell">
-                            <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
-                            @if(!empty($item['access_label']))
-                                <div class="title-submeta"><span class="lock">{{ $item['access_label'] }}</span></div>
-                            @endif
-                        </td>
-                        <td>{{ $item['display_date'] }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="3" class="meta">아직 베스트 글이 없습니다.</td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
-        </article>
-    </section>
-
-    <section class="section">
-        <h2 class="section-title">🆕 커뮤니티</h2>
+        <h2 class="section-title">🆕 {{ $feedTitle }}</h2>
+        <p class="meta" style="margin:0 0 8px;">{{ $feedDescription }}</p>
         <article class="card">
             <table class="post-table latest-table">
                 <thead>
@@ -365,17 +311,17 @@
                 </tr>
                 </thead>
                 <tbody>
-                @forelse($latestPosts as $item)
+                @forelse($feedPosts as $item)
                     <tr>
                         <td class="board-col"><span class="board-name">{{ $item['board_name'] }}</span></td>
                         <td class="title-cell">
-                            <a class="title-link {{ !$isLoggedIn && !$item['can_read'] ? 'requires-signup' : '' }}" href="{{ $item['url'] }}" @if(!$isLoggedIn && !$item['can_read']) data-signup-url="{{ $item['url'] }}" @endif>{{ $item['title'] }}</a>
+                            <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                             <div class="title-submeta">
                                 @if($item['comment_count'] > 0)
                                     <span class="meta">댓글 {{ $item['comment_count'] }}</span>
                                 @endif
                                 @if(!empty($item['access_label']))
-                                    <span class="lock">🔒 {{ $item['access_label'] }}</span>
+                                    <span class="lock">{{ $item['access_label'] }}</span>
                                 @endif
                             </div>
                         </td>
@@ -384,11 +330,12 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="meta">아직 최신글이 없습니다.</td>
+                        <td colspan="4" class="meta">현재 노출 가능한 게시글이 없습니다.</td>
                     </tr>
                 @endforelse
                 </tbody>
             </table>
+            @include('partials.pagination', ['paginator' => $feedPosts])
         </article>
     </section>
 
@@ -403,16 +350,5 @@
         <div class="footer-copy">© {{ now()->year }} 아파인드 (Apaind)</div>
     </footer>
 </div>
-<script>
-document.querySelectorAll('.requires-signup').forEach((link) => {
-    link.addEventListener('click', (event) => {
-        event.preventDefault();
-        const shouldMove = window.confirm('이 게시글 본문은 회원 전용입니다. 회원가입 페이지로 이동할까요?');
-        if (shouldMove) {
-            window.location.href = link.dataset.signupUrl || '/register';
-        }
-    });
-});
-</script>
 </body>
 </html>
