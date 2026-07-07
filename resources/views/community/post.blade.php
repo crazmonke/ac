@@ -587,7 +587,7 @@
 
         @if(count($bestCommentIds))
             <div class="best-box">
-                <div class="best-label">✨ BEST 댓글</div>
+                <div class="best-label">댓글</div>
                 @foreach($post->comments->whereIn('id', $bestCommentIds) as $bestComment)
                     <article class="comment" style="padding-top: 8px;">
                         @php($bestCommentAuthorName = $bestComment->is_anonymous ? '익명' : ($bestComment->user->name ?? '알 수 없음'))
