@@ -37,6 +37,7 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 Route::get('/community', [CommunityPageController::class, 'index']);
+Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
 Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::class, 'index'])
     ->middleware(['auth', 'role:resident,apartmentId']);
 
@@ -49,6 +50,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
     Route::post('/community/editor/photos', [CommunityBoardController::class, 'uploadEditorPhoto']);
+    Route::post('/community/editor/videos', [CommunityBoardController::class, 'uploadEditorVideo']);
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);
@@ -57,10 +59,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
     Route::post('/community/posts/{id}/poll-votes', [CommunityBoardController::class, 'storePollVote']);
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
+    Route::post('/community/posts/{id}/likes', [CommunityBoardController::class, 'likePost']);
+    Route::delete('/community/posts/{id}/likes', [CommunityBoardController::class, 'unlikePost']);
     Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);
     Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);
-    Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
     Route::delete('/community/files/{id}', [CommunityBoardController::class, 'destroyFile']);
     Route::get('/community/{slug}', [CommunityBoardController::class, 'board']);
 

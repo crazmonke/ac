@@ -154,9 +154,256 @@
         .editor-custom-color button { flex: 0 0 auto; height: 42px; padding: 0 12px; border-radius: 12px; }
         .editor-host { padding: 0; }
         .editor-host textarea { border: 0; border-radius: 0; }
+        .compose-editor-wrap {
+            border: 1px solid #d8e2ef;
+            border-radius: 16px;
+            background: #fff;
+            padding: 10px;
+        }
+        .mobile-compose-tools {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .mobile-compose-button {
+            border: 1px solid #cfd8e6;
+            border-radius: 999px;
+            background: #f2f6fb;
+            color: #20324b;
+            min-height: 36px;
+            min-width: 36px;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-compose-button svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .mobile-compose-toolset {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .mobile-compose-note {
+            display: none;
+            color: #607086;
+            font-size: 0.82rem;
+        }
+        .mobile-media-preview {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #dbe4f0;
+            border-radius: 12px;
+            background: #f8fbff;
+            gap: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+        }
+        .mobile-media-preview-title {
+            grid-column: 1 / -1;
+            margin: 0;
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: #50627c;
+        }
+        .mobile-media-item {
+            position: relative;
+            border: 1px solid #d8e2ef;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f7f9fc;
+            aspect-ratio: 1;
+        }
+        .mobile-media-item img,
+        .mobile-media-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            background: #eef3f9;
+        }
+        .mobile-media-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            background: rgba(15, 20, 29, 0.72);
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 900;
+            padding: 0;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-options-trigger {
+            display: none;
+            width: 100%;
+            min-height: 42px;
+            border-radius: 12px;
+            border: 1px solid #cfd8e6;
+            background: #eef3f9;
+            color: #20324b;
+            font-weight: 800;
+        }
+        .mobile-options-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            background: rgba(15, 20, 29, 0.48);
+            padding: 14px;
+        }
+        .mobile-options-modal.open {
+            display: flex;
+        }
+        .mobile-options-sheet {
+            width: min(740px, 100%);
+            max-height: min(72vh, 620px);
+            overflow: auto;
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid #d9e3ef;
+            padding: 14px;
+        }
+        .mobile-options-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mobile-options-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 900;
+            color: #1c2d44;
+        }
+        .mobile-options-close {
+            border: 1px solid #cfd8e6;
+            border-radius: 10px;
+            min-height: 34px;
+            padding: 6px 10px;
+            background: #f2f6fb;
+            color: #20324b;
+            font-weight: 800;
+        }
+        .mobile-options-body {
+            display: grid;
+            gap: 10px;
+        }
+        .mobile-compose-actions {
+            display: none;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .mobile-compose-action-icon {
+            min-height: 42px;
+            border-radius: 12px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+        }
+        .mobile-compose-action-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .mobile-compose-submit {
+            min-height: 42px;
+            border-radius: 12px;
+            font-weight: 800;
+        }
 
         @media (max-width: 768px) {
             :root { --publish-dock-height: calc(172px + env(safe-area-inset-bottom)); }
+            .wrap.mobile-compose-mode .card {
+                border-radius: 16px;
+            }
+            .wrap.mobile-compose-mode #editorBody {
+                min-height: 42vh;
+                border: 0;
+                border-radius: 12px;
+                box-shadow: none;
+                resize: vertical;
+                font-size: 1rem;
+                line-height: 1.55;
+            }
+            .wrap.mobile-compose-mode .compose-editor-wrap {
+                border-color: #e1e8f2;
+                padding: 10px 10px 8px;
+            }
+            .wrap.mobile-compose-mode .mobile-compose-tools {
+                display: flex;
+            }
+            .wrap.mobile-compose-mode .mobile-media-preview.has-items {
+                display: grid;
+            }
+            .wrap.mobile-compose-mode .mobile-compose-note {
+                display: block;
+            }
+            .wrap.mobile-compose-mode {
+                padding-bottom: 16px;
+            }
+            .wrap.mobile-compose-mode .publish-dock {
+                display: none;
+            }
+            .wrap.mobile-compose-mode .mobile-compose-actions {
+                display: grid;
+            }
+            .wrap.mobile-compose-mode .mobile-options-trigger {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .wrap.mobile-compose-mode .js-post-option-field {
+                display: none;
+            }
+            .wrap.mobile-compose-mode .mobile-options-body .js-post-option-field {
+                display: block !important;
+            }
+            .wrap.mobile-compose-mode .mobile-options-body .publish-option.js-post-option-field {
+                display: inline-flex !important;
+                justify-content: flex-start;
+                width: 100%;
+            }
             .editor-toolbar { padding: 8px 10px; }
             .editor-toolbar-scroll { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
             .editor-tool { flex: 0 0 auto; height: 42px; min-width: 42px; padding: 0 10px; border-radius: 12px; font-size: 1rem; }
@@ -184,9 +431,11 @@
 <body>
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
-    @php($communityScope = request('scope', ($board->apartment_id ? 'apartment' : 'region')))
+    @php
+        $communityScope = request('scope', ($board->apartment_id ? 'apartment' : 'region'));
+    @endphp
     <section class="card">
-        <p class="meta"><a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">← 커뮤니티로</a></p>
+        <p class="meta"><a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}@if(!empty($requestedTopicSlug))&topic={{ urlencode($requestedTopicSlug) }}@endif">← 커뮤니티로</a></p>
         <h1 style="margin-top:0;">새 글 작성</h1>
         <p class="meta">게시판: {{ $board->name }}</p>
 
@@ -194,165 +443,54 @@
             @csrf
             <div class="grid">
                 <input name="title" placeholder="제목" value="{{ old('title') }}" required>
-                <div class="editor-shell">
-                    <div class="editor-toolbar">
-                        <div class="editor-toolbar-scroll js-editor-toolbar">
-                            <button type="button" class="editor-tool accent labelled" data-editor-action="photo">사진</button>
-                            <div class="editor-layer-wrap">
-                                <button type="button" class="editor-tool layer-toggle" data-editor-toggle="heading" aria-haspopup="true" aria-expanded="false">
-                                    <span class="js-heading-label">본문</span>
-                                    <span class="editor-tool-caret">▾</span>
-                                </button>
-                                <div class="editor-layer" data-editor-layer="heading">
-                                    <p class="editor-layer-title">제목 스타일</p>
-                                    <div class="editor-style-grid">
-                                        <button type="button" class="editor-style-option" data-editor-heading="p">
-                                            <strong>본문</strong>
-                                            <span>기본 문단으로 되돌리기</span>
-                                        </button>
-                                        <button type="button" class="editor-style-option" data-editor-heading="h2">
-                                            <strong style="font-size:1.15rem;">H2 제목</strong>
-                                            <span>큰 섹션 제목</span>
-                                        </button>
-                                        <button type="button" class="editor-style-option" data-editor-heading="h3">
-                                            <strong style="font-size:1rem;">H3 소제목</strong>
-                                            <span>작은 섹션 제목</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="editor-layer-wrap">
-                                <button type="button" class="editor-tool layer-toggle" data-editor-toggle="fontsize" aria-haspopup="true" aria-expanded="false">
-                                    <span class="js-fontsize-label">16px</span>
-                                    <span class="editor-tool-caret">▾</span>
-                                </button>
-                                <div class="editor-layer" data-editor-layer="fontsize">
-                                    <p class="editor-layer-title">글자 크기</p>
-                                    <div class="editor-size-grid">
-                                        <button type="button" class="editor-size-option" data-editor-size="12" data-size="12">12</button>
-                                        <button type="button" class="editor-size-option" data-editor-size="14" data-size="14">14</button>
-                                        <button type="button" class="editor-size-option" data-editor-size="16" data-size="16">16</button>
-                                        <button type="button" class="editor-size-option" data-editor-size="18" data-size="18">18</button>
-                                        <button type="button" class="editor-size-option" data-editor-size="24" data-size="24">24</button>
-                                        <button type="button" class="editor-size-option" data-editor-size="32" data-size="32">32</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="editor-layer-wrap">
-                                <button type="button" class="editor-tool layer-toggle" data-editor-toggle="textcolor" aria-haspopup="true" aria-expanded="false">
-                                    <span class="editor-tool-swatch js-textcolor-swatch" style="--swatch:#20324b; background:#20324b;"></span>
-                                    <span>글자색</span>
-                                    <span class="editor-tool-caret">▾</span>
-                                </button>
-                                <div class="editor-layer" data-editor-layer="textcolor">
-                                    <p class="editor-layer-title">글자색</p>
-                                    <div class="editor-color-grid">
-                                        <button type="button" class="editor-color-option" data-editor-color="#20324b" style="--swatch:#20324b;" aria-label="진한 남색"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#2452a3" style="--swatch:#2452a3;" aria-label="파랑"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#0f766e" style="--swatch:#0f766e;" aria-label="청록"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#c2410c" style="--swatch:#c2410c;" aria-label="주황"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#b91c1c" style="--swatch:#b91c1c;" aria-label="빨강"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#7c3aed" style="--swatch:#7c3aed;" aria-label="보라"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#be185d" style="--swatch:#be185d;" aria-label="핑크"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#15803d" style="--swatch:#15803d;" aria-label="초록"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#a16207" style="--swatch:#a16207;" aria-label="황토"></button>
-                                        <button type="button" class="editor-color-option" data-editor-color="#111827" style="--swatch:#111827;" aria-label="검정"></button>
-                                    </div>
-                                    <div class="editor-layer-section editor-custom-color" data-editor-custom-color="text">
-                                        <input type="color" value="#20324b" aria-label="글자색 직접 선택">
-                                        <input type="text" value="#20324b" aria-label="글자색 HEX 입력" placeholder="#20324b">
-                                        <button type="button" class="editor-tool" data-editor-custom-apply="text">적용</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="editor-layer-wrap">
-                                <button type="button" class="editor-tool layer-toggle" data-editor-toggle="highlight" aria-haspopup="true" aria-expanded="false">
-                                    <span class="editor-tool-swatch js-highlight-swatch" style="--swatch:#fef08a; background:#fef08a;"></span>
-                                    <span>배경색</span>
-                                    <span class="editor-tool-caret">▾</span>
-                                </button>
-                                <div class="editor-layer" data-editor-layer="highlight">
-                                    <p class="editor-layer-title">배경색</p>
-                                    <div class="editor-color-grid">
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#fef08a" style="--swatch:#fef08a;" aria-label="노랑"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#fed7aa" style="--swatch:#fed7aa;" aria-label="살구"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#fecdd3" style="--swatch:#fecdd3;" aria-label="연분홍"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#bfdbfe" style="--swatch:#bfdbfe;" aria-label="하늘"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#bbf7d0" style="--swatch:#bbf7d0;" aria-label="민트"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#ddd6fe" style="--swatch:#ddd6fe;" aria-label="라벤더"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#fde68a" style="--swatch:#fde68a;" aria-label="골드"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#e5e7eb" style="--swatch:#e5e7eb;" aria-label="회색"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="#ffffff" style="--swatch:#ffffff;" aria-label="흰색"></button>
-                                        <button type="button" class="editor-color-option" data-editor-bgcolor="transparent" style="--swatch:linear-gradient(135deg, #ffffff 0%, #ffffff 45%, #fca5a5 45%, #fca5a5 55%, #ffffff 55%, #ffffff 100%); background-image:linear-gradient(135deg, #ffffff 0%, #ffffff 45%, #fca5a5 45%, #fca5a5 55%, #ffffff 55%, #ffffff 100%);" aria-label="배경 제거"></button>
-                                    </div>
-                                    <div class="editor-layer-section editor-custom-color" data-editor-custom-color="highlight">
-                                        <input type="color" value="#fef08a" aria-label="배경색 직접 선택">
-                                        <input type="text" value="#fef08a" aria-label="배경색 HEX 입력" placeholder="#fef08a">
-                                        <button type="button" class="editor-tool" data-editor-custom-apply="highlight">적용</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="bold" aria-label="굵게"><strong>B</strong></button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="italic" aria-label="기울임"><em>I</em></button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="underline" aria-label="밑줄"><span style="text-decoration:underline;">U</span></button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="align-left" aria-label="왼쪽 정렬">≡</button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="align-center" aria-label="가운데 정렬">≣</button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="align-right" aria-label="오른쪽 정렬">☰</button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="unorderedlist" aria-label="목록">•</button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="orderedlist" aria-label="번호 목록">1.</button>
-                            <div class="editor-layer-wrap">
-                                <button type="button" class="editor-tool layer-toggle" data-editor-toggle="quote" aria-haspopup="true" aria-expanded="false">
-                                    <span class="js-quote-label">인용</span>
-                                    <span class="editor-tool-caret">▾</span>
-                                </button>
-                                <div class="editor-layer" data-editor-layer="quote">
-                                    <p class="editor-layer-title">인용구 스타일</p>
-                                    <div class="editor-style-grid">
-                                        <button type="button" class="editor-style-option" data-editor-quote="basic">
-                                            <strong>기본 인용</strong>
-                                            <span>깔끔한 회색 인용문</span>
-                                        </button>
-                                        <button type="button" class="editor-style-option" data-editor-quote="note">
-                                            <strong>노트</strong>
-                                            <span>파란 포인트 박스</span>
-                                        </button>
-                                        <button type="button" class="editor-style-option" data-editor-quote="tip">
-                                            <strong>팁</strong>
-                                            <span>청록 하이라이트</span>
-                                        </button>
-                                        <button type="button" class="editor-style-option" data-editor-quote="warning">
-                                            <strong>주의</strong>
-                                            <span>오렌지 경고 박스</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="divider" aria-label="구분선">―</button>
-                            <button type="button" class="editor-tool icon-only" data-editor-action="link" aria-label="링크">🔗</button>
+                <div class="compose-editor-wrap">
+                    <textarea id="editorBody" name="body" placeholder="내용" style="width:100%; min-width:100px; height:360px;" data-editor-required="true">{{ old('body') }}</textarea>
+                    <div class="mobile-compose-tools">
+                        <div class="mobile-compose-toolset">
+                            <button type="button" class="mobile-compose-button js-mobile-image-button" aria-label="사진 추가">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h3l1.5 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><circle cx="12" cy="13" r="3.2"/></svg>
+                                <span class="sr-only">사진 추가</span>
+                            </button>
+                            <button type="button" class="mobile-compose-button js-mobile-video-button" aria-label="영상 추가">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>
+                                <span class="sr-only">영상 추가</span>
+                            </button>
                         </div>
+                        <span class="mobile-compose-note">모바일에서는 간편 작성 모드로 동작합니다.</span>
                     </div>
-                    <div class="editor-host">
-                        <textarea id="editorBody" name="body" placeholder="내용" style="width:100%; min-width:100px; height:360px;" data-editor-required="true">{{ old('body') }}</textarea>
+                    <div class="mobile-media-preview js-mobile-media-preview" aria-live="polite">
+                        <p class="mobile-media-preview-title">첨부된 미디어</p>
                     </div>
+                    <div class="mobile-compose-actions">
+                        <button type="button" class="mobile-options-trigger js-mobile-options-open mobile-compose-action-icon" aria-label="게시물 옵션">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .27 1.7 1.7 0 0 0-.85 1.47V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.3 19.4a1.7 1.7 0 0 0-1-.27 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.27-1 1.7 1.7 0 0 0-1.47-.85H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.3a1.7 1.7 0 0 0 .27-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.3 4.6a1.7 1.7 0 0 0 1-.27 1.7 1.7 0 0 0 .85-1.47V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1 .27 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.3a1.7 1.7 0 0 0 .27 1 1.7 1.7 0 0 0 1.47.85H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                            <span class="sr-only">게시물 옵션</span>
+                        </button>
+                        <button type="submit" class="mobile-compose-submit mobile-compose-action-icon" aria-label="등록">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                            <span class="sr-only">등록</span>
+                        </button>
+                    </div>
+                    <input type="file" class="js-mobile-image-input" accept="image/*" multiple hidden>
+                    <input type="file" class="js-mobile-video-input" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" multiple hidden>
                 </div>
-                <div class="meta">에디터 로딩에 실패하면 기본 입력창으로 자동 전환됩니다.</div>
-                <label>노출 카테고리
+                <label class="js-post-option-field">노출 카테고리
                     <select name="audience_scope" class="form-select" style="margin-top:6px;">
-                        <option value="region" @selected(old('audience_scope', 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
-                        <option value="apartment" @selected(old('audience_scope') === 'apartment')>공동주택 (같은 단지 인증 회원만 상세)</option>
+                        <option value="region" @selected(old('audience_scope', $defaultAudienceScope ?? 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
+                        <option value="apartment" @selected(old('audience_scope', $defaultAudienceScope ?? 'region') === 'apartment')>공동주택 (같은 단지 인증 회원만 상세)</option>
                     </select>
                 </label>
-                <div class="meta" style="margin-top:-4px;">글쓰기는 인증회원만 가능합니다.</div>
-                <label>태그/섹션 선택
+                <div class="meta js-post-option-field" style="margin-top:-4px;">글쓰기는 인증회원만 가능합니다.</div>
+                <label class="js-post-option-field">태그/섹션 선택
                     <select name="post_topic_id" class="form-select" style="margin-top:6px;">
                         <option value="">선택 안 함</option>
                         @foreach($topicOptions as $topic)
-                            <option value="{{ $topic->id }}" @selected((string) old('post_topic_id') === (string) $topic->id)>#{{ $topic->name }}</option>
+                            <option value="{{ $topic->id }}" @selected((string) old('post_topic_id', $defaultTopicId ?? '') === (string) $topic->id)>#{{ $topic->name }}</option>
                         @endforeach
                     </select>
                 </label>
-                <div class="meta" style="margin-top:-4px;">기존 태그를 선택하거나, 아래에 새 태그를 입력하면 새로 생성됩니다.</div>
-                <input name="new_topic" value="{{ old('new_topic') }}" placeholder="새 태그 만들기 (예: 반려동물, 리모델링, 육아)">
+                <div class="meta js-post-option-field" style="margin-top:-4px;">기존 태그를 선택하거나, 아래에 새 태그를 입력하면 새로 생성됩니다.</div>
+                <input class="js-post-option-field" name="new_topic" value="{{ old('new_topic') }}" placeholder="새 태그 만들기 (예: 반려동물, 리모델링, 육아)">
                 @if($board->board_type === 'poll')
                     <label>투표 제목
                         <input name="poll_question" value="{{ old('poll_question') }}" style="margin-top:6px;" placeholder="예: 단지 회의 시간은 언제가 좋을까요?" required>
@@ -366,25 +504,67 @@
                 <div class="publish-dock">
                     <div class="publish-dock-inner">
                         <div class="publish-options">
-                            <label class="publish-option">
+                            <label class="publish-option js-post-option-field">
                                 <input type="checkbox" name="is_anonymous" value="1" @checked(old('is_anonymous'))> 익명
                             </label>
-                            <label class="publish-option">
+                            <label class="publish-option js-post-option-field">
                                 <input type="checkbox" name="is_guest_visible" value="1" @checked(old('is_guest_visible'))> 비회원에게 본문 공개
                             </label>
                         </div>
                         <div class="publish-actions">
                             <button type="submit">등록</button>
-                            <a class="btn secondary" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">취소</a>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="mobile-options-modal" id="mobile-post-options-modal" aria-hidden="true">
+                <div class="mobile-options-sheet" role="dialog" aria-modal="true" aria-label="게시물 옵션">
+                    <div class="mobile-options-head">
+                        <h2 class="mobile-options-title">게시물 옵션</h2>
+                        <button type="button" class="mobile-options-close js-mobile-options-close">닫기</button>
+                    </div>
+                    <div class="mobile-options-body js-mobile-options-body"></div>
                 </div>
             </div>
         </form>
     </section>
 </div>
 
-<script src="/vendor/smarteditor2/js/service/HuskyEZCreator.js"></script>
+@php
+    $toBytes = static function (?string $value): int {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return 0;
+        }
+
+        $unit = strtolower(substr($raw, -1));
+        $number = (float) $raw;
+
+        if (ctype_alpha($unit)) {
+            switch ($unit) {
+                case 'g':
+                    $number *= 1024;
+                case 'm':
+                    $number *= 1024;
+                case 'k':
+                    $number *= 1024;
+                    break;
+            }
+        }
+
+        return (int) round($number);
+    };
+
+    $uploadMaxBytes = $toBytes(ini_get('upload_max_filesize'));
+    $postMaxBytes = $toBytes(ini_get('post_max_size'));
+    $phpUploadLimitBytes = min(array_filter([$uploadMaxBytes, $postMaxBytes])) ?: max($uploadMaxBytes, $postMaxBytes, 2 * 1024 * 1024);
+@endphp
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/lang/summernote-ko-KR.min.js"></script>
 <script>
 (function () {
     const textarea = document.getElementById('editorBody');
@@ -393,762 +573,448 @@
         return;
     }
 
-    const editorRef = [];
+    const wrap = document.querySelector('.wrap');
+    const isMobileComposer = window.matchMedia('(max-width: 768px)').matches;
+    const mobileImageButton = form.querySelector('.js-mobile-image-button');
+    const mobileImageInput = form.querySelector('.js-mobile-image-input');
+    const mobileVideoButton = form.querySelector('.js-mobile-video-button');
+    const mobileVideoInput = form.querySelector('.js-mobile-video-input');
+    const mobileMediaPreview = form.querySelector('.js-mobile-media-preview');
+    const mobileOptionsOpen = form.querySelector('.js-mobile-options-open');
+    const mobileOptionsClose = form.querySelector('.js-mobile-options-close');
+    const mobileOptionsModal = document.getElementById('mobile-post-options-modal');
+    const mobileOptionsBody = form.querySelector('.js-mobile-options-body');
+    const mobileOptionFields = Array.from(form.querySelectorAll('.js-post-option-field'));
+
+    if (isMobileComposer && wrap) {
+        wrap.classList.add('mobile-compose-mode');
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+        }
+        document.addEventListener('gesturestart', function (event) {
+            event.preventDefault();
+        }, { passive: false });
+
+        if (mobileOptionsBody && mobileOptionFields.length) {
+            mobileOptionFields.forEach((field) => {
+                mobileOptionsBody.appendChild(field);
+            });
+        }
+
+        if (mobileOptionsOpen && mobileOptionsModal) {
+            mobileOptionsOpen.addEventListener('click', function () {
+                mobileOptionsModal.classList.add('open');
+                mobileOptionsModal.setAttribute('aria-hidden', 'false');
+            });
+        }
+
+        if (mobileOptionsClose && mobileOptionsModal) {
+            mobileOptionsClose.addEventListener('click', function () {
+                mobileOptionsModal.classList.remove('open');
+                mobileOptionsModal.setAttribute('aria-hidden', 'true');
+            });
+        }
+
+        if (mobileOptionsModal) {
+            mobileOptionsModal.addEventListener('click', function (event) {
+                if (event.target === mobileOptionsModal) {
+                    mobileOptionsModal.classList.remove('open');
+                    mobileOptionsModal.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+    }
+
     const csrfToken = form.querySelector('input[name="_token"]')?.value || '';
-    const toolbar = form.querySelector('.js-editor-toolbar');
-    const headingLabel = form.querySelector('.js-heading-label');
-    const fontSizeLabel = form.querySelector('.js-fontsize-label');
-    const quoteLabel = form.querySelector('.js-quote-label');
-    const textColorSwatch = form.querySelector('.js-textcolor-swatch');
-    const highlightSwatch = form.querySelector('.js-highlight-swatch');
-    const photoInput = document.createElement('input');
-    photoInput.type = 'file';
-    photoInput.accept = 'image/*';
-    photoInput.multiple = true;
-    photoInput.style.display = 'none';
-    document.body.appendChild(photoInput);
-    const legacyFontSizeMap = {
-        '12': '1',
-        '14': '2',
-        '16': '3',
-        '18': '4',
-        '24': '5',
-        '32': '6',
-    };
-    const fontPixelMap = {
-        '1': '12px',
-        '2': '14px',
-        '3': '16px',
-        '4': '18px',
-        '5': '24px',
-        '6': '32px',
-        '7': '40px',
-    };
-    const defaultTextColor = '#20324b';
-    const defaultHighlightColor = '#fef08a';
-    const quoteStyles = {
-        basic: 'margin:16px 0; padding:14px 16px; border-left:4px solid #94a3b8; background-color:#f8fafc; color:#334155; border-radius:14px;',
-        note: 'margin:16px 0; padding:16px 18px; border-left:4px solid #2563eb; background-color:#eff6ff; color:#1e3a8a; border-radius:16px;',
-        tip: 'margin:16px 0; padding:16px 18px; border-left:4px solid #0f766e; background-color:#ecfeff; color:#115e59; border-radius:16px;',
-        warning: 'margin:16px 0; padding:16px 18px; border-left:4px solid #ea580c; background-color:#fff7ed; color:#9a3412; border-radius:16px;',
-    };
-    const headingLabelMap = {
-        p: '본문',
-        h2: 'H2',
-        h3: 'H3',
-    };
-    const quoteLabelMap = {
-        basic: '기본 인용',
-        note: '노트',
-        tip: '팁',
-        warning: '주의',
-    };
+    const phpUploadLimitBytes = {{ (int) ($phpUploadLimitBytes ?? 8388608) }};
+    const editorImageLimitBytes = Math.min(phpUploadLimitBytes, 20 * 1024 * 1024);
+    const editorVideoInputLimitBytes = 100 * 1024 * 1024;
+    const mobileMediaAssets = [];
+    let mobileMediaSeq = 0;
 
-    const getSkinIFrame = () => document.querySelector('.editor-host iframe');
-    const getEditorIFrame = () => getSkinIFrame()?.contentWindow?.document?.querySelector('#se2_iframe') || null;
-    const getEditorDocument = () => getEditorIFrame()?.contentWindow?.document || null;
-    let savedRange = null;
-
-    const getCurrentRange = () => {
-        const doc = getEditorDocument();
-        const selection = doc?.getSelection?.();
-        if (selection && selection.rangeCount) {
-            return selection.getRangeAt(0);
-        }
-
-        return savedRange;
-    };
-
-    const normalizeHexColor = (value) => {
-        const raw = String(value || '').trim();
-        if (!/^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(raw)) {
-            return null;
-        }
-
-        let hex = raw.startsWith('#') ? raw : '#' + raw;
-        if (hex.length === 4) {
-            hex = '#' + hex.slice(1).split('').map(function (char) {
-                return char + char;
-            }).join('');
-        }
-
-        return hex.toLowerCase();
-    };
-
-    const rgbToHex = (value) => {
-        const match = String(value || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-        if (!match) {
-            return normalizeHexColor(value);
-        }
-
-        return '#' + match.slice(1, 4).map(function (part) {
-            return Number(part).toString(16).padStart(2, '0');
-        }).join('');
-    };
-
-    const getSelectionAnchorNode = () => {
-        const range = getCurrentRange();
-        if (!range) {
-            return null;
-        }
-
-        let node = range.startContainer;
-        if (node && node.nodeType === 3) {
-            node = node.parentNode;
-        }
-
-        return node && node.nodeType === 1 ? node : null;
-    };
-
-    const findClosestElement = (node, selector) => {
-        if (!node) {
-            return null;
-        }
-
-        return node.closest ? node.closest(selector) : null;
-    };
-
-    const syncCustomColorInputs = (type, color) => {
-        const container = form.querySelector('[data-editor-custom-color="' + type + '"]');
-        if (!container || !color || color === 'transparent') {
-            return;
-        }
-
-        const colorInput = container.querySelector('input[type="color"]');
-        const textInput = container.querySelector('input[type="text"]');
-        if (colorInput) {
-            colorInput.value = color;
-        }
-        if (textInput) {
-            textInput.value = color;
-        }
-    };
-
-    const escapeHtmlAttr = (value) => String(value || '')
+    const escapeHtml = (value) => String(value || '')
         .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 
-    const uploadPhotoAndInsert = async (file) => {
-        if (!file || !editorRef[0]) {
-            return;
+    const formatBytes = (bytes) => {
+        if (!Number.isFinite(bytes) || bytes <= 0) {
+            return '알 수 없음';
         }
 
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let value = bytes;
+        let index = 0;
+        while (value >= 1024 && index < units.length - 1) {
+            value /= 1024;
+            index += 1;
+        }
+        return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+    };
+
+    const loadImageElement = (file) => new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(image);
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('이미지를 읽을 수 없습니다.'));
+        };
+
+        image.src = objectUrl;
+    });
+
+    const canvasToJpegBlob = (canvas, quality) => new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                reject(new Error('이미지 압축에 실패했습니다.'));
+                return;
+            }
+            resolve(blob);
+        }, 'image/jpeg', quality);
+    });
+
+    const prepareImageFile = async (file) => {
+        if (!file || !String(file.type || '').startsWith('image/')) {
+            throw new Error('이미지 파일만 업로드할 수 있습니다.');
+        }
+
+        if (file.size <= editorImageLimitBytes) {
+            return file;
+        }
+
+        const image = await loadImageElement(file);
+        const maxEdge = 2200;
+        const ratio = Math.min(1, maxEdge / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+        const targetWidth = Math.max(1, Math.round((image.naturalWidth || 1) * ratio));
+        const targetHeight = Math.max(1, Math.round((image.naturalHeight || 1) * ratio));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+            throw new Error('이미지 압축을 위한 브라우저 기능을 사용할 수 없습니다.');
+        }
+
+        context.drawImage(image, 0, 0, targetWidth, targetHeight);
+        const qualities = [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42];
+
+        for (const quality of qualities) {
+            const blob = await canvasToJpegBlob(canvas, quality);
+            if (blob.size <= editorImageLimitBytes) {
+                const baseName = String(file.name || 'image').replace(/\.[^.]+$/, '');
+                return new File([blob], `${baseName || 'image'}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                });
+            }
+        }
+
+        throw new Error(`이미지 용량이 너무 큽니다. ${formatBytes(editorImageLimitBytes)} 이하 파일을 선택해 주세요.`);
+    };
+
+    const uploadEditorImage = async (file) => {
+        const preparedFile = await prepareImageFile(file);
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', preparedFile);
 
         const response = await fetch('/community/editor/photos', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json',
+                Accept: 'application/json',
             },
             body: formData,
         });
 
         if (!response.ok) {
-            throw new Error('upload_failed');
+            const payload = await response.json().catch(() => null);
+            const message = payload?.errors?.file?.[0] || payload?.message || '이미지 업로드에 실패했습니다.';
+            throw new Error(message);
         }
 
         const payload = await response.json();
-        const imageUrl = payload.url || '';
-
-        if (!imageUrl) {
-            throw new Error('invalid_response');
+        if (!payload?.url) {
+            throw new Error('이미지 업로드 응답이 올바르지 않습니다.');
         }
 
-        editorRef[0].exec('FOCUS');
-        editorRef[0].exec('PASTE_HTML', [
-            '<p><img src="'+escapeHtmlAttr(imageUrl)+'" alt="'+escapeHtmlAttr(payload.name || file.name || 'image')+'"></p>',
-        ]);
+        return payload;
     };
 
-    const uploadMultiplePhotosAndInsert = async (files) => {
-        const validFiles = Array.from(files || []).filter(Boolean);
-        if (!validFiles.length) {
-            return;
+    const uploadEditorVideo = async (file) => {
+        if (!file || !String(file.type || '').startsWith('video/')) {
+            throw new Error('영상 파일만 업로드할 수 있습니다.');
         }
 
-        for (const file of validFiles) {
-            await uploadPhotoAndInsert(file);
-        }
-    };
-
-    const applyEditorChrome = () => {
-        const skinIFrame = getSkinIFrame();
-        if (!skinIFrame) {
-            return;
+        if (phpUploadLimitBytes > 0 && file.size > phpUploadLimitBytes) {
+            throw new Error(`현재 서버 업로드 제한은 ${formatBytes(phpUploadLimitBytes)} 입니다. 서버 설정을 10MB 이상으로 높여 주세요.`);
         }
 
-        skinIFrame.style.width = '100%';
-        skinIFrame.style.maxWidth = '100%';
-        skinIFrame.style.border = '1px solid #cfd9e8';
-        skinIFrame.style.borderRadius = '14px';
-        skinIFrame.style.background = '#ffffff';
-
-        const skinDoc = skinIFrame.contentWindow?.document;
-        if (!skinDoc) {
-            return;
+        if (file.size > editorVideoInputLimitBytes) {
+            throw new Error(`영상 원본 용량이 너무 큽니다. ${formatBytes(editorVideoInputLimitBytes)} 이하 파일을 선택해 주세요.`);
         }
 
-        if (!skinDoc.getElementById('smarteditor2-modern-override')) {
-            const style = skinDoc.createElement('style');
-            style.id = 'smarteditor2-modern-override';
-            style.textContent = `
-                html, body { margin: 0 !important; overflow-x: hidden !important; background: #ffffff !important; }
-                #smart_editor2, #smart_editor2_content { width: 100% !important; min-width: 0 !important; border: 0 !important; }
-                .se2_tool { display: none !important; }
-                .husky_seditor_editing_area_container { width: 100% !important; min-width: 0 !important; }
-                #se2_iframe, .se2_input_wysiwyg { width: 100% !important; min-width: 0 !important; }
-                .se2_layer { max-width: min(92vw, 560px) !important; z-index: 200 !important; }
-            `;
-            skinDoc.head.appendChild(style);
-        }
+        const formData = new FormData();
+        formData.append('file', file);
 
-        const editorIFrame = getEditorIFrame();
-        if (editorIFrame) {
-            editorIFrame.style.width = '100%';
-            editorIFrame.style.maxWidth = '100%';
-        }
-    };
-
-    const syncToolbarState = () => {
-        const node = getSelectionAnchorNode();
-        const target = node;
-        if (!target) {
-            return;
-        }
-
-        const computed = getEditorIFrame()?.contentWindow?.getComputedStyle(target);
-        const tagName = findClosestElement(node, 'h2, h3, p, blockquote')?.tagName?.toLowerCase() || 'p';
-        if (headingLabel) {
-            headingLabel.textContent = headingLabelMap[tagName] || '본문';
-        }
-
-        const fontSizePx = computed?.fontSize ? Math.round(parseFloat(computed.fontSize)) + 'px' : '16px';
-        if (fontSizeLabel) {
-            fontSizeLabel.textContent = fontSizePx;
-        }
-
-        const textColor = rgbToHex(computed?.color) || defaultTextColor;
-        if (textColorSwatch) {
-            textColorSwatch.style.background = textColor;
-            textColorSwatch.style.backgroundImage = 'none';
-            textColorSwatch.style.setProperty('--swatch', textColor);
-        }
-        syncCustomColorInputs('text', textColor);
-
-        const backgroundColor = rgbToHex(computed?.backgroundColor) || 'transparent';
-        if (highlightSwatch) {
-            if (backgroundColor === 'transparent' || backgroundColor === '#000000' && String(computed?.backgroundColor || '').includes('0)')) {
-                highlightSwatch.style.background = '#ffffff';
-                highlightSwatch.style.backgroundImage = 'linear-gradient(135deg, #ffffff 0%, #ffffff 45%, #fca5a5 45%, #fca5a5 55%, #ffffff 55%, #ffffff 100%)';
-            } else {
-                highlightSwatch.style.background = backgroundColor;
-                highlightSwatch.style.backgroundImage = 'none';
-                syncCustomColorInputs('highlight', backgroundColor);
-            }
-        }
-
-        const quoteNode = findClosestElement(node, 'blockquote');
-        let currentQuote = '인용';
-        if (quoteNode) {
-            const styleText = quoteNode.getAttribute('style') || '';
-            if (styleText.includes('#2563eb')) {
-                currentQuote = quoteLabelMap.note;
-            } else if (styleText.includes('#0f766e')) {
-                currentQuote = quoteLabelMap.tip;
-            } else if (styleText.includes('#ea580c')) {
-                currentQuote = quoteLabelMap.warning;
-            } else {
-                currentQuote = quoteLabelMap.basic;
-            }
-        }
-
-        if (quoteLabel) {
-            quoteLabel.textContent = currentQuote;
-        }
-    };
-
-    const closeAllLayers = () => {
-        form.querySelectorAll('[data-editor-layer]').forEach(function (layer) {
-            layer.classList.remove('is-open');
+        const response = await fetch('/community/editor/videos', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                Accept: 'application/json',
+            },
+            body: formData,
         });
 
-        form.querySelectorAll('[data-editor-toggle]').forEach(function (toggle) {
-            toggle.setAttribute('aria-expanded', 'false');
+        if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            const message = payload?.errors?.file?.[0] || payload?.message || '영상 업로드에 실패했습니다.';
+            throw new Error(message);
+        }
+
+        const payload = await response.json();
+        if (!payload?.url) {
+            throw new Error('영상 업로드 응답이 올바르지 않습니다.');
+        }
+
+        return payload;
+    };
+
+    const renderMobileMediaPreview = () => {
+        if (!mobileMediaPreview) {
+            return;
+        }
+
+        mobileMediaPreview.innerHTML = '<p class="mobile-media-preview-title">첨부된 미디어</p>';
+        mobileMediaPreview.classList.toggle('has-items', mobileMediaAssets.length > 0);
+        if (!mobileMediaAssets.length) {
+            return;
+        }
+
+        mobileMediaAssets.forEach((asset) => {
+            const item = document.createElement('div');
+            item.className = 'mobile-media-item';
+            item.dataset.mediaId = asset.id;
+
+            const media = asset.type === 'video'
+                ? document.createElement('video')
+                : document.createElement('img');
+
+            media.src = asset.url;
+            media.alt = asset.name || asset.type;
+            if (asset.type === 'video') {
+                media.preload = 'metadata';
+                media.muted = true;
+                media.playsInline = true;
+            }
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'mobile-media-remove';
+            removeButton.dataset.removeMediaId = asset.id;
+            removeButton.setAttribute('aria-label', '첨부 삭제');
+            removeButton.textContent = '×';
+
+            item.appendChild(media);
+            item.appendChild(removeButton);
+            mobileMediaPreview.appendChild(item);
         });
     };
 
-    const saveEditorSelection = () => {
-        const doc = getEditorDocument();
-        const selection = doc?.getSelection?.();
-        if (!selection || !selection.rangeCount) {
+    const registerMobileMedia = (type, payload) => {
+        const id = `m_${Date.now()}_${mobileMediaSeq++}`;
+        mobileMediaAssets.push({
+            id,
+            type,
+            url: String(payload?.url || ''),
+            name: String(payload?.name || ''),
+        });
+        renderMobileMediaPreview();
+        return id;
+    };
+
+    const bootstrapMobileContent = () => {
+        if (!isMobileComposer) {
             return;
         }
 
-        savedRange = selection.getRangeAt(0).cloneRange();
-    };
-
-    const restoreEditorSelection = () => {
-        const doc = getEditorDocument();
-        const selection = doc?.getSelection?.();
-        if (!doc || !selection || !savedRange) {
-            return false;
-        }
-
-        const editorIFrame = getEditorIFrame();
-        editorIFrame?.contentWindow?.focus();
-        selection.removeAllRanges();
-        selection.addRange(savedRange);
-        return true;
-    };
-
-    const normalizeFontMarkup = () => {
-        const doc = getEditorDocument();
-        if (!doc) {
+        let value = String(textarea.value || '');
+        if (value.trim() === '') {
             return;
         }
 
-        doc.querySelectorAll('font[size]').forEach(function (node) {
-            const px = fontPixelMap[node.getAttribute('size') || ''];
-            if (!px) {
+        const temp = document.createElement('div');
+        temp.innerHTML = value;
+
+        temp.querySelectorAll('img[src]').forEach((node) => {
+            registerMobileMedia('image', {
+                url: node.getAttribute('src') || '',
+                name: node.getAttribute('alt') || 'image',
+            });
+            node.remove();
+        });
+
+        temp.querySelectorAll('video[src]').forEach((node) => {
+            registerMobileMedia('video', {
+                url: node.getAttribute('src') || '',
+                name: 'video',
+            });
+            node.remove();
+        });
+
+        value = temp.textContent || '';
+        value = value
+            .replace(/\[\[(image|video):m_[a-zA-Z0-9_\-]+\]\]/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+        textarea.value = value;
+    };
+
+    if (mobileMediaPreview) {
+        mobileMediaPreview.addEventListener('click', (event) => {
+            const removeButton = event.target.closest('[data-remove-media-id]');
+            if (!removeButton) {
                 return;
             }
 
-            const span = doc.createElement('span');
-            span.style.fontSize = px;
-
-            while (node.firstChild) {
-                span.appendChild(node.firstChild);
-            }
-
-            node.replaceWith(span);
-        });
-    };
-
-    const execBrowserCommand = (command, value) => {
-        const editorIFrame = getEditorIFrame();
-        const doc = getEditorDocument();
-        if (!editorIFrame || !doc) {
-            return false;
-        }
-
-        editorIFrame.contentWindow.focus();
-
-        try {
-            doc.execCommand('styleWithCSS', false, true);
-        } catch (error) {
-            // Some engines ignore this command.
-        }
-
-        restoreEditorSelection();
-        const result = doc.execCommand(command, false, value ?? null);
-        saveEditorSelection();
-        return result;
-    };
-
-    const applyInlineStyle = (styles) => {
-        const doc = getEditorDocument();
-        const selection = doc?.getSelection?.();
-        if (!doc || !selection) {
-            return false;
-        }
-
-        restoreEditorSelection();
-        const range = getCurrentRange();
-        if (!range) {
-            return false;
-        }
-
-        const span = doc.createElement('span');
-        Object.entries(styles).forEach(function ([property, value]) {
-            if (value === null || value === '') {
-                span.style.removeProperty(property);
-            } else {
-                span.style.setProperty(property, value);
+            const mediaId = removeButton.dataset.removeMediaId;
+            const index = mobileMediaAssets.findIndex((asset) => asset.id === mediaId);
+            if (index >= 0) {
+                mobileMediaAssets.splice(index, 1);
+                renderMobileMediaPreview();
             }
         });
+    }
 
-        if (range.collapsed) {
-            const marker = doc.createTextNode('\u200b');
-            span.appendChild(marker);
-            range.insertNode(span);
+    bootstrapMobileContent();
 
-            const nextRange = doc.createRange();
-            nextRange.setStart(marker, 1);
-            nextRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(nextRange);
-        } else {
-            const fragment = range.extractContents();
-            span.appendChild(fragment);
-            range.insertNode(span);
-
-            const nextRange = doc.createRange();
-            nextRange.selectNodeContents(span);
-            selection.removeAllRanges();
-            selection.addRange(nextRange);
-        }
-
-        saveEditorSelection();
-        return true;
-    };
-
-    const replaceClosestBlockTag = (tagName) => {
-        const doc = getEditorDocument();
-        const selection = doc?.getSelection?.();
-        if (!doc || !selection) {
-            return false;
-        }
-
-        restoreEditorSelection();
-        const node = getSelectionAnchorNode();
-        const block = findClosestElement(node, 'p, h1, h2, h3, h4, div, blockquote, li');
-        if (!block || block === doc.body || !block.parentNode) {
-            return false;
-        }
-
-        if (block.tagName.toLowerCase() === tagName) {
-            return true;
-        }
-
-        const replacement = doc.createElement(tagName);
-        if (block.hasAttribute('style')) {
-            replacement.setAttribute('style', block.getAttribute('style'));
-        }
-
-        while (block.firstChild) {
-            replacement.appendChild(block.firstChild);
-        }
-
-        block.parentNode.replaceChild(replacement, block);
-
-        const nextRange = doc.createRange();
-        nextRange.selectNodeContents(replacement);
-        selection.removeAllRanges();
-        selection.addRange(nextRange);
-        saveEditorSelection();
-        return true;
-    };
-
-    const applyFontSize = (pixelSize) => {
-        const legacySize = legacyFontSizeMap[String(pixelSize)] || '3';
-
-        const applied = execBrowserCommand('fontSize', legacySize);
-        if (applied) {
-            normalizeFontMarkup();
-        } else {
-            applyInlineStyle({ 'font-size': pixelSize + 'px' });
-        }
-
-        if (fontSizeLabel) {
-            fontSizeLabel.textContent = pixelSize + 'px';
-        }
-
-        if (applied || savedRange) {
-            syncToolbarState();
-        }
-    };
-
-    const applyTextColor = (color) => {
-        const applied = execBrowserCommand('foreColor', color) || applyInlineStyle({ color: color });
-        if (applied && textColorSwatch) {
-            textColorSwatch.style.background = color;
-            textColorSwatch.style.setProperty('--swatch', color);
-            syncCustomColorInputs('text', color);
-            syncToolbarState();
-        }
-    };
-
-    const applyHighlightColor = (color) => {
-        const applied = color === 'transparent'
-            ? execBrowserCommand('hiliteColor', 'transparent') || execBrowserCommand('backColor', 'transparent') || applyInlineStyle({ 'background-color': 'transparent' })
-            : execBrowserCommand('hiliteColor', color) || execBrowserCommand('backColor', color) || applyInlineStyle({ 'background-color': color });
-
-        if (applied && highlightSwatch) {
-            if (color === 'transparent') {
-                highlightSwatch.style.background = '#ffffff';
-                highlightSwatch.style.backgroundImage = 'linear-gradient(135deg, #ffffff 0%, #ffffff 45%, #fca5a5 45%, #fca5a5 55%, #ffffff 55%, #ffffff 100%)';
-            } else {
-                highlightSwatch.style.backgroundImage = 'none';
-                highlightSwatch.style.background = color;
-            }
-
-            highlightSwatch.style.setProperty('--swatch', color);
-            syncCustomColorInputs('highlight', color);
-            syncToolbarState();
-        }
-    };
-
-    const applyHeadingStyle = (tagName) => {
-        if (!tagName) {
-            return;
-        }
-
-        const targetTag = String(tagName).toUpperCase();
-        if (execBrowserCommand('formatBlock', '<' + targetTag + '>') || execBrowserCommand('formatBlock', targetTag) || replaceClosestBlockTag(String(tagName).toLowerCase())) {
-            if (headingLabel) {
-                headingLabel.textContent = headingLabelMap[tagName] || '본문';
-            }
-            syncToolbarState();
-        }
-    };
-
-    const applyQuotePreset = (preset) => {
-        const quoteStyle = quoteStyles[preset] || quoteStyles.basic;
-        const doc = getEditorDocument();
-        if (!doc) {
-            return;
-        }
-
-        restoreEditorSelection();
-        let quoteNode = findClosestElement(getSelectionAnchorNode(), 'blockquote');
-
-        if (!quoteNode) {
-            editorRef[0]?.exec('PASTE_HTML', ['<blockquote style="' + quoteStyle + '">인용문을 입력하세요.</blockquote><p></p>']);
-        } else {
-            quoteNode.setAttribute('style', quoteStyle);
-        }
-
-        saveEditorSelection();
-
-        if (quoteLabel) {
-            quoteLabel.textContent = quoteLabelMap[preset] || '인용';
-        }
-
-        syncToolbarState();
-    };
-
-    const applyResponsiveHeight = () => {
-        if (!editorRef[0]) {
-            return;
-        }
-
-        const height = window.matchMedia('(max-width: 768px)').matches ? 300 : 380;
-        try {
-            editorRef[0].exec('MSG_EDITING_AREA_RESIZE', ['100%', height + 'px']);
-        } catch (error) {
-            // Ignore resize command failures for compatibility.
-        }
-    };
-
-    if (window.nhn && window.nhn.husky && window.nhn.husky.EZCreator) {
-        window.nhn.husky.EZCreator.createInIFrame({
-            oAppRef: editorRef,
-            elPlaceHolder: 'editorBody',
-            sSkinURI: '/vendor/smarteditor2/SmartEditor2Skin.html',
-            fCreator: 'createSEditor2',
-            htParams: {
-                bUseToolbar: true,
-                bUseVerticalResizer: false,
-                bUseModeChanger: false,
-            },
-            fOnAppLoad: function () {
-                applyEditorChrome();
-                applyResponsiveHeight();
-                syncToolbarState();
-
-                const doc = getEditorDocument();
-                if (doc) {
-                    ['keyup', 'mouseup', 'focusin'].forEach(function (eventName) {
-                        doc.addEventListener(eventName, function () {
-                            saveEditorSelection();
-                            syncToolbarState();
-                        });
-                    });
-
-                    doc.addEventListener('selectionchange', function () {
-                        saveEditorSelection();
-                        syncToolbarState();
-                    });
-                }
+    if (!isMobileComposer && typeof window.jQuery !== 'undefined') {
+        window.jQuery(textarea).summernote({
+            lang: 'ko-KR',
+            height: 340,
+            placeholder: '내용',
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname']],
+                ['fontsize', ['fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link', 'picture']],
+                ['view', ['codeview']],
+            ],
+            callbacks: {
+                onImageUpload: async function (files) {
+                    for (const file of Array.from(files || [])) {
+                        try {
+                            const payload = await uploadEditorImage(file);
+                            window.jQuery(textarea).summernote('insertImage', payload.url, payload.name || file.name || 'image');
+                        } catch (error) {
+                            alert(error?.message || '이미지 업로드에 실패했습니다.');
+                        }
+                    }
+                },
             },
         });
     }
 
-    window.addEventListener('resize', function () {
-        applyEditorChrome();
-        applyResponsiveHeight();
-    });
-
-    document.addEventListener('mousedown', function (event) {
-        if (!form.contains(event.target)) {
-            closeAllLayers();
-        }
-    });
-
-    photoInput.addEventListener('change', async function () {
-        const files = photoInput.files;
-        if (!files || !files.length) {
-            return;
-        }
-
-        try {
-            await uploadMultiplePhotosAndInsert(files);
-        } catch (error) {
-            alert('이미지 업로드에 실패했습니다. 파일 형식/용량을 확인해 주세요.');
-        } finally {
-            photoInput.value = '';
-        }
-    });
-
-    if (toolbar) {
-        toolbar.addEventListener('mousedown', function (event) {
-            if (event.target.closest('[data-editor-toggle]') || event.target.closest('[data-editor-size]') || event.target.closest('[data-editor-color]') || event.target.closest('[data-editor-bgcolor]') || event.target.closest('[data-editor-heading]') || event.target.closest('[data-editor-quote]') || event.target.closest('[data-editor-custom-apply]')) {
-                saveEditorSelection();
-                event.preventDefault();
-            }
+    if (isMobileComposer && mobileImageButton && mobileImageInput) {
+        mobileImageButton.addEventListener('click', function () {
+            mobileImageInput.click();
         });
 
-        toolbar.addEventListener('input', function (event) {
-            const container = event.target.closest('[data-editor-custom-color]');
-            if (!container) {
+        mobileImageInput.addEventListener('change', async function () {
+            const files = Array.from(mobileImageInput.files || []);
+            if (!files.length) {
                 return;
             }
 
-            const colorInput = container.querySelector('input[type="color"]');
-            const textInput = container.querySelector('input[type="text"]');
-            if (event.target === colorInput && textInput) {
-                textInput.value = colorInput.value;
-            } else if (event.target === textInput && colorInput) {
-                const normalized = normalizeHexColor(textInput.value);
-                if (normalized) {
-                    colorInput.value = normalized;
+            for (const file of files) {
+                try {
+                    const payload = await uploadEditorImage(file);
+                    registerMobileMedia('image', {
+                        url: payload.url,
+                        name: payload.name || file.name || 'image',
+                    });
+                } catch (error) {
+                    alert(error?.message || '이미지 업로드에 실패했습니다.');
                 }
             }
+
+            mobileImageInput.value = '';
+        });
+    }
+
+    if (isMobileComposer && mobileVideoButton && mobileVideoInput) {
+        mobileVideoButton.addEventListener('click', function () {
+            mobileVideoInput.click();
         });
 
-        toolbar.addEventListener('click', async function (event) {
-            const toggle = event.target.closest('[data-editor-toggle]');
-            if (toggle) {
-                restoreEditorSelection();
-                syncToolbarState();
-                const layerName = toggle.dataset.editorToggle;
-                const layer = form.querySelector('[data-editor-layer="' + layerName + '"]');
-                const willOpen = layer && !layer.classList.contains('is-open');
-                closeAllLayers();
-                if (layer && willOpen) {
-                    layer.classList.add('is-open');
-                    toggle.setAttribute('aria-expanded', 'true');
-                }
+        mobileVideoInput.addEventListener('change', async function () {
+            const files = Array.from(mobileVideoInput.files || []);
+            if (!files.length) {
                 return;
             }
 
-            const headingButton = event.target.closest('[data-editor-heading]');
-            if (headingButton) {
-                applyHeadingStyle(headingButton.dataset.editorHeading);
-                closeAllLayers();
-                return;
-            }
-
-            const sizeButton = event.target.closest('[data-editor-size]');
-            if (sizeButton) {
-                applyFontSize(sizeButton.dataset.editorSize);
-                closeAllLayers();
-                return;
-            }
-
-            const colorButton = event.target.closest('[data-editor-color]');
-            if (colorButton) {
-                applyTextColor(colorButton.dataset.editorColor);
-                closeAllLayers();
-                return;
-            }
-
-            const bgColorButton = event.target.closest('[data-editor-bgcolor]');
-            if (bgColorButton) {
-                applyHighlightColor(bgColorButton.dataset.editorBgcolor);
-                closeAllLayers();
-                return;
-            }
-
-            const quoteButton = event.target.closest('[data-editor-quote]');
-            if (quoteButton) {
-                applyQuotePreset(quoteButton.dataset.editorQuote);
-                closeAllLayers();
-                return;
-            }
-
-            const customApplyButton = event.target.closest('[data-editor-custom-apply]');
-            if (customApplyButton) {
-                const type = customApplyButton.dataset.editorCustomApply;
-                const container = customApplyButton.closest('[data-editor-custom-color]');
-                const textInput = container?.querySelector('input[type="text"]');
-                const normalized = normalizeHexColor(textInput?.value || '');
-                if (!normalized) {
-                    alert('색상 코드는 #20324b 같은 HEX 형식으로 입력해 주세요.');
-                    return;
-                }
-
-                if (type === 'text') {
-                    applyTextColor(normalized);
-                } else if (type === 'highlight') {
-                    applyHighlightColor(normalized);
-                }
-                closeAllLayers();
-                return;
-            }
-
-            const button = event.target.closest('[data-editor-action]');
-            if (!button) {
-                return;
-            }
-
-            const action = button.dataset.editorAction;
-            if (action === 'photo') {
-                photoInput.click();
-                return;
-            }
-
-            if (!editorRef[0]) {
-                textarea.focus();
-                return;
-            }
-
-            editorRef[0].exec('FOCUS');
-            saveEditorSelection();
-
-            if (action === 'bold') {
-                editorRef[0].exec('EXECCOMMAND', ['bold', false, false]);
-            } else if (action === 'italic') {
-                editorRef[0].exec('EXECCOMMAND', ['italic', false, false]);
-            } else if (action === 'underline') {
-                editorRef[0].exec('EXECCOMMAND', ['underline', false, false]);
-            } else if (action === 'align-left') {
-                editorRef[0].exec('EXECCOMMAND', ['justifyLeft', false, false]);
-            } else if (action === 'align-center') {
-                editorRef[0].exec('EXECCOMMAND', ['justifyCenter', false, false]);
-            } else if (action === 'align-right') {
-                editorRef[0].exec('EXECCOMMAND', ['justifyRight', false, false]);
-            } else if (action === 'unorderedlist') {
-                editorRef[0].exec('EXECCOMMAND', ['insertUnorderedList', false, false]);
-            } else if (action === 'orderedlist') {
-                editorRef[0].exec('EXECCOMMAND', ['insertOrderedList', false, false]);
-            } else if (action === 'blockquote') {
-                editorRef[0].exec('PASTE_HTML', ['<blockquote>인용문을 입력하세요.</blockquote><p></p>']);
-            } else if (action === 'divider') {
-                editorRef[0].exec('PASTE_HTML', ['<hr><p></p>']);
-            } else if (action === 'link') {
-                const url = window.prompt('링크 주소를 입력해 주세요.', 'https://');
-                if (url && url.trim() !== '') {
-                    editorRef[0].exec('EXECCOMMAND', ['createLink', false, url.trim()]);
+            for (const file of files) {
+                try {
+                    const payload = await uploadEditorVideo(file);
+                    registerMobileMedia('video', {
+                        url: payload.url,
+                        name: payload.name || file.name || 'video',
+                    });
+                } catch (error) {
+                    alert(error?.message || '영상 업로드에 실패했습니다.');
                 }
             }
 
-            saveEditorSelection();
-            syncToolbarState();
+            mobileVideoInput.value = '';
         });
     }
 
     form.addEventListener('submit', function (event) {
-        if (editorRef[0]) {
-            editorRef[0].exec('UPDATE_CONTENTS_FIELD', []);
+        let html = textarea.value || '';
+
+        if (!isMobileComposer && typeof window.jQuery !== 'undefined') {
+            html = window.jQuery(textarea).summernote('code') || '';
+        } else {
+            const textHtml = escapeHtml(html)
+                .replace(/\n{2,}/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+
+            const mediaHtml = mobileMediaAssets
+                .map((asset) => {
+                    if (!asset.url) {
+                        return '';
+                    }
+
+                    if (asset.type === 'video') {
+                        return `<p><video controls playsinline preload="metadata" src="${escapeHtml(asset.url)}"></video></p>`;
+                    }
+
+                    return `<p><img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name || 'image')}"></p>`;
+                })
+                .join('');
+
+            html = textHtml.trim() !== '' ? `<p>${textHtml}</p>${mediaHtml}` : mediaHtml;
+
+            textarea.value = html;
         }
 
-        const normalized = textarea.value
+        const normalized = html
             .replace(/<img\b[^>]*>/gi, ' image ')
+            .replace(/<video\b[^>]*>[\s\S]*?<\/video>/gi, ' video ')
+            .replace(/<video\b[^>]*\/>/gi, ' video ')
             .replace(/<[^>]+>/g, ' ')
             .replace(/&nbsp;/gi, ' ')
             .trim();
@@ -1156,11 +1022,6 @@
         if (normalized === '') {
             event.preventDefault();
             alert('내용을 입력해 주세요.');
-            if (editorRef[0]) {
-                editorRef[0].exec('FOCUS');
-            } else {
-                textarea.focus();
-            }
         }
     });
 })();

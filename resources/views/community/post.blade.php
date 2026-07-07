@@ -18,7 +18,6 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
-        body.has-comment-composer { --fixed-actions-height: calc(164px + env(safe-area-inset-bottom)); }
         .wrap { max-width: 740px; margin: 0 auto; padding: 12px 12px calc(var(--fixed-actions-height) + 16px); }
         .appbar {
             position: sticky;
@@ -119,6 +118,13 @@
             height: auto;
             border-radius: 10px;
         }
+        .body video {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
         .section-title {
             display: flex;
             align-items: baseline;
@@ -149,6 +155,88 @@
         .ghost { background: #e9eef7; color: #23334b; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
         .post-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .comment-compose-trigger {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            padding: 0;
+            border-radius: 12px;
+        }
+        .comment-compose-trigger svg {
+            width: 19px;
+            height: 19px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-square-btn {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 12px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-square-btn svg {
+            width: 19px;
+            height: 19px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .post-like-center {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+        }
+        .like-toggle-form { display: inline-flex; }
+        .like-toggle-btn {
+            border: 1px solid #d7e1ee;
+            background: #fff;
+            color: #24364e;
+            border-radius: 999px;
+            padding: 8px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .like-toggle-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .like-toggle-btn.hearted {
+            color: #d01e39;
+            border-color: #efc0c8;
+            background: #fff6f8;
+        }
+        .like-toggle-btn.hearted svg {
+            fill: currentColor;
+            stroke: currentColor;
+        }
         .comment { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; }
         .comment:first-child { border-top: 0; }
         .comment-body { min-width: 0; overflow: hidden; }
@@ -207,6 +295,50 @@
             border-top: 1px solid var(--line);
             backdrop-filter: blur(10px);
         }
+        .comment-compose-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            background: rgba(12, 18, 28, 0.52);
+            padding: 12px;
+        }
+        .comment-compose-modal.open {
+            display: flex;
+        }
+        .comment-compose-sheet {
+            width: min(740px, 100%);
+            max-height: min(72vh, 620px);
+            overflow: auto;
+            border-radius: 16px;
+            border: 1px solid #d6e2f0;
+            background: #fff;
+            padding: 14px;
+            box-shadow: 0 18px 40px rgba(18, 33, 56, 0.18);
+        }
+        .comment-compose-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .comment-compose-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 900;
+        }
+        .comment-compose-close {
+            border: 1px solid #d0dcea;
+            border-radius: 10px;
+            background: #eef3f9;
+            color: #22344d;
+            min-height: 34px;
+            padding: 6px 10px;
+            font-weight: 800;
+        }
         .composer {
             background: transparent;
         }
@@ -254,13 +386,24 @@
         }
         .bottom-bar a, .bottom-bar button {
             border: 0;
-            border-radius: 999px;
-            padding: 10px 12px;
+            border-radius: 12px;
+            width: 46px;
+            height: 46px;
+            padding: 0;
             font-weight: 800;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+        }
+        .bottom-bar-icon {
+            width: 21px;
+            height: 21px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         .bottom-bar .primary { background: var(--brand); color: #fff; }
         .bottom-bar .ghost { background: #eef2f8; color: #24364e; }
@@ -272,7 +415,7 @@
         }
     </style>
 </head>
-<body class="{{ $canComment ? 'has-comment-composer' : '' }}">
+<body>
 @php
     $avatarInitial = static function (?string $name): string {
         $value = trim((string) $name);
@@ -327,6 +470,19 @@
         </div>
 
         <div style="margin-top:16px;" class="body">{!! $post->body !!}</div>
+
+        <div class="post-like-center">
+            <form method="post" action="/community/posts/{{ $post->id }}/likes" class="like-toggle-form" data-like-form data-liked="{{ $likedByMe ? '1' : '0' }}">
+                @csrf
+                @if($likedByMe)
+                    @method('DELETE')
+                @endif
+                <button class="like-toggle-btn {{ $likedByMe ? 'hearted' : '' }}" type="submit" aria-label="좋아요">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                    <span data-like-count>{{ $likeCount }}</span>
+                </button>
+            </form>
+        </div>
 
         <?php if ($post->board->board_type === 'poll' && $post->poll): ?>
             <?php
@@ -400,12 +556,24 @@
         <?php endif; ?>
 
         <div class="actions">
+            @if($canComment)
+                <button type="button" class="ghost comment-compose-trigger" id="commentComposeOpen" aria-label="댓글등록">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
+                    <span class="sr-only">댓글등록</span>
+                </button>
+            @endif
             @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin))
-                <a class="btn" href="/community/posts/{{ $post->id }}/edit">수정</a>
+                <a class="btn icon-square-btn" href="/community/posts/{{ $post->id }}/edit" aria-label="수정">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span class="sr-only">수정</span>
+                </a>
                 <form method="post" action="/community/posts/{{ $post->id }}" onsubmit="return confirm('삭제할까요?')" style="display:inline; margin:0;">
                     @csrf
                     @method('DELETE')
-                    <button class="danger" type="submit">삭제</button>
+                    <button class="danger icon-square-btn" type="submit" aria-label="삭제">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                        <span class="sr-only">삭제</span>
+                    </button>
                 </form>
             @endif
         </div>
@@ -547,36 +715,118 @@
     </section>
 </div>
 
-<div class="fixed-actions">
-    @if($canComment)
-        <div class="composer" id="comment-composer">
-            <div class="composer-inner">
-                <form method="post" action="/community/posts/{{ $post->id }}/comments">
-                    @csrf
-                    <div class="composer-bar">
-                        <textarea name="body" placeholder="댓글을 남겨보세요" required></textarea>
-                        <button type="submit">등록</button>
-                    </div>
-                    <div class="composer-options">
-                        <label class="composer-option">
-                            <input type="checkbox" name="is_anonymous" value="1"> 익명
-                        </label>
-                    </div>
-                </form>
+@if($canComment)
+    <div class="comment-compose-modal" id="commentComposeModal" aria-hidden="true">
+        <div class="comment-compose-sheet" role="dialog" aria-modal="true" aria-label="댓글 등록">
+            <div class="comment-compose-head">
+                <h2 class="comment-compose-title">댓글 등록</h2>
+                <button type="button" class="comment-compose-close" id="commentComposeClose">닫기</button>
             </div>
+            <form method="post" action="/community/posts/{{ $post->id }}/comments" id="commentComposeForm">
+                @csrf
+                <textarea name="body" placeholder="댓글을 남겨보세요" required></textarea>
+                <div class="composer-options">
+                    <label class="composer-option">
+                        <input type="checkbox" name="is_anonymous" value="1"> 익명
+                    </label>
+                </div>
+                <div class="actions" style="margin-top:10px;">
+                    <button type="submit">등록</button>
+                </div>
+            </form>
         </div>
-    @endif
+    </div>
+@endif
 
+<div class="fixed-actions">
     <div class="bottom-bar">
         <div class="bottom-bar-inner">
-            <a class="ghost" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">목록</a>
-            <button class="ghost" type="button" id="shareButton">공유</button>
+            <a class="ghost" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}" aria-label="목록">
+                <svg class="bottom-bar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+                <span class="sr-only">목록</span>
+            </a>
+            <button class="ghost" type="button" id="shareButton" aria-label="공유">
+                <svg class="bottom-bar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5"/><path d="M15.4 6.5 8.6 10.5"/></svg>
+                <span class="sr-only">공유</span>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
 (() => {
+    document.addEventListener('submit', async (event) => {
+        const form = event.target.closest('form[data-like-form]');
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (form.dataset.loading === '1') {
+            return;
+        }
+
+        form.dataset.loading = '1';
+        const button = form.querySelector('button[type="submit"]');
+        const methodInput = form.querySelector('input[name="_method"]');
+        const prevLiked = form.dataset.liked === '1';
+
+        if (button) {
+            button.disabled = true;
+        }
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('request failed');
+            }
+
+            const payload = await response.json();
+            const liked = Boolean(payload.liked);
+            const likeCount = Number(payload.like_count ?? 0);
+
+            form.dataset.liked = liked ? '1' : '0';
+
+            if (button) {
+                button.classList.toggle('hearted', liked);
+                const countNode = button.querySelector('[data-like-count]');
+                if (countNode) {
+                    countNode.textContent = String(likeCount);
+                }
+            }
+
+            if (liked && !methodInput) {
+                const hiddenMethod = document.createElement('input');
+                hiddenMethod.type = 'hidden';
+                hiddenMethod.name = '_method';
+                hiddenMethod.value = 'delete';
+                form.appendChild(hiddenMethod);
+            }
+
+            if (!liked && methodInput) {
+                methodInput.remove();
+            }
+        } catch (error) {
+            form.dataset.liked = prevLiked ? '1' : '0';
+            window.alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            if (button) {
+                button.disabled = false;
+            }
+            form.dataset.loading = '0';
+        }
+    });
+
     const shareButton = document.getElementById('shareButton');
     if (!shareButton) return;
 
@@ -647,6 +897,44 @@
             shareButton.disabled = false;
         }
     });
+
+    const commentComposeOpen = document.getElementById('commentComposeOpen');
+    const commentComposeClose = document.getElementById('commentComposeClose');
+    const commentComposeModal = document.getElementById('commentComposeModal');
+
+    if (commentComposeOpen && commentComposeModal) {
+        commentComposeOpen.addEventListener('click', () => {
+            commentComposeModal.classList.add('open');
+            commentComposeModal.setAttribute('aria-hidden', 'false');
+            const input = commentComposeModal.querySelector('textarea[name="body"]');
+            if (input) {
+                input.focus();
+            }
+        });
+    }
+
+    if (commentComposeClose && commentComposeModal) {
+        commentComposeClose.addEventListener('click', () => {
+            commentComposeModal.classList.remove('open');
+            commentComposeModal.setAttribute('aria-hidden', 'true');
+        });
+    }
+
+    if (commentComposeModal) {
+        commentComposeModal.addEventListener('click', (event) => {
+            if (event.target === commentComposeModal) {
+                commentComposeModal.classList.remove('open');
+                commentComposeModal.setAttribute('aria-hidden', 'true');
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && commentComposeModal.classList.contains('open')) {
+                commentComposeModal.classList.remove('open');
+                commentComposeModal.setAttribute('aria-hidden', 'true');
+            }
+        });
+    }
 })();
 </script>
 </body>

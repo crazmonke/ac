@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
+use App\Models\PostLike;
 use App\Models\PostTopic;
 use App\Models\PostFile;
 use App\Models\Post;
@@ -151,6 +152,12 @@ class CommunityBoardController extends Controller
             $pollTotalVotes = (int) $post->poll->options->sum('vote_count');
         }
 
+        $likeCount = (int) PostLike::query()->where('post_id', $post->id)->count();
+        $likedByMe = (bool) PostLike::query()
+            ->where('post_id', $post->id)
+            ->where('user_id', $user->id)
+            ->exists();
+
         return view('community.post', [
             'post' => $post,
             'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
@@ -164,6 +171,8 @@ class CommunityBoardController extends Controller
             'bestCommentIds' => $bestCommentIds,
             'userVoteOptionIds' => $userVoteOptionIds,
             'pollTotalVotes' => $pollTotalVotes,
+            'likeCount' => $likeCount,
+            'likedByMe' => $likedByMe,
         ]);
     }
 
@@ -195,6 +204,8 @@ class CommunityBoardController extends Controller
         $apartmentId = $this->resolveContextApartmentId($request);
         $board = $this->resolveBoard($slug, $apartmentId);
         $user = $request->user()->loadMissing(['preferredApartment', 'preferredResidenceComplex']);
+        $requestedScope = (string) $request->query('scope', '');
+        $requestedTopicSlug = trim((string) $request->query('topic', ''));
 
         if (! $this->canWriteInBoard($user, $board)) {
             abort(403);
@@ -213,11 +224,28 @@ class CommunityBoardController extends Controller
             ? $this->permissionService->hasVerifiedResidenceComplex($user, $writerResidenceComplexId)
             : $this->permissionService->hasVerifiedRole($user, $writerApartmentId);
 
+        $defaultAudienceScope = $requestedScope === 'apartment' ? 'apartment' : 'region';
+        if (! $canUseRestrictedAudience && $defaultAudienceScope === 'apartment') {
+            $defaultAudienceScope = 'region';
+        }
+
+        $defaultTopicId = null;
+        if ($requestedTopicSlug !== '') {
+            $defaultTopic = $topicOptions->first(fn ($topic) => (string) $topic->slug === $requestedTopicSlug);
+            if ($defaultTopic) {
+                $defaultTopicId = (int) $defaultTopic->id;
+            }
+        }
+
         return view('community.post-create', [
             'board' => $board,
             'apartmentId' => $apartmentId,
             'topicOptions' => $topicOptions,
             'canUseRestrictedAudience' => $canUseRestrictedAudience,
+            'defaultAudienceScope' => $defaultAudienceScope,
+            'defaultTopicId' => $defaultTopicId,
+            'requestedScope' => $requestedScope,
+            'requestedTopicSlug' => $requestedTopicSlug,
         ]);
     }
 
@@ -225,6 +253,8 @@ class CommunityBoardController extends Controller
     {
         $apartmentId = $this->resolveContextApartmentId($request);
         $user = $request->user();
+        $scope = (string) $request->query('scope', '');
+        $topic = trim((string) $request->query('topic', ''));
 
         $candidateBoards = Board::query()
             ->where('is_active', true)
@@ -242,12 +272,22 @@ class CommunityBoardController extends Controller
                 ? (int) $targetBoard->apartment_id
                 : ((int) ($user->preferred_apartment_id ?: $apartmentId));
 
-            return redirect('/community/boards/'.$targetBoard->slug.'/create?apartment_id='.$targetApartmentId);
+            $query = ['apartment_id' => $targetApartmentId];
+            if (in_array($scope, ['all', 'region', 'apartment'], true)) {
+                $query['scope'] = $scope;
+            }
+            if ($topic !== '') {
+                $query['topic'] = $topic;
+            }
+
+            return redirect('/community/boards/'.$targetBoard->slug.'/create?'.http_build_query($query));
         }
 
         return view('community.compose', [
             'apartmentId' => $apartmentId,
             'writableBoards' => $writableBoards,
+            'scope' => $scope,
+            'topic' => $topic,
         ]);
     }
 
@@ -285,7 +325,7 @@ class CommunityBoardController extends Controller
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
-            'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
+            'attachments.*' => ['file', 'max:51200', 'mimes:jpg,jpeg,png,gif,pdf,mp4,mov,webm'],
         ];
 
         if ($board->board_type === 'poll') {
@@ -373,7 +413,7 @@ class CommunityBoardController extends Controller
             'is_anonymous' => ['nullable', 'boolean'],
             'is_guest_visible' => ['nullable', 'boolean'],
             'attachments' => ['nullable', 'array'],
-            'attachments.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf'],
+            'attachments.*' => ['file', 'max:51200', 'mimes:jpg,jpeg,png,gif,pdf,mp4,mov,webm'],
         ];
 
         if ($post->board->board_type === 'poll') {
@@ -485,6 +525,54 @@ class CommunityBoardController extends Controller
         return back()->with('status', '댓글이 등록되었습니다.');
     }
 
+    public function likePost(Request $request, int $id)
+    {
+        $post = Post::query()->with('board')->findOrFail($id);
+
+        if (! $this->permissionService->canReadPostDetail($request->user(), $post)) {
+            abort(403);
+        }
+
+        PostLike::query()->firstOrCreate([
+            'post_id' => $post->id,
+            'user_id' => $request->user()->id,
+        ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'liked' => true,
+                'like_count' => (int) PostLike::query()->where('post_id', $post->id)->count(),
+            ]);
+        }
+
+        return back();
+    }
+
+    public function unlikePost(Request $request, int $id)
+    {
+        $post = Post::query()->with('board')->findOrFail($id);
+
+        if (! $this->permissionService->canReadPostDetail($request->user(), $post)) {
+            abort(403);
+        }
+
+        PostLike::query()
+            ->where('post_id', $post->id)
+            ->where('user_id', $request->user()->id)
+            ->delete();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'liked' => false,
+                'like_count' => (int) PostLike::query()->where('post_id', $post->id)->count(),
+            ]);
+        }
+
+        return back();
+    }
+
     public function updateComment(Request $request, int $id)
     {
         $comment = Comment::query()->with('post.board')->findOrFail($id);
@@ -561,7 +649,7 @@ class CommunityBoardController extends Controller
         $file = PostFile::query()->with('post.board')->findOrFail($id);
         $post = $file->post;
 
-        if (! $post || ! $this->permissionService->hasBoardPermission($request->user(), $post->board, 'read')) {
+        if (! $post || ! $this->permissionService->canReadPostDetail($request->user(), $post)) {
             abort(403);
         }
 
@@ -569,7 +657,23 @@ class CommunityBoardController extends Controller
             abort(404);
         }
 
-        return Storage::disk($file->disk)->download($file->path, $file->original_name);
+        $disk = Storage::disk($file->disk);
+        $absolutePath = $disk->path($file->path);
+        $mime = trim((string) ($file->mime_type ?? ''));
+
+        if ($mime === '') {
+            $mime = (string) mime_content_type($absolutePath);
+        }
+
+        if ($mime === '') {
+            $mime = 'application/octet-stream';
+        }
+
+        return response()->file($absolutePath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.addslashes((string) $file->original_name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function destroyFile(Request $request, int $id)
@@ -649,7 +753,7 @@ class CommunityBoardController extends Controller
     public function uploadEditorPhoto(Request $request)
     {
         $data = $request->validate([
-            'file' => ['required', 'image', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp'],
+            'file' => ['required', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,heic,heif,avif'],
         ]);
 
         $uploadedFile = $data['file'];
@@ -670,6 +774,102 @@ class CommunityBoardController extends Controller
             'url' => '/uploads/editor-images/'.$dateSegment.'/'.$storedName,
             'name' => (string) $uploadedFile->getClientOriginalName(),
         ]);
+    }
+
+    public function uploadEditorVideo(Request $request)
+    {
+        $data = $request->validate([
+            'file' => ['required', 'file', 'max:102400', 'mimes:mp4,mov,webm,m4v'],
+        ]);
+
+        $uploadedFile = $data['file'];
+        $dateSegment = now()->format('Y/m');
+        $targetDirectory = public_path('uploads/editor-videos/'.$dateSegment);
+
+        if (! is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        $maxOutputBytes = 10 * 1024 * 1024;
+        $originalExtension = Str::lower((string) $uploadedFile->getClientOriginalExtension());
+        $tempName = Str::uuid().'.'.($originalExtension !== '' ? $originalExtension : 'mp4');
+        $tempPath = $targetDirectory.'/'.$tempName;
+        $uploadedFile->move($targetDirectory, $tempName);
+
+        $storedName = Str::uuid().'.mp4';
+        $finalPath = $targetDirectory.'/'.$storedName;
+        $outputPath = $tempPath;
+        $compressed = false;
+
+        if (@filesize($tempPath) > $maxOutputBytes) {
+            $compressed = $this->compressVideoToTargetSize($tempPath, $finalPath, $maxOutputBytes);
+            if (! $compressed) {
+                @unlink($tempPath);
+                return response()->json([
+                    'message' => '영상 자동 압축에 실패했습니다. 10MB 이하 영상으로 다시 시도해 주세요.',
+                ], 422);
+            }
+
+            $outputPath = $finalPath;
+            @unlink($tempPath);
+        } else {
+            $safeExtension = $originalExtension !== '' ? $originalExtension : 'mp4';
+            $storedName = Str::uuid().'.'.$safeExtension;
+            $finalPath = $targetDirectory.'/'.$storedName;
+            rename($tempPath, $finalPath);
+            $outputPath = $finalPath;
+        }
+
+        if (@filesize($outputPath) > $maxOutputBytes) {
+            @unlink($outputPath);
+            return response()->json([
+                'message' => '압축 후에도 10MB를 초과합니다. 더 짧거나 낮은 해상도의 영상을 선택해 주세요.',
+            ], 422);
+        }
+
+        return response()->json([
+            'url' => '/uploads/editor-videos/'.$dateSegment.'/'.$storedName,
+            'name' => (string) $uploadedFile->getClientOriginalName(),
+            'type' => 'video',
+        ]);
+    }
+
+    private function compressVideoToTargetSize(string $sourcePath, string $targetPath, int $targetBytes): bool
+    {
+        $ffmpeg = trim((string) @shell_exec('command -v ffmpeg'));
+        if ($ffmpeg === '') {
+            return false;
+        }
+
+        $profiles = [
+            ['crf' => 30, 'maxrate' => '1600k', 'bufsize' => '3200k', 'audio' => '96k', 'scale' => 'min(1280,iw):-2'],
+            ['crf' => 34, 'maxrate' => '1100k', 'bufsize' => '2200k', 'audio' => '72k', 'scale' => 'min(960,iw):-2'],
+            ['crf' => 37, 'maxrate' => '850k', 'bufsize' => '1700k', 'audio' => '64k', 'scale' => 'min(854,iw):-2'],
+        ];
+
+        foreach ($profiles as $profile) {
+            @unlink($targetPath);
+
+            $command = sprintf(
+                '%s -y -i %s -vf %s -c:v libx264 -preset veryfast -crf %d -maxrate %s -bufsize %s -pix_fmt yuv420p -c:a aac -b:a %s -movflags +faststart %s 2>&1',
+                escapeshellarg($ffmpeg),
+                escapeshellarg($sourcePath),
+                escapeshellarg('scale='.$profile['scale']),
+                (int) $profile['crf'],
+                escapeshellarg($profile['maxrate']),
+                escapeshellarg($profile['bufsize']),
+                escapeshellarg($profile['audio']),
+                escapeshellarg($targetPath)
+            );
+
+            @shell_exec($command);
+
+            if (is_file($targetPath) && @filesize($targetPath) > 0 && @filesize($targetPath) <= $targetBytes) {
+                return true;
+            }
+        }
+
+        return is_file($targetPath) && @filesize($targetPath) > 0 && @filesize($targetPath) <= $targetBytes;
     }
 
     private function resolveBoard(string $slug, int $apartmentId): Board
@@ -938,10 +1138,12 @@ class CommunityBoardController extends Controller
             return strip_tags($html);
         }
 
-        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'span', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'pre', 'code', 'a', 'img'];
+        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'span', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'pre', 'code', 'a', 'img', 'video', 'source'];
         $allowedAttrMap = [
             'a' => ['href', 'target', 'rel', 'style'],
             'img' => ['src', 'alt'],
+            'video' => ['src', 'controls', 'playsinline', 'preload', 'muted', 'loop', 'poster'],
+            'source' => ['src', 'type'],
             'span' => ['style'],
             'p' => ['style'],
             'li' => ['style'],
@@ -1016,7 +1218,7 @@ class CommunityBoardController extends Controller
                     $element->removeAttribute('target');
                     $element->removeAttribute('rel');
                 }
-            } elseif ($tag === 'img') {
+            } elseif ($tag === 'img' || $tag === 'video' || $tag === 'source') {
                 $src = trim((string) $element->getAttribute('src'));
                 if ($src === '' || ! preg_match('/^(https?:\/\/|\/)/i', $src)) {
                     $parent = $element->parentNode;

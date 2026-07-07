@@ -36,16 +36,38 @@
 <body>
 <div class="wrap">
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
+    @php
+        $composeQuery = ['apartment_id' => $apartmentId];
+        if (!empty($scope)) {
+            $composeQuery['scope'] = $scope;
+        }
+        if (!empty($topic)) {
+            $composeQuery['topic'] = $topic;
+        }
+        $composeBackUrl = '/community?'.http_build_query($composeQuery);
+    @endphp
 
     <section class="panel">
-        <p class="meta"><a class="back-chip" href="/community?apartment_id={{ $apartmentId }}">← 커뮤니티로 돌아가기</a></p>
+        <p class="meta"><a class="back-chip" href="{{ $composeBackUrl }}">← 커뮤니티로 돌아가기</a></p>
         <h1 style="margin-top:0;">글쓰기</h1>
         <p class="meta">작성할 게시판을 선택해 주세요.</p>
 
         @if($writableBoards->count() > 0)
             <div class="grid">
                 @foreach($writableBoards as $board)
-                    <a class="board-card" href="/community/boards/{{ $board->slug }}/create?apartment_id={{ (int) ($board->apartment_id ?: $apartmentId) }}">
+                    @php
+                        $createQuery = [
+                            'apartment_id' => (int) ($board->apartment_id ?: $apartmentId),
+                        ];
+                        if (!empty($scope)) {
+                            $createQuery['scope'] = $scope;
+                        }
+                        if (!empty($topic)) {
+                            $createQuery['topic'] = $topic;
+                        }
+                        $createUrl = '/community/boards/'.$board->slug.'/create?'.http_build_query($createQuery);
+                    @endphp
+                    <a class="board-card" href="{{ $createUrl }}">
                         <strong>{{ $board->name }}</strong>
                         @if(!empty($board->description))
                             <div class="meta" style="margin-top:6px;">{{ \Illuminate\Support\Str::limit($board->description, 80) }}</div>

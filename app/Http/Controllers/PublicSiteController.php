@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Post;
+use App\Models\PostFile;
+use App\Models\PostLike;
 use App\Models\User;
 use App\Services\PermissionService;
 use Illuminate\Support\Collection;
@@ -36,7 +38,8 @@ class PublicSiteController extends Controller
         }
 
         $candidates = Post::query()
-            ->with(['board', 'apartment'])
+            ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
+            ->withCount('likes')
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', function ($query) {
                 $query->where('is_active', true);
@@ -173,6 +176,13 @@ class PublicSiteController extends Controller
     private function mapPostCard(Post $post, $user): array
     {
         $canRead = $this->canReadPost($user, $post);
+        $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
+        $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
+        $likeCount = (int) ($post->likes_count ?? 0);
+        $pollPreview = $this->buildPollPreview($post);
+        $likedByMe = $user
+            ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists()
+            : false;
 
         if ($canRead && $user) {
             $url = '/community/posts/'.$post->id;
@@ -186,19 +196,160 @@ class PublicSiteController extends Controller
             'id' => (int) $post->id,
             'title' => $post->title,
             'created_at' => $post->created_at,
+            'created_label' => $post->created_at?->diffForHumans() ?? '-',
             'display_date' => $this->formatDisplayDate($post->created_at),
+            'author_name' => $authorName,
+            'author_initial' => mb_strtoupper($authorInitial),
             'board_name' => $post->board->name,
+            'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
+            'poll_question' => (string) ($pollPreview['question'] ?? ''),
+            'poll_options_preview' => (array) ($pollPreview['options'] ?? []),
+            'poll_total_votes' => (int) ($pollPreview['total_votes'] ?? 0),
             'apartment_name' => $post->apartment->name,
+            'body_preview' => $this->buildBodyPreview($post->body),
+            'media_items' => $canRead ? $this->extractMediaItems($post) : [],
             'region_label' => $this->regionLabelFromSido($post->apartment->sido),
             'brand_token' => $this->brandTokenFromApartmentName($post->apartment->name),
             'view_count' => (int) $post->view_count,
             'comment_count' => (int) $post->comment_count,
+            'like_count' => $likeCount,
+            'liked_by_me' => $likedByMe,
             'is_notice' => (bool) $post->is_notice,
             'is_guest_visible' => (bool) $post->is_guest_visible,
             'can_read' => $canRead,
             'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
             'url' => $url,
         ];
+    }
+
+    private function buildBodyPreview(?string $html): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $html)) ?: '');
+
+        return mb_strimwidth($text, 0, 220, '...');
+    }
+
+    private function extractMediaItems(Post $post): array
+    {
+        $items = [];
+        $seenUrls = [];
+
+        foreach ($post->files as $file) {
+            $mediaType = $this->resolveMediaType($file);
+            if (! $mediaType) {
+                continue;
+            }
+
+            $url = '/community/files/'.$file->id;
+            if (isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+
+            $items[] = [
+                'type' => $mediaType,
+                'url' => $url,
+                'name' => (string) ($file->original_name ?? 'media'),
+            ];
+        }
+
+        foreach ($this->extractEmbeddedBodyMedia((string) $post->body) as $embeddedMedia) {
+            $url = (string) ($embeddedMedia['url'] ?? '');
+            if ($url === '' || isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+            $items[] = $embeddedMedia;
+        }
+
+        return array_slice($items, 0, 8);
+    }
+
+    private function buildPollPreview(Post $post): array
+    {
+        if ((string) ($post->board?->board_type ?? '') !== 'poll' || ! $post->poll) {
+            return [
+                'is_poll' => false,
+                'question' => '',
+                'options' => [],
+                'total_votes' => 0,
+            ];
+        }
+
+        $options = $post->poll->options
+            ->sortBy('sort_order')
+            ->take(3)
+            ->pluck('label')
+            ->map(fn ($label) => trim((string) $label))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'is_poll' => true,
+            'question' => trim((string) ($post->poll->question ?? '')),
+            'options' => $options,
+            'total_votes' => (int) $post->poll->options->sum('vote_count'),
+        ];
+    }
+
+    private function extractEmbeddedBodyMedia(string $html): array
+    {
+        $items = [];
+        $patterns = [
+            ['regex' => '/<img[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'image'],
+            ['regex' => '/<video[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+            ['regex' => '/<source[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (! preg_match_all($pattern['regex'], $html, $matches)) {
+                continue;
+            }
+
+            foreach (($matches[1] ?? []) as $src) {
+                $url = trim((string) $src);
+                if ($url === '') {
+                    continue;
+                }
+
+                $items[] = [
+                    'type' => $pattern['type'],
+                    'url' => $url,
+                    'name' => 'embedded-media',
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    private function resolveMediaType(PostFile $file): ?string
+    {
+        $mime = Str::lower(trim((string) ($file->mime_type ?? '')));
+
+        if (Str::startsWith($mime, 'image/')) {
+            return 'image';
+        }
+
+        if (Str::startsWith($mime, 'video/')) {
+            return 'video';
+        }
+
+        $sourceName = Str::lower((string) ($file->original_name ?: $file->path ?: ''));
+        $extension = pathinfo($sourceName, PATHINFO_EXTENSION);
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true)) {
+            return 'image';
+        }
+
+        if (in_array($extension, ['mp4', 'mov', 'webm', 'm4v'], true)) {
+            return 'video';
+        }
+
+        return null;
     }
 
     private function shouldShowOnHomeFeed(Post $post, ?User $user, Apartment $fallbackApartment): bool

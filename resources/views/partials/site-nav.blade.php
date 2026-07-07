@@ -135,74 +135,96 @@
         color: #0f6f67;
         text-decoration: none;
     }
-    .site-links {
+    .site-actions {
         display: flex;
-        gap: 8px;
+        gap: 14px;
         flex-wrap: wrap;
         align-items: center;
         min-width: 0;
     }
-    .site-links a, .site-links button {
-        border: 1px solid #d6e0ea;
-        background: #fff;
-        color: #17263d;
-        border-radius: 999px;
-        padding: 7px 11px;
-        text-decoration: none;
-        font: inherit;
-        font-weight: 700;
-        cursor: pointer;
-    }
-    .site-links a.filter-link {
-        background: #eff5ff;
-        color: #25457a;
-        border-color: #d5e2f4;
-    }
-    .site-links .cta {
-        background: #0f6f67;
-        border-color: #0f6f67;
-        color: #fff;
-    }
-    .site-links .inline-form { display: inline; margin: 0; }
-    .user-chip {
+    .site-icon-link {
         display: inline-flex;
+        flex-direction: column;
         align-items: center;
-        gap: 8px;
+        justify-content: center;
+        gap: 5px;
+        min-width: 74px;
         text-decoration: none;
         color: #17263d;
-        border: 1px solid #d6e0ea;
-        border-radius: 999px;
-        padding: 5px 10px 5px 6px;
-        background: #fff;
-        font-weight: 700;
-        max-width: 220px;
     }
-    .user-chip-avatar {
-        width: 24px;
-        height: 24px;
-        border-radius: 999px;
-        background: #dde6f6;
-        color: #1f3a72;
+    .site-icon-box {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        border: 1px solid #d6e0ea;
+        background: #fff;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.78rem;
-        font-weight: 800;
-        flex: 0 0 auto;
+        box-shadow: 0 6px 14px rgba(20, 35, 60, 0.08);
     }
-    .user-chip-id {
-        overflow: hidden;
-        text-overflow: ellipsis;
+    .site-icon-box svg {
+        width: 32px;
+        height: 32px;
+        stroke: #0f1520;
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+    .site-icon-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #1d2d45;
+        line-height: 1;
         white-space: nowrap;
-        max-width: 160px;
+    }
+    .site-icon-link:hover .site-icon-box {
+        border-color: #9bb0cf;
+        transform: translateY(-1px);
+    }
+    .site-icon-link.active .site-icon-box {
+        border-color: #8ba7cf;
+        background: #eff5ff;
+    }
+    .site-extra {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        border: 1px solid #d6e0ea;
+        background: #fff;
+        color: #22344f;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 0.78rem;
     }
     @media (max-width: 640px) {
         .site-nav-inner {
             gap: 10px;
             padding: 10px 18px;
         }
-        .site-links {
+        .site-actions {
             width: 100%;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .site-icon-link {
+            min-width: 62px;
+        }
+        .site-icon-box {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+        }
+        .site-icon-box svg {
+            width: 29px;
+            height: 29px;
+        }
+        .site-icon-label {
+            font-size: 0.76rem;
         }
     }
 </style>
@@ -213,28 +235,34 @@
             <span class="site-brand-badge">A</span>
             <a href="/">아파인드</a>
         </div>
-        <nav class="site-links">
-            <a href="/community?apartment_id={{ $apartmentId }}">커뮤니티</a>
-            @guest
-                <a href="/login?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">로그인</a>
-                <a class="cta" href="/register?redirect={{ urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}">회원가입</a>
-            @else
-                @if($regionLabel !== '' || $nameLabel !== '')
-                    <a class="filter-link" href="/community?scope=region&apartment_id={{ $apartmentId }}">{{ $regionLabel !== '' ? $regionLabel : '동네' }}</a>
-                    <a class="filter-link" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">{{ $nameLabel !== '' ? $nameLabel : '공동주택' }}</a>
-                @endif
-                <a class="user-chip" href="/settings?apartment_id={{ $apartmentId }}" title="계정 설정">
-                    <span class="user-chip-avatar">{{ $avatarLetter ?: 'U' }}</span>
-                    <span class="user-chip-id">{{ $currentUser->name }} ({{ $displayId }})</span>
-                </a>
-                @if(auth()->user()->hasRoleForApartment('admin', $apartmentId) || auth()->user()->hasRoleForApartment('admin'))
-                    <a href="/admin">관리자</a>
-                @endif
-                <form method="post" action="/logout" class="inline-form">
-                    @csrf
-                    <button type="submit">로그아웃</button>
-                </form>
-            @endguest
+        <nav class="site-actions" aria-label="주요 메뉴">
+            <a class="site-icon-link" href="/community?scope=region&apartment_id={{ $apartmentId }}" aria-label="동네">
+                <span class="site-icon-box" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M3 11.5 8 7l3 2.7L15 6l6 5.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M6.5 20v-4h3v4"/><path d="M16.5 20v-6h3v6"/></svg>
+                </span>
+                <span class="site-icon-label">동네</span>
+            </a>
+            <a class="site-icon-link" href="/community?scope=apartment&apartment_id={{ $apartmentId }}" aria-label="공동주택">
+                <span class="site-icon-box" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="17" rx="1.6"/><path d="M3 20h18"/><path d="M9 7h2M13 7h2M9 10h2M13 10h2M9 13h2M13 13h2"/><path d="M11 20v-4h2v4"/></svg>
+                </span>
+                <span class="site-icon-label">공동주택</span>
+            </a>
+            <a class="site-icon-link" href="/community?apartment_id={{ $apartmentId }}" aria-label="커뮤니티">
+                <span class="site-icon-box" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="7" cy="9" r="2"/><circle cx="12" cy="7.5" r="2"/><circle cx="17" cy="9" r="2"/><path d="M4.5 18a2.8 2.8 0 0 1 5.5 0"/><path d="M9 18a3.4 3.4 0 0 1 6.8 0"/><path d="M14 18a2.8 2.8 0 0 1 5.5 0"/></svg>
+                </span>
+                <span class="site-icon-label">커뮤니티</span>
+            </a>
+            <a class="site-icon-link" href="{{ auth()->check() ? '/settings?apartment_id='.$apartmentId : '/login?redirect='.urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}" aria-label="사람">
+                <span class="site-icon-box" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 19a7 7 0 0 1 14 0"/></svg>
+                </span>
+                <span class="site-icon-label">사람</span>
+            </a>
+            @if(auth()->check() && (auth()->user()->hasRoleForApartment('admin', $apartmentId) || auth()->user()->hasRoleForApartment('admin')))
+                <a class="site-extra" href="/admin" title="관리자">ADM</a>
+            @endif
         </nav>
     </div>
 </header>
