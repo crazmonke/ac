@@ -19,6 +19,7 @@ class Post extends Model
         'board_id',
         'post_topic_id',
         'apartment_id',
+        'residence_complex_id',
         'region_sido',
         'region_sigungu',
         'region_eupmyeondong',
@@ -56,6 +57,11 @@ class Post extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function residenceComplex(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceComplex::class, 'residence_complex_id');
     }
 
     public function user(): BelongsTo

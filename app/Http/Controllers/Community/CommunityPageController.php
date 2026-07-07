@@ -8,7 +8,9 @@ use App\Models\Board;
 use App\Models\Post;
 use App\Models\PostFile;
 use App\Models\PostTopic;
+use App\Models\User;
 use App\Services\PermissionService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -23,6 +25,10 @@ class CommunityPageController extends Controller
         $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
         $user = $request->user();
 
+        if ($user) {
+            $user->loadMissing('preferredResidenceComplex');
+        }
+
         $apartment = ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
             ?? Apartment::query()->find($requestedApartmentId)
             ?? Apartment::query()->orderBy('id')->first();
@@ -30,29 +36,61 @@ class CommunityPageController extends Controller
         $apartmentName = $apartment?->name ?? '커뮤니티';
         $apartmentId = (int) ($apartment?->id ?? $requestedApartmentId);
         $isVerified = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
-        $preferredApartmentId = (int) ($user?->preferred_apartment_id ?? 0);
+        $preferredApartmentId = $this->resolveUserApartmentId($user);
+        $preferredResidenceComplexId = (int) ($user?->preferred_residence_complex_id ?? 0);
         $scope = (string) $request->query('scope', 'all');
         $topic = trim((string) $request->query('topic', ''));
         $selectedTopicName = $topic !== ''
             ? PostTopic::query()->where('slug', $topic)->value('name')
             : null;
-        $requiresSignupForScope = false;
-        $shouldSplitApartmentFeed = $isVerified && $scope === 'apartment' && $preferredApartmentId > 0;
+        $requiresSignupForScope = ! auth()->check();
+        $shouldSplitApartmentFeed = false;
 
         if (! in_array($scope, ['all', 'region', 'apartment'], true)) {
             $scope = 'all';
         }
 
+        if ($scope === 'apartment' && (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0))) {
+            $requiresSignupForScope = true;
+        }
+
         $postsQuery = Post::query()
-            ->with(['board', 'apartment', 'topic', 'files'])
+            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files'])
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', fn ($query) => $query->where('is_active', true))
             ->latest();
 
-        if ($scope === 'region') {
+        if ($scope === 'all') {
+            // 전국 탭: 전국 동네 게시글 최신순.
             $postsQuery->where('audience_scope', 'region');
+        } elseif ($scope === 'region') {
+            // 동네 탭: 로그인 회원의 내 지역 동네 게시글만 노출.
+            $postsQuery->where('audience_scope', 'region');
+            $this->applyNeighborhoodFilter($postsQuery, $user);
         } elseif ($scope === 'apartment') {
+            // 공동주택 탭: 인증 회원의 내 공동주택 게시글만 노출.
             $postsQuery->where('audience_scope', 'apartment');
+
+            if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
+                $postsQuery->whereRaw('1 = 0');
+            } else {
+                $postsQuery->where(function (Builder $query) use ($preferredApartmentId, $preferredResidenceComplexId) {
+                    if ($preferredResidenceComplexId > 0) {
+                        $query->where('residence_complex_id', $preferredResidenceComplexId)
+                            ->orWhere(function (Builder $legacyResidenceQuery) use ($preferredResidenceComplexId) {
+                                $legacyResidenceQuery->whereNull('residence_complex_id')
+                                    ->whereHas('user', function (Builder $userQuery) use ($preferredResidenceComplexId) {
+                                        $userQuery->where('preferred_residence_complex_id', $preferredResidenceComplexId);
+                                    });
+                            });
+                    }
+
+                    if ($preferredApartmentId > 0) {
+                        $method = $preferredResidenceComplexId > 0 ? 'orWhere' : 'where';
+                        $query->{$method}('apartment_id', $preferredApartmentId);
+                    }
+                });
+            }
         }
 
         if ($topic !== '') {
@@ -65,41 +103,40 @@ class CommunityPageController extends Controller
             });
         }
 
-        if ($shouldSplitApartmentFeed) {
-            $homeSido = trim((string) ($user?->home_sido ?? ''));
-            $homeSigungu = trim((string) ($user?->home_sigungu ?? ''));
-            $homeDong = trim((string) ($user?->home_eupmyeondong ?? ''));
-            $homeDongSafe = $homeDong !== '' ? $homeDong : '__NO_DONG__';
-
-            $postsQuery->orderByRaw(
-                'CASE '
-                .'WHEN apartment_id = ? THEN 0 '
-                .'WHEN region_sido = ? AND region_sigungu = ? AND COALESCE(region_eupmyeondong, \'\') = ? THEN 1 '
-                .'WHEN region_sido = ? AND region_sigungu = ? THEN 2 '
-                .'WHEN region_sido = ? THEN 3 '
-                .'ELSE 4 END',
-                [
-                    $preferredApartmentId,
-                    $homeSido,
-                    $homeSigungu,
-                    $homeDongSafe,
-                    $homeSido,
-                    $homeSigungu,
-                    $homeSido,
-                ]
-            )->latest();
-        } else {
-            $postsQuery->latest();
-        }
+        $postsQuery->latest();
 
         $topicsQuery = PostTopic::query()
-            ->whereHas('posts', function ($query) use ($scope) {
+            ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId) {
                 $query->where('visibility', '!=', 'deleted');
 
-                if ($scope === 'region') {
+                if ($scope === 'all') {
                     $query->where('audience_scope', 'region');
+                } elseif ($scope === 'region') {
+                    $query->where('audience_scope', 'region');
+                    $this->applyNeighborhoodFilter($query, $user);
                 } elseif ($scope === 'apartment') {
                     $query->where('audience_scope', 'apartment');
+
+                    if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
+                        $query->whereRaw('1 = 0');
+                    } else {
+                        $query->where(function (Builder $innerQuery) use ($preferredApartmentId, $preferredResidenceComplexId) {
+                            if ($preferredResidenceComplexId > 0) {
+                                $innerQuery->where('residence_complex_id', $preferredResidenceComplexId)
+                                    ->orWhere(function (Builder $legacyResidenceQuery) use ($preferredResidenceComplexId) {
+                                        $legacyResidenceQuery->whereNull('residence_complex_id')
+                                            ->whereHas('user', function (Builder $userQuery) use ($preferredResidenceComplexId) {
+                                                $userQuery->where('preferred_residence_complex_id', $preferredResidenceComplexId);
+                                            });
+                                    });
+                            }
+
+                            if ($preferredApartmentId > 0) {
+                                $method = $preferredResidenceComplexId > 0 ? 'orWhere' : 'where';
+                                $innerQuery->{$method}('apartment_id', $preferredApartmentId);
+                            }
+                        });
+                    }
                 }
             })
             ->orderBy('name');
@@ -126,9 +163,9 @@ class CommunityPageController extends Controller
                 'created_at' => $post->created_at,
                 'board_name' => $post->board->name,
                 'topic_name' => $post->topic?->name,
-                'apartment_name' => $post->apartment->name,
-                'sido' => $post->apartment->sido,
-                'sigungu' => $post->apartment->sigungu,
+                'apartment_name' => $post->apartment?->name ?: ($post->residenceComplex?->displayName() ?: '공동주택'),
+                'sido' => $post->apartment?->sido ?: ($post->region_sido ?? ''),
+                'sigungu' => $post->apartment?->sigungu ?: ($post->region_sigungu ?? ''),
                 'apartment_id' => (int) $post->apartment_id,
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
@@ -147,15 +184,6 @@ class CommunityPageController extends Controller
 
         $ownApartmentPosts = collect();
         $otherApartmentPosts = collect();
-        if ($shouldSplitApartmentFeed) {
-            $pageItems = collect($posts->items());
-            $ownApartmentPosts = $pageItems
-                ->filter(fn (array $item) => (int) ($item['apartment_id'] ?? 0) === $preferredApartmentId)
-                ->values();
-            $otherApartmentPosts = $pageItems
-                ->filter(fn (array $item) => (int) ($item['apartment_id'] ?? 0) !== $preferredApartmentId)
-                ->values();
-        }
 
         $regionLabel = trim((string) ($apartment?->sigungu ?: $apartment?->eupmyeondong ?: $apartment?->sido));
 
@@ -175,6 +203,79 @@ class CommunityPageController extends Controller
             'ownApartmentPosts' => $ownApartmentPosts,
             'otherApartmentPosts' => $otherApartmentPosts,
         ]);
+    }
+
+    private function resolveUserApartmentId(?User $user): int
+    {
+        if (! $user) {
+            return 0;
+        }
+
+        return (int) ($user->preferred_apartment_id ?? 0);
+    }
+
+    private function applyNeighborhoodFilter(Builder $query, ?User $user): void
+    {
+        if (! $user) {
+            // 비회원은 동네 기준값이 없어 결과를 제한합니다.
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $targetSido = trim((string) ($user->home_sido ?? ''));
+        $targetSigungu = trim((string) ($user->home_sigungu ?? ''));
+        $targetDong = trim((string) ($user->home_eupmyeondong ?? ''));
+
+        if ($targetSido === '' && $targetSigungu === '' && $targetDong === '') {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where(function (Builder $postQuery) use ($targetSido, $targetSigungu, $targetDong) {
+            $postQuery->where(function (Builder $q) use ($targetSido, $targetSigungu, $targetDong) {
+                if ($targetSido !== '') {
+                    $q->where('region_sido', 'like', '%' . $targetSido . '%');
+                }
+
+                if ($targetSigungu !== '') {
+                    $q->where(function (Builder $sigunguQuery) use ($targetSigungu) {
+                        $sigunguQuery->where('region_sigungu', 'like', '%' . $targetSigungu . '%');
+
+                        $compactSigungu = str_replace([' ', '시'], '', $targetSigungu);
+                        if ($compactSigungu !== '') {
+                            $sigunguQuery->orWhereRaw("REPLACE(REPLACE(COALESCE(region_sigungu, ''), ' ', ''), '시', '') LIKE ?", ['%' . $compactSigungu . '%']);
+                        }
+                    });
+                }
+
+                if ($targetDong !== '') {
+                    $q->where('region_eupmyeondong', 'like', '%' . $targetDong . '%');
+                }
+            });
+
+            $postQuery->orWhereHas('apartment', function (Builder $apartmentQuery) use ($targetSido, $targetSigungu, $targetDong) {
+                if ($targetSido !== '') {
+                    $apartmentQuery->where('sido', 'like', '%' . $targetSido . '%');
+                }
+
+                if ($targetSigungu !== '') {
+                    $apartmentQuery->where(function (Builder $sigunguQuery) use ($targetSigungu) {
+                        $sigunguQuery->where('sigungu', 'like', '%' . $targetSigungu . '%');
+
+                        $compactSigungu = str_replace([' ', '시'], '', $targetSigungu);
+                        if ($compactSigungu !== '') {
+                            $sigunguQuery->orWhereRaw("REPLACE(REPLACE(COALESCE(sigungu, ''), ' ', ''), '시', '') LIKE ?", ['%' . $compactSigungu . '%']);
+                        }
+                    });
+                }
+
+                if ($targetDong !== '') {
+                    $apartmentQuery->where('eupmyeondong', 'like', '%' . $targetDong . '%');
+                }
+            });
+        });
     }
 
     private function resolvePostThumbnailUrl(Post $post): ?string

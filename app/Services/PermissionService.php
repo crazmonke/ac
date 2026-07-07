@@ -116,6 +116,19 @@ class PermissionService
             ->exists();
     }
 
+    public function hasVerifiedResidenceComplex(User $user, int $residenceComplexId): bool
+    {
+        if ($residenceComplexId <= 0) {
+            return false;
+        }
+
+        return UserResidence::query()
+            ->where('user_id', $user->id)
+            ->where('complex_id', $residenceComplexId)
+            ->where('verification_status', 'verified')
+            ->exists();
+    }
+
     public function canReadPostDetail(?User $user, Post $post): bool
     {
         if ($post->visibility === 'deleted') {
@@ -134,7 +147,23 @@ class PermissionService
                 return false;
             }
 
-            return $this->hasVerifiedRole($user, (int) $post->apartment_id);
+            $residenceComplexId = (int) ($post->residence_complex_id ?? 0);
+            if ($residenceComplexId > 0) {
+                return $this->hasVerifiedResidenceComplex($user, $residenceComplexId);
+            }
+
+            if ($this->hasVerifiedRole($user, (int) $post->apartment_id)) {
+                return true;
+            }
+
+            $post->loadMissing('user');
+            $authorResidenceComplexId = (int) ($post->user?->preferred_residence_complex_id ?? 0);
+
+            if ($authorResidenceComplexId > 0) {
+                return $this->hasVerifiedResidenceComplex($user, $authorResidenceComplexId);
+            }
+
+            return false;
         }
 
         $post->loadMissing('board');
