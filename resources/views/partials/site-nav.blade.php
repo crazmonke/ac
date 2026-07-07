@@ -254,11 +254,11 @@
                 </span>
                 <span class="site-icon-label">커뮤니티</span>
             </a>
-            <a class="site-icon-link" href="{{ auth()->check() ? '/settings?apartment_id='.$apartmentId : '/login?redirect='.urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}" aria-label="사람">
+            <a class="site-icon-link" href="{{ auth()->check() ? '/settings?apartment_id='.$apartmentId : '/login?redirect='.urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}" aria-label="계정">
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 19a7 7 0 0 1 14 0"/></svg>
                 </span>
-                <span class="site-icon-label">사람</span>
+                <span class="site-icon-label">계정</span>
             </a>
             @if(auth()->check() && (auth()->user()->hasRoleForApartment('admin', $apartmentId) || auth()->user()->hasRoleForApartment('admin')))
                 <a class="site-extra" href="/admin" title="관리자">ADM</a>
