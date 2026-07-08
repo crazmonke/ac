@@ -31,27 +31,85 @@ class ApartmentSelectionService
     public function search(string $query, int $limit = 8): Collection
     {
         $keyword = trim($query);
+        $normalizedKeyword = $this->normalizeText($keyword);
+        $isAddressQuery = $this->looksLikeAddressQuery($keyword);
 
         if ($keyword === '') {
             return collect();
         }
 
+        $apartments = Apartment::query()
+            ->where(function (Builder $builder) {
+                $builder->where('is_active', true)
+                    ->orWhereNull('is_active');
+            })
+            ->where(function (Builder $builder) use ($keyword, $normalizedKeyword, $isAddressQuery) {
+                $builder->where('name', 'like', '%' . $keyword . '%')
+                    ->orWhere('normalized_name', 'like', '%' . $normalizedKeyword . '%')
+                    ->orWhereHas('aliases', function (Builder $aliasQuery) use ($keyword, $normalizedKeyword) {
+                        $aliasQuery->where('alias', 'like', '%' . $keyword . '%')
+                            ->orWhere('normalized_alias', 'like', '%' . $normalizedKeyword . '%');
+                    });
+
+                if ($isAddressQuery) {
+                    $builder->orWhere('road_address', 'like', '%' . $keyword . '%')
+                        ->orWhere('sigungu', 'like', '%' . $keyword . '%')
+                        ->orWhere('eupmyeondong', 'like', '%' . $keyword . '%');
+                }
+            })
+            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$keyword . '%'])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        $apartmentRows = $apartments->map(function (Apartment $apartment) {
+            $complex = $this->findOrCreateComplexFromApartment($apartment);
+            $building = ResidenceBuilding::query()
+                ->where('complex_id', $complex->id)
+                ->orderBy('id')
+                ->first();
+
+            return [
+                'id' => (int) $apartment->id,
+                'complex_id' => (int) $complex->id,
+                'building_id' => (int) ($building?->id ?? 0),
+                'name' => $apartment->name,
+                'label' => $apartment->name . ' · ' . $apartment->sido . ' ' . $apartment->sigungu,
+                'region' => trim($apartment->sido . ' ' . $apartment->sigungu . ' ' . $apartment->eupmyeondong),
+                'road_address' => $apartment->road_address,
+                'housing_type' => 'apartment',
+            ];
+        })->values();
+
+        if ($apartmentRows->isNotEmpty()) {
+            return $apartmentRows;
+        }
+
         $residences = ResidenceBuilding::query()
             ->with('complex')
-            ->whereHas('complex', function (Builder $builder) {
+            ->whereHas('complex', function (Builder $builder) use ($isAddressQuery) {
                 $builder->where('status', 'active');
+
+                if (! $isAddressQuery) {
+                    $builder->where('housing_type', '!=', 'mixed');
+                }
             })
-            ->where(function (Builder $builder) use ($keyword) {
+            ->where(function (Builder $builder) use ($keyword, $isAddressQuery) {
                 $builder->where('building_name', 'like', '%' . $keyword . '%')
-                    ->orWhere('road_address', 'like', '%' . $keyword . '%')
-                    ->orWhere('jibun_address', 'like', '%' . $keyword . '%')
                     ->orWhereHas('complex', function (Builder $complexQuery) use ($keyword) {
                         $complexQuery->where('official_name', 'like', '%' . $keyword . '%')
                             ->orWhere('alias_name', 'like', '%' . $keyword . '%')
-                            ->orWhere('auto_display_name', 'like', '%' . $keyword . '%')
-                            ->orWhere('road_address', 'like', '%' . $keyword . '%')
-                            ->orWhere('jibun_address', 'like', '%' . $keyword . '%');
+                            ->orWhere('auto_display_name', 'like', '%' . $keyword . '%');
                     });
+
+                if ($isAddressQuery) {
+                    $builder->orWhere('road_address', 'like', '%' . $keyword . '%')
+                        ->orWhere('jibun_address', 'like', '%' . $keyword . '%')
+                        ->orWhereHas('complex', function (Builder $complexQuery) use ($keyword) {
+                            $complexQuery->where('road_address', 'like', '%' . $keyword . '%')
+                                ->orWhere('jibun_address', 'like', '%' . $keyword . '%');
+                        });
+                }
             })
             ->orderBy('id')
             ->limit($limit)
@@ -88,48 +146,14 @@ class ApartmentSelectionService
             return $residences;
         }
 
-        $apartments = Apartment::query()
-            ->where('is_active', true)
-            ->where(function (Builder $builder) use ($keyword) {
-                $builder->where('name', 'like', '%' . $keyword . '%')
-                    ->orWhere('road_address', 'like', '%' . $keyword . '%')
-                    ->orWhere('sigungu', 'like', '%' . $keyword . '%')
-                    ->orWhere('eupmyeondong', 'like', '%' . $keyword . '%')
-                    ->orWhereHas('aliases', function (Builder $aliasQuery) use ($keyword) {
-                        $aliasQuery->where('alias', 'like', '%' . $keyword . '%');
-                    });
-            })
-            ->orderBy('name')
-            ->limit($limit)
-            ->get();
+        $fallbackRows = collect();
 
-        $apartmentRows = $apartments->map(function (Apartment $apartment) {
-            $complex = $this->findOrCreateComplexFromApartment($apartment);
-            $building = ResidenceBuilding::query()
-                ->where('complex_id', $complex->id)
-                ->orderBy('id')
-                ->first();
+        if ($isAddressQuery) {
+            $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
 
-            return [
-                'id' => (int) $apartment->id,
-                'complex_id' => (int) $complex->id,
-                'building_id' => (int) ($building?->id ?? 0),
-                'name' => $apartment->name,
-                'label' => $apartment->name . ' · ' . $apartment->sido . ' ' . $apartment->sigungu,
-                'region' => trim($apartment->sido . ' ' . $apartment->sigungu . ' ' . $apartment->eupmyeondong),
-                'road_address' => $apartment->road_address,
-                'housing_type' => 'apartment',
-            ];
-        })->values();
-
-        if ($apartmentRows->isNotEmpty()) {
-            return $apartmentRows;
-        }
-
-        $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
-
-        if ($fallbackRows->isEmpty()) {
-            $fallbackRows = $this->searchRoadCandidatesFromNominatim($keyword, $limit);
+            if ($fallbackRows->isEmpty()) {
+                $fallbackRows = $this->searchRoadCandidatesFromNominatim($keyword, $limit);
+            }
         }
 
         if ($fallbackRows->isNotEmpty()) {
@@ -811,6 +835,8 @@ class ApartmentSelectionService
                     return null;
                 }
 
+                $residenceName = $this->extractNominatimResidenceName($row, $displayName);
+
                 $address = Arr::get($row, 'address', []);
                 if (! is_array($address)) {
                     $address = [];
@@ -832,7 +858,7 @@ class ApartmentSelectionService
                 }
 
                 $name = $this->residenceNamingService->buildDisplayName(
-                    null,
+                    $residenceName,
                     null,
                     $road !== '' ? $road : $displayName,
                     $jibun !== '' ? $jibun : null,
@@ -842,11 +868,11 @@ class ApartmentSelectionService
                 $lat = Arr::get($row, 'lat');
                 $lng = Arr::get($row, 'lon');
 
-                $complex = ResidenceComplex::query()->firstOrCreate([
+                $complex = ResidenceComplex::query()->updateOrCreate([
                     'normalized_key' => $normalizedKey,
                 ], [
                     'housing_type' => 'mixed',
-                    'official_name' => null,
+                    'official_name' => $residenceName,
                     'alias_name' => null,
                     'auto_display_name' => $name['display_name'],
                     'display_name_source' => $name['source'],
@@ -880,8 +906,8 @@ class ApartmentSelectionService
                     'id' => (int) ($complex->legacy_apartment_id ?? 0),
                     'complex_id' => (int) $complex->id,
                     'building_id' => (int) $building->id,
-                    'name' => $complex->displayName(),
-                    'label' => $complex->displayName() . ' · ' . ($building->road_address ?: $complex->road_address),
+                    'name' => $complex->official_name ?: $complex->displayName(),
+                    'label' => ($complex->official_name ?: $complex->displayName()) . ' · ' . ($building->road_address ?: $complex->road_address),
                     'region' => trim((string) ($complex->jibun_address ?: $complex->road_address)),
                     'road_address' => (string) ($building->road_address ?: $complex->road_address),
                     'housing_type' => $complex->housing_type,
@@ -889,5 +915,47 @@ class ApartmentSelectionService
             })
             ->filter()
             ->values();
+    }
+
+    private function looksLikeAddressQuery(string $keyword): bool
+    {
+        $text = trim($keyword);
+
+        if ($text === '') {
+            return false;
+        }
+
+        if (preg_match('/\d/', $text) === 1) {
+            return true;
+        }
+
+        return preg_match('/(로|길|번길|대로|거리|번지|동\s*\d|호\s*\d|읍|면|리)$/u', $text) === 1;
+    }
+
+    private function extractNominatimResidenceName(array $row, string $displayName): ?string
+    {
+        $address = Arr::get($row, 'address', []);
+        if (! is_array($address)) {
+            $address = [];
+        }
+
+        $candidates = [
+            Arr::get($address, 'building'),
+            Arr::get($address, 'amenity'),
+            explode(',', $displayName)[0] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $name = trim((string) $candidate);
+            if ($name === '') {
+                continue;
+            }
+
+            if (preg_match('/(아파트|오피스텔|빌라|연립|타운하우스|맨션|주택)/u', $name) === 1) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 }
