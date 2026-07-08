@@ -45,14 +45,6 @@ class SyncApartmentsCommand extends Command
             return self::FAILURE;
         }
 
-        $rows = $this->loadRows($source);
-
-        if ($rows->isEmpty()) {
-            $this->warn('동기화할 데이터가 없습니다.');
-
-            return self::SUCCESS;
-        }
-
         $stats = [
             'created' => 0,
             'updated' => 0,
@@ -62,7 +54,57 @@ class SyncApartmentsCommand extends Command
         ];
 
         $seenSourceKeys = [];
+        $processedRows = 0;
 
+        if ($source === 'gov') {
+            $this->loadRowsFromGov(function (Collection $chunk) use ($source, $dryRun, &$stats, &$seenSourceKeys, &$processedRows): void {
+                $processedRows += $chunk->count();
+                $this->processRows($chunk, $source, $dryRun, $stats, $seenSourceKeys);
+            });
+        } else {
+            $rows = $this->loadRows($source);
+
+            if ($rows->isEmpty()) {
+                $this->warn('동기화할 데이터가 없습니다.');
+
+                return self::SUCCESS;
+            }
+
+            $processedRows = $rows->count();
+            $this->processRows($rows, $source, $dryRun, $stats, $seenSourceKeys);
+        }
+
+        if ($processedRows === 0) {
+            $this->warn('동기화할 데이터가 없습니다.');
+
+            return self::SUCCESS;
+        }
+
+        $deactivated = 0;
+
+        if (! $dryRun && (bool) $this->option('deactivate-missing')) {
+            $deactivated = $this->deactivateMissing($source, $seenSourceKeys);
+        }
+
+        $this->line('공동주택 동기화 결과');
+        $this->line('- source: ' . $source);
+        $this->line('- rows: ' . $processedRows);
+        $this->line('- created: ' . $stats['created']);
+        $this->line('- updated: ' . $stats['updated']);
+        $this->line('- skipped(unchanged): ' . $stats['skipped']);
+        $this->line('- aliases processed: ' . $stats['aliases']);
+        $this->line('- invalid rows: ' . $stats['invalid']);
+        $this->line('- deactivated: ' . $deactivated);
+
+        if ($dryRun) {
+            $this->warn('dry-run 모드이므로 DB에는 반영되지 않았습니다.');
+        }
+
+        return self::SUCCESS;
+    }
+
+    private function processRows(Collection $rows, string $source, bool $dryRun, array &$stats, array &$seenSourceKeys): void
+    {
         foreach ($rows as $row) {
             $payload = $this->normalizeRow((array) $row, $source);
 
@@ -99,28 +141,6 @@ class SyncApartmentsCommand extends Command
                 $stats['skipped']++;
             }
         }
-
-        $deactivated = 0;
-
-        if (! $dryRun && (bool) $this->option('deactivate-missing')) {
-            $deactivated = $this->deactivateMissing($source, $seenSourceKeys);
-        }
-
-        $this->line('공동주택 동기화 결과');
-        $this->line('- source: ' . $source);
-        $this->line('- rows: ' . $rows->count());
-        $this->line('- created: ' . $stats['created']);
-        $this->line('- updated: ' . $stats['updated']);
-        $this->line('- skipped(unchanged): ' . $stats['skipped']);
-        $this->line('- aliases processed: ' . $stats['aliases']);
-        $this->line('- invalid rows: ' . $stats['invalid']);
-        $this->line('- deactivated: ' . $deactivated);
-
-        if ($dryRun) {
-            $this->warn('dry-run 모드이므로 DB에는 반영되지 않았습니다.');
-        }
-
-        return self::SUCCESS;
     }
 
     private function loadRows(string $source): Collection
@@ -132,7 +152,7 @@ class SyncApartmentsCommand extends Command
         };
     }
 
-    private function loadRowsFromGov(): Collection
+    private function loadRowsFromGov(?callable $onChunk = null): Collection
     {
         $baseUrl = trim((string) ($this->option('url') ?: env('APARTMENT_SYNC_SOURCE_URL', 'https://apis.data.go.kr/1613000/AptListService3')));
         $serviceKey = trim((string) ($this->option('service-key') ?: env('APARTMENT_SYNC_SERVICE_KEY', '')));
@@ -208,9 +228,15 @@ class SyncApartmentsCommand extends Command
                 $items = [];
             }
 
+            $pageRows = collect();
+
             foreach ($items as $item) {
                 if (is_array($item)) {
-                    $rows->push($this->mapGovItem($item));
+                    $mapped = $this->mapGovItem($item);
+
+                    if ($mapped !== null) {
+                        $pageRows->push($mapped);
+                    }
                 }
             }
 
@@ -222,12 +248,22 @@ class SyncApartmentsCommand extends Command
                 }
             }
 
+            if ($onChunk !== null && $pageRows->isNotEmpty()) {
+                $onChunk($pageRows->values());
+            } else {
+                $rows = $rows->merge($pageRows);
+            }
+
             $totalCount ??= (int) Arr::get($payload, 'response.body.totalCount', 0);
-            $loadedCount = $rows->count();
+            $loadedCount = $onChunk !== null
+                ? (($page - 1) * $rowsPerPage) + $pageRows->count()
+                : $rows->count();
             $page++;
         } while ($totalCount !== null && $loadedCount < $totalCount && ! empty($items));
 
-        return $rows->filter()->values();
+        return $onChunk !== null
+            ? collect()
+            : $rows->filter()->values();
     }
 
     private function loadRowsFromFile(): Collection
