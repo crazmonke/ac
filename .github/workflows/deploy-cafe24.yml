@@ -164,8 +164,7 @@ jobs:
           RESOLVED_APARTMENT_SYNC_SERVICE_KEY="${APARTMENT_SYNC_SERVICE_KEY:-$(read_prev_env APARTMENT_SYNC_SERVICE_KEY)}"
 
           if [ -z "$RESOLVED_GOOGLE_MAPS_API_KEY" ]; then
-            echo "ERROR: GOOGLE_MAPS_API_KEY is empty after env resolution."
-            exit 1
+            echo "WARNING: GOOGLE_MAPS_API_KEY is empty after env resolution. Address fallback quality may be reduced until key is configured."
           fi
 
           if [ -z "$RESOLVED_APARTMENT_SYNC_SERVICE_KEY" ]; then
