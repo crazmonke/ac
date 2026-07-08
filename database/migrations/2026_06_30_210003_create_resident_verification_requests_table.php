@@ -28,7 +28,7 @@ return new class extends Migration
 
             $table->index(['status', 'created_at']);
             $table->index(['user_id', 'status']);
-            $table->unique(['user_id', 'apartment_id', 'status']);
+            $table->unique(['user_id', 'apartment_id', 'status'], 'rvr_user_apt_status_unique');
         });
     }
 

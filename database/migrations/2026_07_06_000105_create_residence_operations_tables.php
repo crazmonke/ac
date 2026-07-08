@@ -11,45 +11,51 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('residence_name_suggestions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('complex_id')->constrained('residence_complexes')->cascadeOnDelete();
-            $table->string('suggested_name', 150);
-            $table->foreignId('suggested_by')->constrained('users')->cascadeOnDelete();
-            $table->unsignedInteger('votes_up')->default(0);
-            $table->unsignedInteger('votes_down')->default(0);
-            $table->string('status', 20)->default('pending');
-            $table->timestamps();
+        if (! Schema::hasTable('residence_name_suggestions')) {
+            Schema::create('residence_name_suggestions', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('complex_id')->constrained('residence_complexes')->cascadeOnDelete();
+                $table->string('suggested_name', 150);
+                $table->foreignId('suggested_by')->constrained('users')->cascadeOnDelete();
+                $table->unsignedInteger('votes_up')->default(0);
+                $table->unsignedInteger('votes_down')->default(0);
+                $table->string('status', 20)->default('pending');
+                $table->timestamps();
 
-            $table->index(['complex_id', 'status']);
-        });
+                $table->index(['complex_id', 'status']);
+            });
+        }
 
-        Schema::create('residence_merge_candidates', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('source_complex_id')->constrained('residence_complexes')->cascadeOnDelete();
-            $table->foreignId('target_complex_id')->constrained('residence_complexes')->cascadeOnDelete();
-            $table->decimal('score', 5, 2)->default(0);
-            $table->json('reason')->nullable();
-            $table->string('status', 20)->default('pending');
-            $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('reviewed_at')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('residence_merge_candidates')) {
+            Schema::create('residence_merge_candidates', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('source_complex_id')->constrained('residence_complexes')->cascadeOnDelete();
+                $table->foreignId('target_complex_id')->constrained('residence_complexes')->cascadeOnDelete();
+                $table->decimal('score', 5, 2)->default(0);
+                $table->json('reason')->nullable();
+                $table->string('status', 20)->default('pending');
+                $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+                $table->timestamp('reviewed_at')->nullable();
+                $table->timestamps();
 
-            $table->unique(['source_complex_id', 'target_complex_id']);
-            $table->index(['status', 'score']);
-        });
+                $table->unique(['source_complex_id', 'target_complex_id'], 'rmc_source_target_unique');
+                $table->index(['status', 'score']);
+            });
+        }
 
-        Schema::create('operational_metrics', function (Blueprint $table) {
-            $table->id();
-            $table->string('event_name', 80);
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('complex_id')->nullable()->constrained('residence_complexes')->nullOnDelete();
-            $table->foreignId('building_id')->nullable()->constrained('residence_buildings')->nullOnDelete();
-            $table->json('payload')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('operational_metrics')) {
+            Schema::create('operational_metrics', function (Blueprint $table) {
+                $table->id();
+                $table->string('event_name', 80);
+                $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->foreignId('complex_id')->nullable()->constrained('residence_complexes')->nullOnDelete();
+                $table->foreignId('building_id')->nullable()->constrained('residence_buildings')->nullOnDelete();
+                $table->json('payload')->nullable();
+                $table->timestamps();
 
-            $table->index(['event_name', 'created_at']);
-        });
+                $table->index(['event_name', 'created_at']);
+            });
+        }
     }
 
     /**
