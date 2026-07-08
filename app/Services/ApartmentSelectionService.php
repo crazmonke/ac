@@ -57,7 +57,7 @@ class ApartmentSelectionService
                         foreach ($searchTerms as $term) {
                             $normalizedTerm = $this->normalizeText($term);
 
-                            $termBuilder->where(function (Builder $matchBuilder) use ($term, $normalizedTerm) {
+                            $termBuilder->orWhere(function (Builder $matchBuilder) use ($term, $normalizedTerm) {
                                 $matchBuilder->where('name', 'like', '%' . $term . '%')
                                     ->orWhere('normalized_name', 'like', '%' . $normalizedTerm . '%')
                                     ->orWhereHas('aliases', function (Builder $aliasQuery) use ($term, $normalizedTerm) {
@@ -123,7 +123,7 @@ class ApartmentSelectionService
                 if (! empty($searchTerms)) {
                     $builder->orWhere(function (Builder $termBuilder) use ($searchTerms) {
                         foreach ($searchTerms as $term) {
-                            $termBuilder->where(function (Builder $matchBuilder) use ($term) {
+                            $termBuilder->orWhere(function (Builder $matchBuilder) use ($term) {
                                 $matchBuilder->where('building_name', 'like', '%' . $term . '%')
                                     ->orWhereHas('complex', function (Builder $complexQuery) use ($term) {
                                         $complexQuery->where('official_name', 'like', '%' . $term . '%')
