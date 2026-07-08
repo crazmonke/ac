@@ -146,10 +146,22 @@ class ApartmentSelectionService
             return $residences;
         }
 
-        $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
+        $fallbackRows = collect();
 
-        if ($fallbackRows->isEmpty()) {
-            $fallbackRows = $this->searchRoadCandidatesFromNominatim($keyword, $limit);
+        foreach ($this->buildFallbackSearchKeywords($keyword) as $fallbackKeyword) {
+            if ($fallbackRows->count() >= $limit) {
+                break;
+            }
+
+            $rows = $this->searchRoadCandidatesFromGoogle($fallbackKeyword, $limit);
+
+            if ($rows->isEmpty()) {
+                $rows = $this->searchRoadCandidatesFromNominatim($fallbackKeyword, $limit);
+            }
+
+            if ($rows->isNotEmpty()) {
+                $fallbackRows = $fallbackRows->merge($rows);
+            }
         }
 
         if ($fallbackRows->isNotEmpty()) {
@@ -993,5 +1005,36 @@ class ApartmentSelectionService
         }
 
         return null;
+    }
+
+    private function buildFallbackSearchKeywords(string $keyword): array
+    {
+        $base = trim($keyword);
+
+        if ($base === '') {
+            return [];
+        }
+
+        $candidates = [$base];
+
+        $withoutSuffix = trim((string) preg_replace('/(아파트|오피스텔|빌라|연립주택|연립|타운하우스|맨션)$/u', '', $base));
+        if ($withoutSuffix !== '' && $withoutSuffix !== $base) {
+            $candidates[] = $withoutSuffix;
+        }
+
+        $normalizedSpaces = preg_replace('/\s+/u', ' ', $base);
+        if (is_string($normalizedSpaces)) {
+            $normalizedSpaces = trim($normalizedSpaces);
+            if ($normalizedSpaces !== '' && $normalizedSpaces !== $base) {
+                $candidates[] = $normalizedSpaces;
+            }
+
+            $collapsed = str_replace(' ', '', $normalizedSpaces);
+            if ($collapsed !== '' && $collapsed !== $base) {
+                $candidates[] = $collapsed;
+            }
+        }
+
+        return array_values(array_unique($candidates));
     }
 }
