@@ -157,6 +157,46 @@ class ApartmentSelectionService
                 ->unique(fn (array $row) => mb_strtolower(trim((string) ($row['name'] ?? ''))) . '|' . mb_strtolower(trim((string) ($row['road_address'] ?? ''))))
                 ->values();
 
+            if (! $isAddressQuery) {
+                $filteredRows = $fallbackRows
+                    ->filter(function (array $row) use ($normalizedKeyword) {
+                        $name = $this->normalizeText((string) ($row['name'] ?? ''));
+                        $road = $this->normalizeText((string) ($row['road_address'] ?? ''));
+
+                        return $normalizedKeyword !== ''
+                            && (str_contains($name, $normalizedKeyword) || str_contains($road, $normalizedKeyword));
+                    })
+                    ->values();
+
+                if ($filteredRows->isNotEmpty()) {
+                    $fallbackRows = $filteredRows;
+                }
+
+                $fallbackRows = $fallbackRows
+                    ->sortByDesc(function (array $row) use ($normalizedKeyword) {
+                        $name = $this->normalizeText((string) ($row['name'] ?? ''));
+                        $road = $this->normalizeText((string) ($row['road_address'] ?? ''));
+                        $isPlaceholder = str_contains((string) ($row['name'] ?? ''), '공동주택');
+
+                        $score = 0;
+                        if ($normalizedKeyword !== '' && str_starts_with($name, $normalizedKeyword)) {
+                            $score += 40;
+                        }
+                        if ($normalizedKeyword !== '' && str_contains($name, $normalizedKeyword)) {
+                            $score += 30;
+                        }
+                        if ($normalizedKeyword !== '' && str_contains($road, $normalizedKeyword)) {
+                            $score += 10;
+                        }
+                        if (! $isPlaceholder) {
+                            $score += 15;
+                        }
+
+                        return $score;
+                    })
+                    ->values();
+            }
+
             $this->operationalMetricsService->log('residence_search_fallback_hit', null, null, null, [
                 'keyword' => $keyword,
                 'count' => $fallbackRows->count(),
