@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class SyncApartmentsCommand extends Command
@@ -36,6 +37,8 @@ class SyncApartmentsCommand extends Command
 
     public function handle(): int
     {
+        DB::connection()->disableQueryLog();
+
         $source = trim((string) $this->option('source'));
         $dryRun = (bool) $this->option('dry-run');
 
