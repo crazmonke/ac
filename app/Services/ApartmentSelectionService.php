@@ -146,14 +146,10 @@ class ApartmentSelectionService
             return $residences;
         }
 
-        $fallbackRows = collect();
+        $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
 
-        if ($isAddressQuery) {
-            $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
-
-            if ($fallbackRows->isEmpty()) {
-                $fallbackRows = $this->searchRoadCandidatesFromNominatim($keyword, $limit);
-            }
+        if ($fallbackRows->isEmpty()) {
+            $fallbackRows = $this->searchRoadCandidatesFromNominatim($keyword, $limit);
         }
 
         if ($fallbackRows->isNotEmpty()) {
