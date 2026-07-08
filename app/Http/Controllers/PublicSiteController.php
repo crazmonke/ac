@@ -12,6 +12,7 @@ use App\Services\PermissionService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class PublicSiteController extends Controller
@@ -43,16 +44,19 @@ class PublicSiteController extends Controller
             ]);
         }
 
-        $candidates = Post::query()
-            ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
-            ->withCount('likes')
-            ->where('visibility', '!=', 'deleted')
-            ->whereHas('board', function ($query) {
-                $query->where('is_active', true);
-            })
-            ->latest()
-            ->limit(500)
-            ->get();
+        $candidates = collect();
+        if (Schema::hasTable('posts') && Schema::hasTable('boards')) {
+            $candidates = Post::query()
+                ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
+                ->withCount('likes')
+                ->where('visibility', '!=', 'deleted')
+                ->whereHas('board', function ($query) {
+                    $query->where('is_active', true);
+                })
+                ->latest()
+                ->limit(500)
+                ->get();
+        }
 
         $feedPosts = $candidates
             ->filter(fn (Post $post) => $this->shouldShowOnHomeFeed($post, $user, $apartment))
