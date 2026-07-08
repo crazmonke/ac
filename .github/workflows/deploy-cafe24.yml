@@ -65,28 +65,23 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -4 -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload files via SFTP (retry)
+      - name: Upload files via SSH stream (retry)
         run: |
           set -euo pipefail
-          cat > /tmp/sftp_batch.txt <<'SFTP_CMDS'
-          cd www
-          put -r .deploy/* .
-          bye
-          SFTP_CMDS
-
           success=0
           for attempt in 1 2 3; do
-            echo "SFTP upload attempt $attempt"
-            if sftp -4 -oBatchMode=yes -oStrictHostKeyChecking=yes -i ~/.ssh/cafe24_key \
+            echo "SSH stream upload attempt $attempt"
+            if tar -C .deploy -cf - . | ssh -4 -i ~/.ssh/cafe24_key -o StrictHostKeyChecking=yes \
               -P "${{ secrets.CAFE24_PORT }}" \
-              "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" < /tmp/sftp_batch.txt; then
+              "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
+              'cd ~/www && tar -xf -'; then
               success=1
               break
             fi
           done
 
           if [ "$success" -ne 1 ]; then
-            echo "SFTP upload failed after retries"
+            echo "SSH stream upload failed after retries"
             exit 1
           fi
 
