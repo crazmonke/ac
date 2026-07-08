@@ -33,6 +33,7 @@ class ApartmentSelectionService
         $keyword = trim($query);
         $normalizedKeyword = $this->normalizeText($keyword);
         $isAddressQuery = $this->looksLikeAddressQuery($keyword);
+        $searchTerms = $this->buildNameSearchTerms($keyword);
 
         if ($keyword === '') {
             return collect();
@@ -43,13 +44,30 @@ class ApartmentSelectionService
                 $builder->where('is_active', true)
                     ->orWhereNull('is_active');
             })
-            ->where(function (Builder $builder) use ($keyword, $normalizedKeyword, $isAddressQuery) {
+            ->where(function (Builder $builder) use ($keyword, $normalizedKeyword, $isAddressQuery, $searchTerms) {
                 $builder->where('name', 'like', '%' . $keyword . '%')
                     ->orWhere('normalized_name', 'like', '%' . $normalizedKeyword . '%')
                     ->orWhereHas('aliases', function (Builder $aliasQuery) use ($keyword, $normalizedKeyword) {
                         $aliasQuery->where('alias', 'like', '%' . $keyword . '%')
                             ->orWhere('normalized_alias', 'like', '%' . $normalizedKeyword . '%');
                     });
+
+                if (! empty($searchTerms)) {
+                    $builder->orWhere(function (Builder $termBuilder) use ($searchTerms) {
+                        foreach ($searchTerms as $term) {
+                            $normalizedTerm = $this->normalizeText($term);
+
+                            $termBuilder->where(function (Builder $matchBuilder) use ($term, $normalizedTerm) {
+                                $matchBuilder->where('name', 'like', '%' . $term . '%')
+                                    ->orWhere('normalized_name', 'like', '%' . $normalizedTerm . '%')
+                                    ->orWhereHas('aliases', function (Builder $aliasQuery) use ($term, $normalizedTerm) {
+                                        $aliasQuery->where('alias', 'like', '%' . $term . '%')
+                                            ->orWhere('normalized_alias', 'like', '%' . $normalizedTerm . '%');
+                                    });
+                            });
+                        }
+                    });
+                }
 
                 if ($isAddressQuery) {
                     $builder->orWhere('road_address', 'like', '%' . $keyword . '%')
@@ -94,13 +112,28 @@ class ApartmentSelectionService
                     $builder->where('housing_type', '!=', 'mixed');
                 }
             })
-            ->where(function (Builder $builder) use ($keyword, $isAddressQuery) {
+            ->where(function (Builder $builder) use ($keyword, $isAddressQuery, $searchTerms) {
                 $builder->where('building_name', 'like', '%' . $keyword . '%')
                     ->orWhereHas('complex', function (Builder $complexQuery) use ($keyword) {
                         $complexQuery->where('official_name', 'like', '%' . $keyword . '%')
                             ->orWhere('alias_name', 'like', '%' . $keyword . '%')
                             ->orWhere('auto_display_name', 'like', '%' . $keyword . '%');
                     });
+
+                if (! empty($searchTerms)) {
+                    $builder->orWhere(function (Builder $termBuilder) use ($searchTerms) {
+                        foreach ($searchTerms as $term) {
+                            $termBuilder->where(function (Builder $matchBuilder) use ($term) {
+                                $matchBuilder->where('building_name', 'like', '%' . $term . '%')
+                                    ->orWhereHas('complex', function (Builder $complexQuery) use ($term) {
+                                        $complexQuery->where('official_name', 'like', '%' . $term . '%')
+                                            ->orWhere('alias_name', 'like', '%' . $term . '%')
+                                            ->orWhere('auto_display_name', 'like', '%' . $term . '%');
+                                    });
+                            });
+                        }
+                    });
+                }
 
                 if ($isAddressQuery) {
                     $builder->orWhere('road_address', 'like', '%' . $keyword . '%')
@@ -1036,5 +1069,29 @@ class ApartmentSelectionService
         }
 
         return array_values(array_unique($candidates));
+    }
+
+    private function buildNameSearchTerms(string $keyword): array
+    {
+        $terms = [];
+
+        foreach ($this->buildFallbackSearchKeywords($keyword) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $terms[] = $candidate;
+
+            $parts = preg_split('/\s+/u', $candidate) ?: [];
+            foreach ($parts as $part) {
+                $part = trim((string) $part);
+                if ($part !== '' && mb_strlen($part) >= 2) {
+                    $terms[] = $part;
+                }
+            }
+        }
+
+        return array_values(array_unique($terms));
     }
 }
