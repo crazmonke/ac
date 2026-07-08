@@ -58,15 +58,19 @@ class CommunityPageController extends Controller
         }
 
         $canQueryCommunityFeed = Schema::hasTable('posts') && Schema::hasTable('boards');
+        $hasPostLikesTable = Schema::hasTable('post_likes');
         $postsQuery = null;
 
         if ($canQueryCommunityFeed) {
             $postsQuery = Post::query()
                 ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user', 'poll.options'])
-                ->withCount('likes')
                 ->where('visibility', '!=', 'deleted')
                 ->whereHas('board', fn ($query) => $query->where('is_active', true))
                 ->latest();
+
+            if ($hasPostLikesTable) {
+                $postsQuery->withCount('likes');
+            }
         }
 
         if ($canQueryCommunityFeed && $scope === 'all') {
@@ -182,7 +186,7 @@ class CommunityPageController extends Controller
             );
         }
 
-        $posts->through(function (Post $post) use ($user, $apartmentId) {
+        $posts->through(function (Post $post) use ($user, $apartmentId, $hasPostLikesTable) {
             $canRead = $this->permissionService->canReadPostDetail($user, $post);
             $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
             $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
@@ -210,7 +214,9 @@ class CommunityPageController extends Controller
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
                 'like_count' => (int) ($post->likes_count ?? 0),
-                'liked_by_me' => $user ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists() : false,
+                'liked_by_me' => $hasPostLikesTable && $user
+                    ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists()
+                    : false,
                 'audience_scope' => (string) ($post->audience_scope ?? 'all'),
                 'can_read' => $canRead,
                 'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),

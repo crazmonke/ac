@@ -44,18 +44,23 @@ class PublicSiteController extends Controller
             ]);
         }
 
+        $hasPostLikesTable = Schema::hasTable('post_likes');
         $candidates = collect();
         if (Schema::hasTable('posts') && Schema::hasTable('boards')) {
-            $candidates = Post::query()
+            $query = Post::query()
                 ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
-                ->withCount('likes')
                 ->where('visibility', '!=', 'deleted')
                 ->whereHas('board', function ($query) {
                     $query->where('is_active', true);
                 })
                 ->latest()
-                ->limit(500)
-                ->get();
+                ->limit(500);
+
+            if ($hasPostLikesTable) {
+                $query->withCount('likes');
+            }
+
+            $candidates = $query->get();
         }
 
         $feedPosts = $candidates
@@ -74,7 +79,7 @@ class PublicSiteController extends Controller
                 'query' => $request->query(),
             ]
         );
-        $feedPaginator = $this->mapPostPaginator($feedPaginator, $user);
+        $feedPaginator = $this->mapPostPaginator($feedPaginator, $user, $hasPostLikesTable);
 
         $isLoggedIn = (bool) $user;
         $isVerifiedUser = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
@@ -169,28 +174,28 @@ class PublicSiteController extends Controller
         ]);
     }
 
-    private function mapPostCards(Collection $posts, $user): Collection
+    private function mapPostCards(Collection $posts, $user, bool $hasPostLikesTable): Collection
     {
-        return $posts->map(fn (Post $post) => $this->mapPostCard($post, $user));
+        return $posts->map(fn (Post $post) => $this->mapPostCard($post, $user, $hasPostLikesTable));
     }
 
-    private function mapPostPaginator(LengthAwarePaginator $paginator, $user): LengthAwarePaginator
+    private function mapPostPaginator(LengthAwarePaginator $paginator, $user, bool $hasPostLikesTable): LengthAwarePaginator
     {
         $paginator->setCollection(
-            $paginator->getCollection()->map(fn (Post $post) => $this->mapPostCard($post, $user))
+            $paginator->getCollection()->map(fn (Post $post) => $this->mapPostCard($post, $user, $hasPostLikesTable))
         );
 
         return $paginator;
     }
 
-    private function mapPostCard(Post $post, $user): array
+    private function mapPostCard(Post $post, $user, bool $hasPostLikesTable): array
     {
         $canRead = $this->canReadPost($user, $post);
         $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
         $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
         $likeCount = (int) ($post->likes_count ?? 0);
         $pollPreview = $this->buildPollPreview($post);
-        $likedByMe = $user
+        $likedByMe = $hasPostLikesTable && $user
             ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists()
             : false;
 
