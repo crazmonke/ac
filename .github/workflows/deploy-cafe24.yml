@@ -59,30 +59,19 @@ jobs:
             --exclude "storage/logs/*" \
             ./ .deploy/
 
-      - name: Configure SSH for rsync
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.CAFE24_SSH_KEY }}" | tr -d '\r' > ~/.ssh/cafe24_key
-          chmod 600 ~/.ssh/cafe24_key
-          ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Validate SSH authentication
-        run: |
-          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
-            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
-            'echo SSH_OK && whoami && pwd'
-
-      - name: Upload files via SCP
-        run: |
-          set -euo pipefail
-          SSH_CMD="ssh -i ~/.ssh/cafe24_key -p ${{ secrets.CAFE24_PORT }} -o StrictHostKeyChecking=yes ${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}"
-
-          $SSH_CMD 'mkdir -p ~/www && find ~/www -mindepth 1 -maxdepth 1 ! -name .env -exec rm -rf {} +'
-
-          tar -C .deploy -czf /tmp/deploy.tgz .
-          scp -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
-            /tmp/deploy.tgz "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/deploy.tgz"
-          $SSH_CMD 'tar -xzf ~/deploy.tgz -C ~/www && rm -f ~/deploy.tgz'
+      - name: Upload files via SFTP/SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.CAFE24_HOST }}
+          username: ${{ secrets.CAFE24_USER }}
+          key: ${{ secrets.CAFE24_SSH_KEY }}
+          port: ${{ secrets.CAFE24_PORT }}
+          source: ".deploy/*"
+          target: "/home/hosting_users/apaind/www"
+          strip_components: 1
+          overwrite: true
+          tar_tmp_path: "/home/hosting_users/apaind"
+          debug: true
 
       - name: Post-deploy artisan tasks
         uses: appleboy/ssh-action@v1.0.3
