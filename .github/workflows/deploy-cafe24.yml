@@ -59,82 +59,91 @@ jobs:
             --exclude "storage/logs/*" \
             ./ .deploy/
 
-      - name: Upload files via SFTP/SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.CAFE24_HOST }}
-          username: ${{ secrets.CAFE24_USER }}
-          key: ${{ secrets.CAFE24_SSH_KEY }}
-          port: ${{ secrets.CAFE24_PORT }}
-          source: ".deploy/*"
-          target: "www"
-          strip_components: 1
-          overwrite: true
-          tar_tmp_path: "/home/hosting_users/apaind/www"
-          debug: true
+      - name: Configure SSH client
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.CAFE24_SSH_KEY }}" | tr -d '\r' > ~/.ssh/cafe24_key
+          chmod 600 ~/.ssh/cafe24_key
+          ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Post-deploy artisan tasks
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.CAFE24_HOST }}
-          username: ${{ secrets.CAFE24_USER }}
-          key: ${{ secrets.CAFE24_SSH_KEY }}
-          port: ${{ secrets.CAFE24_PORT }}
-          script_stop: false
-          script: |
-            set -e
+      - name: Upload deploy archive via native scp
+        run: |
+          set -euo pipefail
+          tar -C .deploy -czf /tmp/deploy.tgz .
+          scp -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
+            /tmp/deploy.tgz "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/deploy.tgz"
 
-            DEPLOY_PATH="${{ secrets.CAFE24_DEPLOY_PATH }}"
-            if [ -n "$DEPLOY_PATH" ] && [ -d "$DEPLOY_PATH" ]; then
-              cd "$DEPLOY_PATH"
-            elif [ -d "$HOME/www" ]; then
-              cd "$HOME/www"
-            elif [ -d "www" ]; then
-              cd "www"
-            else
-              echo "Deploy path not found"
-              pwd
-              ls -la
-              exit 1
-            fi
+      - name: Remote deploy and artisan tasks
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
+            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
+            DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}' \
+            APP_KEY='${{ secrets.APP_KEY }}' \
+            APP_URL='${{ secrets.APP_URL }}' \
+            DB_HOST='${{ secrets.CAFE24_DB_HOST }}' \
+            DB_PORT='${{ secrets.CAFE24_DB_PORT }}' \
+            DB_NAME='${{ secrets.CAFE24_DB_NAME }}' \
+            DB_USER='${{ secrets.CAFE24_DB_USER }}' \
+            DB_PASS='${{ secrets.CAFE24_DB_PASS }}' \
+            PHP_BIN='${{ secrets.CAFE24_PHP_BIN }}' \
+            'bash -s' <<'REMOTE'
+          set -e
 
-            if [ ! -f .env ]; then
-              {
-                echo "APP_NAME=Laravel"
-                echo "APP_ENV=production"
-                echo "APP_KEY=${{ secrets.APP_KEY }}"
-                echo "APP_DEBUG=false"
-                echo "APP_URL=${{ secrets.APP_URL }}"
-                echo
-                echo "LOG_CHANNEL=stack"
-                echo "LOG_LEVEL=error"
-                echo
-                echo "DB_CONNECTION=mysql"
-                echo "DB_HOST=${{ secrets.CAFE24_DB_HOST }}"
-                echo "DB_PORT=${{ secrets.CAFE24_DB_PORT }}"
-                echo "DB_DATABASE=${{ secrets.CAFE24_DB_NAME }}"
-                echo "DB_USERNAME=${{ secrets.CAFE24_DB_USER }}"
-                echo "DB_PASSWORD=${{ secrets.CAFE24_DB_PASS }}"
-                echo
-                echo "BROADCAST_CONNECTION=log"
-                echo "FILESYSTEM_DISK=local"
-                echo "QUEUE_CONNECTION=sync"
-                echo "CACHE_STORE=file"
-                echo "SESSION_DRIVER=file"
-              } > .env
-            fi
+          if [ -n "$DEPLOY_PATH" ] && [ -d "$DEPLOY_PATH" ]; then
+            cd "$DEPLOY_PATH"
+          elif [ -d "$HOME/www" ]; then
+            cd "$HOME/www"
+          elif [ -d "www" ]; then
+            cd "www"
+          else
+            echo "Deploy path not found"
+            pwd
+            ls -la
+            exit 1
+          fi
 
-            chmod -R ug+rw storage bootstrap/cache || true
+          find . -mindepth 1 -maxdepth 1 ! -name .env -exec rm -rf {} +
+          tar -xzf ~/deploy.tgz -C .
+          rm -f ~/deploy.tgz
 
-            PHP_BIN="${{ secrets.CAFE24_PHP_BIN }}"
-            if [ -z "$PHP_BIN" ]; then
-              PHP_BIN="php"
-            fi
+          if [ ! -f .env ]; then
+            {
+              echo "APP_NAME=Laravel"
+              echo "APP_ENV=production"
+              echo "APP_KEY=$APP_KEY"
+              echo "APP_DEBUG=false"
+              echo "APP_URL=$APP_URL"
+              echo
+              echo "LOG_CHANNEL=stack"
+              echo "LOG_LEVEL=error"
+              echo
+              echo "DB_CONNECTION=mysql"
+              echo "DB_HOST=$DB_HOST"
+              echo "DB_PORT=$DB_PORT"
+              echo "DB_DATABASE=$DB_NAME"
+              echo "DB_USERNAME=$DB_USER"
+              echo "DB_PASSWORD=$DB_PASS"
+              echo
+              echo "BROADCAST_CONNECTION=log"
+              echo "FILESYSTEM_DISK=local"
+              echo "QUEUE_CONNECTION=sync"
+              echo "CACHE_STORE=file"
+              echo "SESSION_DRIVER=file"
+            } > .env
+          fi
 
-            if [ -f artisan ]; then
-              "$PHP_BIN" artisan migrate --force || true
-              "$PHP_BIN" artisan optimize:clear || true
-              "$PHP_BIN" artisan config:cache || true
-              "$PHP_BIN" artisan route:cache || true
-              "$PHP_BIN" artisan view:cache || true
-            fi
+          chmod -R ug+rw storage bootstrap/cache || true
+
+          if [ -z "$PHP_BIN" ]; then
+            PHP_BIN="php"
+          fi
+
+          if [ -f artisan ]; then
+            "$PHP_BIN" artisan migrate --force || true
+            "$PHP_BIN" artisan optimize:clear || true
+            "$PHP_BIN" artisan config:cache || true
+            "$PHP_BIN" artisan route:cache || true
+            "$PHP_BIN" artisan view:cache || true
+          fi
+          REMOTE
