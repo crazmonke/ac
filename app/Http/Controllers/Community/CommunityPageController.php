@@ -59,6 +59,12 @@ class CommunityPageController extends Controller
 
         $canQueryCommunityFeed = Schema::hasTable('posts') && Schema::hasTable('boards');
         $hasPostLikesTable = Schema::hasTable('post_likes');
+        $hasAudienceScopeColumn = Schema::hasTable('posts') && Schema::hasColumn('posts', 'audience_scope');
+
+        if (! $hasAudienceScopeColumn) {
+            $scope = 'all';
+        }
+
         $postsQuery = null;
 
         if ($canQueryCommunityFeed) {
@@ -75,14 +81,20 @@ class CommunityPageController extends Controller
 
         if ($canQueryCommunityFeed && $scope === 'all') {
             // 전국 탭: 전국 동네 게시글 최신순.
-            $postsQuery->where('audience_scope', 'region');
+            if ($hasAudienceScopeColumn) {
+                $postsQuery->where('audience_scope', 'region');
+            }
         } elseif ($canQueryCommunityFeed && $scope === 'region') {
             // 동네 탭: 로그인 회원의 내 지역 동네 게시글만 노출.
-            $postsQuery->where('audience_scope', 'region');
+            if ($hasAudienceScopeColumn) {
+                $postsQuery->where('audience_scope', 'region');
+            }
             $this->applyNeighborhoodFilter($postsQuery, $user);
         } elseif ($canQueryCommunityFeed && $scope === 'apartment') {
             // 공동주택 탭: 인증 회원의 내 공동주택 게시글만 노출.
-            $postsQuery->where('audience_scope', 'apartment');
+            if ($hasAudienceScopeColumn) {
+                $postsQuery->where('audience_scope', 'apartment');
+            }
 
             if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
                 $postsQuery->whereRaw('1 = 0');
@@ -123,16 +135,22 @@ class CommunityPageController extends Controller
         $topicFacets = collect();
         if ($canQueryCommunityFeed && Schema::hasTable('post_topics')) {
             $topicsQuery = PostTopic::query()
-                ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId) {
+                ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId, $hasAudienceScopeColumn) {
                     $query->where('visibility', '!=', 'deleted');
 
                     if ($scope === 'all') {
-                        $query->where('audience_scope', 'region');
+                        if ($hasAudienceScopeColumn) {
+                            $query->where('audience_scope', 'region');
+                        }
                     } elseif ($scope === 'region') {
-                        $query->where('audience_scope', 'region');
+                        if ($hasAudienceScopeColumn) {
+                            $query->where('audience_scope', 'region');
+                        }
                         $this->applyNeighborhoodFilter($query, $user);
                     } elseif ($scope === 'apartment') {
-                        $query->where('audience_scope', 'apartment');
+                        if ($hasAudienceScopeColumn) {
+                            $query->where('audience_scope', 'apartment');
+                        }
 
                         if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
                             $query->whereRaw('1 = 0');
