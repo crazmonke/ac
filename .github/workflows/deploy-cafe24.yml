@@ -59,17 +59,6 @@ jobs:
             --exclude "storage/logs/*" \
             ./ .deploy/
 
-      - name: Prepare remote deploy directory
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.CAFE24_HOST }}
-          username: ${{ secrets.CAFE24_USER }}
-          key: ${{ secrets.CAFE24_SSH_KEY }}
-          port: ${{ secrets.CAFE24_PORT }}
-          script_stop: true
-          script: |
-            mkdir -p ~/www
-
       - name: Upload files via SFTP/SCP
         uses: appleboy/scp-action@v0.1.7
         with:
