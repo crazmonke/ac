@@ -66,12 +66,18 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload deploy archive via native scp
+      - name: Verify SSH authentication
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" 'echo "SSH_OK"'
+
+      - name: Upload deploy archive via ssh stream
         run: |
           set -euo pipefail
           tar -C .deploy -czf /tmp/deploy.tgz .
-          scp -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
-            /tmp/deploy.tgz "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/deploy.tgz"
+          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" 'cat > ~/deploy.tgz' < /tmp/deploy.tgz
 
       - name: Remote deploy and artisan tasks
         run: |
