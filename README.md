@@ -81,6 +81,82 @@ php artisan serve
 php artisan serve
 ```
 
+## GitHub Actions 러너 실행 방법 (로컬)
+
+이 프로젝트 배포는 self-hosted GitHub Actions 러너가 실행 중이어야 동작합니다.
+
+1. 러너 디렉터리로 이동
+
+```bash
+cd /Users/user/actions-runner
+```
+
+2. 러너 실행
+
+```bash
+./run.sh
+```
+
+3. 실행 상태 유지
+
+- 위 명령은 포그라운드 실행입니다.
+- 해당 터미널을 닫거나 Ctrl + C를 누르면 러너가 중지됩니다.
+- 배포가 필요할 때는 러너 터미널을 켜둔 상태를 유지해 주세요.
+
+4. 러너 중지
+
+```text
+run.sh를 실행한 터미널에서 Ctrl + C
+```
+
+## 배포 방법 (순서대로)
+
+### A. 기본 배포 (자동)
+
+1. 기능 브랜치에서 작업 및 테스트
+
+```bash
+git add .
+git commit -m "your message"
+git push origin <feature-branch>
+```
+
+2. main으로 머지
+
+```bash
+git checkout main
+git pull origin main
+git merge <feature-branch>
+git push origin main
+```
+
+3. 자동 배포 트리거
+
+- main 브랜치에 push되면 Deploy to Cafe24 워크플로우가 자동 실행됩니다.
+- 조건: 로컬 self-hosted 러너( /Users/user/actions-runner )가 실행 중이어야 합니다.
+
+4. 배포 완료 확인
+
+- GitHub Actions에서 Deploy to Cafe24 실행 결과가 Success인지 확인
+- 워크플로우의 Post-deploy smoke checks 통과 여부 확인
+- 운영 페이지 주요 경로 점검 (예: 홈, 로그인, 회원가입 주소검색)
+
+### B. 수동 배포 (필요 시)
+
+코드 변경 없이 재배포가 필요하면 GitHub Actions에서 수동 실행할 수 있습니다.
+
+1. GitHub 저장소 Actions 탭 이동
+2. Deploy to Cafe24 워크플로우 선택
+3. Run workflow 클릭
+4. 브랜치(main) 선택 후 실행
+
+### C. 배포가 안 돌 때 점검
+
+1. 러너 터미널에서 ./run.sh 실행 중인지 확인
+2. GitHub 저장소의 러너 상태가 Online인지 확인
+3. main 브랜치에 실제 push가 있었는지 확인
+4. 필요한 Secrets가 누락되지 않았는지 확인
+
 ## 자주 쓰는 개발 명령어
 
 ### DB
