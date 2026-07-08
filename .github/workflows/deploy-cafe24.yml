@@ -99,6 +99,9 @@ jobs:
             DB_USER='${{ secrets.CAFE24_DB_USER }}' \
             DB_PASS='${{ secrets.CAFE24_DB_PASS }}' \
             PHP_BIN='${{ secrets.CAFE24_PHP_BIN }}' \
+            GOOGLE_MAPS_API_KEY='${{ secrets.GOOGLE_MAPS_API_KEY }}' \
+            APARTMENT_SYNC_SOURCE_URL='${{ secrets.APARTMENT_SYNC_SOURCE_URL }}' \
+            APARTMENT_SYNC_SERVICE_KEY='${{ secrets.APARTMENT_SYNC_SERVICE_KEY }}' \
             'bash -s' <<'REMOTE'
           set -e
 
@@ -119,6 +122,18 @@ jobs:
           if [ ! -f artisan ] && [ -d "$HOME/www" ] && [ -f "$HOME/www/artisan" ]; then
             cd "$HOME/www"
           fi
+
+          PREV_ENV=".env.prev"
+          if [ -f .env ]; then
+            cp .env "$PREV_ENV"
+          else
+            : > "$PREV_ENV"
+          fi
+
+          read_prev_env() {
+            local key="$1"
+            grep -E "^${key}=" "$PREV_ENV" | tail -n 1 | cut -d '=' -f2-
+          }
 
           {
             echo "APP_NAME=Laravel"
@@ -144,6 +159,22 @@ jobs:
             echo "SESSION_DRIVER=file"
           } > .env
 
+          RESOLVED_GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-$(read_prev_env GOOGLE_MAPS_API_KEY)}"
+          RESOLVED_APARTMENT_SYNC_SOURCE_URL="${APARTMENT_SYNC_SOURCE_URL:-$(read_prev_env APARTMENT_SYNC_SOURCE_URL)}"
+          RESOLVED_APARTMENT_SYNC_SERVICE_KEY="${APARTMENT_SYNC_SERVICE_KEY:-$(read_prev_env APARTMENT_SYNC_SERVICE_KEY)}"
+
+          if [ -n "$RESOLVED_GOOGLE_MAPS_API_KEY" ]; then
+            echo "GOOGLE_MAPS_API_KEY=$RESOLVED_GOOGLE_MAPS_API_KEY" >> .env
+          fi
+
+          if [ -n "$RESOLVED_APARTMENT_SYNC_SOURCE_URL" ]; then
+            echo "APARTMENT_SYNC_SOURCE_URL=$RESOLVED_APARTMENT_SYNC_SOURCE_URL" >> .env
+          fi
+
+          if [ -n "$RESOLVED_APARTMENT_SYNC_SERVICE_KEY" ]; then
+            echo "APARTMENT_SYNC_SERVICE_KEY=$RESOLVED_APARTMENT_SYNC_SERVICE_KEY" >> .env
+          fi
+
           # Cafe24 serves ~/www as docroot, so publish public assets there.
           if [ -d public ]; then
             cp -f public/.htaccess ./.htaccess 2>/dev/null || true
@@ -159,9 +190,7 @@ jobs:
           fi
 
           if [ -f artisan ]; then
-            if ! "$PHP_BIN" artisan migrate --force; then
-              echo "WARNING: Migration failed; continuing deployment."
-            fi
+            "$PHP_BIN" artisan migrate --force
             "$PHP_BIN" artisan optimize:clear
             "$PHP_BIN" artisan config:cache
             "$PHP_BIN" artisan route:cache
