@@ -8,6 +8,7 @@ PATHS=(
   "/"
   "/login"
   "/community"
+  "/register"
 )
 
 echo "Smoke check base URL: ${BASE_URL}"
@@ -25,5 +26,17 @@ for path in "${PATHS[@]}"; do
       ;;
   esac
 done
+
+search_url="${BASE_URL}/apartments/search"
+search_query="모아미래도"
+search_payload="$(curl -sS --get --max-time 20 --data-urlencode "q=${search_query}" "${search_url}")"
+
+if printf '%s' "${search_payload}" | grep -q '"data"\s*:\s*\[' && ! printf '%s' "${search_payload}" | grep -q '"data"\s*:\s*\[\s*\]'; then
+  echo "PASS /apartments/search?q=${search_query} -> non-empty data"
+else
+  echo "FAIL /apartments/search?q=${search_query} -> empty or invalid payload" >&2
+  echo "Payload: ${search_payload}" >&2
+  exit 1
+fi
 
 echo "Smoke checks passed"

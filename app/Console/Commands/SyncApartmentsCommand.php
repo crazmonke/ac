@@ -25,6 +25,8 @@ class SyncApartmentsCommand extends Command
         {--service-key= : Government API service key used for gov source}
         {--kapt-code= : K-APT apartment code used by the gov lookup API}
         {--rows=500 : Page size for gov source pagination}
+        {--start-page=1 : Starting page for gov source pagination}
+        {--max-pages=0 : Max number of gov pages to process (0 means no limit)}
         {--deactivate-missing : Set source-bound apartments missing from this sync to inactive}
         {--dry-run : Validate and report without writing to DB}';
 
@@ -160,6 +162,8 @@ class SyncApartmentsCommand extends Command
         $baseUrl = trim((string) ($this->option('url') ?: config('services.apartment_sync.source_url', 'https://apis.data.go.kr/1613000/AptListService3')));
         $serviceKey = trim((string) ($this->option('service-key') ?: config('services.apartment_sync.service_key', '')));
         $rowsPerPage = max(1, min(1000, (int) $this->option('rows')));
+        $startPage = max(1, (int) $this->option('start-page'));
+        $maxPages = max(0, (int) $this->option('max-pages'));
 
         if ($serviceKey === '') {
             $this->error('정부 API 서비스키가 비어 있습니다. --service-key 옵션 또는 APARTMENT_SYNC_SERVICE_KEY 설정이 필요합니다.');
@@ -170,10 +174,11 @@ class SyncApartmentsCommand extends Command
         $serviceType = str_contains(strtolower($baseUrl), 'aptlistservice3') ? 'list' : 'basis';
         $endpointPath = $serviceType === 'list' ? '/getTotalAptList3' : '/getAphusBassInfoV4';
         $endpoint = rtrim($baseUrl, '/') . $endpointPath;
-        $page = 1;
+        $page = $startPage;
         $totalCount = null;
         $rows = collect();
         $kaptCode = trim((string) $this->option('kapt-code'));
+        $processedPages = 0;
 
         do {
             $query = [
@@ -257,12 +262,30 @@ class SyncApartmentsCommand extends Command
                 $rows = $rows->merge($pageRows);
             }
 
+            $this->line(sprintf(
+                'gov sync page=%d rows=%d total=%s',
+                $page,
+                $pageRows->count(),
+                $totalCount === null ? 'unknown' : (string) $totalCount
+            ));
+
             $totalCount ??= (int) Arr::get($payload, 'response.body.totalCount', 0);
-            $loadedCount = $onChunk !== null
-                ? (($page - 1) * $rowsPerPage) + $pageRows->count()
-                : $rows->count();
             $page++;
-        } while ($totalCount !== null && $loadedCount < $totalCount && ! empty($items));
+            $processedPages++;
+
+            if ($maxPages > 0 && $processedPages >= $maxPages) {
+                $this->warn(sprintf(
+                    'max-pages limit reached (%d). Resume with --start-page=%d to continue.',
+                    $maxPages,
+                    $page
+                ));
+                break;
+            }
+
+            $hasMoreByTotal = $totalCount === null
+                ? true
+                : ($page <= (int) ceil(max(1, $totalCount) / $rowsPerPage));
+        } while (! empty($items) && $hasMoreByTotal);
 
         return $onChunk !== null
             ? collect()
