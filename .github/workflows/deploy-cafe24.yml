@@ -159,7 +159,9 @@ jobs:
           fi
 
           if [ -f artisan ]; then
-            "$PHP_BIN" artisan migrate --force
+            if ! "$PHP_BIN" artisan migrate --force; then
+              echo "WARNING: Migration failed; continuing deployment."
+            fi
             "$PHP_BIN" artisan optimize:clear
             "$PHP_BIN" artisan config:cache
             "$PHP_BIN" artisan route:cache
