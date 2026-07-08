@@ -76,6 +76,7 @@ class ApartmentSelectionService
                 ];
             })
             ->filter()
+            ->unique(fn (array $row) => mb_strtolower(trim((string) ($row['name'] ?? ''))) . '|' . mb_strtolower(trim((string) ($row['road_address'] ?? ''))))
             ->values();
 
         if ($residences->isNotEmpty()) {
@@ -132,6 +133,10 @@ class ApartmentSelectionService
         }
 
         if ($fallbackRows->isNotEmpty()) {
+            $fallbackRows = $fallbackRows
+                ->unique(fn (array $row) => mb_strtolower(trim((string) ($row['name'] ?? ''))) . '|' . mb_strtolower(trim((string) ($row['road_address'] ?? ''))))
+                ->values();
+
             $this->operationalMetricsService->log('residence_search_fallback_hit', null, null, null, [
                 'keyword' => $keyword,
                 'count' => $fallbackRows->count(),
