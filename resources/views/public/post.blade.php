@@ -33,6 +33,25 @@
             height: auto;
             border-radius: 10px;
         }
+        .body video,
+        .body iframe,
+        .body object,
+        .body embed {
+            display: block;
+            max-width: 100%;
+            border-radius: 10px;
+        }
+        .body video {
+            width: 100%;
+            height: auto;
+            background: #000;
+        }
+        .body iframe,
+        .body object,
+        .body embed {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+        }
         .gate { margin-top: 12px; border: 1px solid #ffd5ab; border-radius: 12px; background: #fff4e8; padding: 14px; color: #7e4310; }
         .btn { text-decoration: none; display: inline-block; margin-top: 10px; border-radius: 9px; background: #0f6f67; color: #fff; padding: 9px 12px; font-weight: 700; }
     </style>

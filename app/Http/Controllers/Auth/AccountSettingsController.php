@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\ResidentVerificationRequest;
 use App\Models\UserRole;
+use App\Models\UserResidence;
 use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,9 +21,19 @@ class AccountSettingsController extends Controller
     public function show(Request $request)
     {
         $apartmentId = (int) $request->query('apartment_id', 1);
-        $user = $request->user()->load('preferredApartment');
+        $user = $request->user()->load([
+            'preferredApartment',
+            'preferredResidenceComplex',
+            'preferredResidenceBuilding',
+            'preferredResidenceUnit',
+        ]);
         $latestVerificationRequest = ResidentVerificationRequest::query()
             ->with('apartment')
+            ->where('user_id', $user->id)
+            ->latest()
+            ->first();
+        $latestResidenceVerification = UserResidence::query()
+            ->with(['complex', 'building', 'unit'])
             ->where('user_id', $user->id)
             ->latest()
             ->first();
@@ -34,12 +45,17 @@ class AccountSettingsController extends Controller
                 ->where('role', 'resident')
                 ->exists()
             : false;
+        $hasResidentRole = $hasResidentRole || (bool) UserResidence::query()
+            ->where('user_id', $user->id)
+            ->where('verification_status', 'verified')
+            ->exists();
 
         return view('auth.settings', [
             'apartmentId' => $apartmentId > 0 ? $apartmentId : 1,
             'user' => $user,
             'selectedApartment' => $user->preferredApartment,
             'latestVerificationRequest' => $latestVerificationRequest,
+            'latestResidenceVerification' => $latestResidenceVerification,
             'latestMatchReview' => $latestMatchReview,
             'hasResidentRole' => $hasResidentRole,
             'isProfileLocked' => (bool) ($user->profile_locked ?? true),
@@ -65,7 +81,10 @@ class AccountSettingsController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'apartment_query' => ['required', 'string', 'max:120'],
-            'apartment_id' => ['required', 'integer', 'exists:apartments,id'],
+            'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'residence_building_id' => ['required', 'integer', 'exists:residence_buildings,id'],
+            'residence_dong' => ['nullable', 'string', 'max:40'],
+            'residence_ho' => ['nullable', 'string', 'max:40'],
         ]);
 
         $user->update([
@@ -75,14 +94,19 @@ class AccountSettingsController extends Controller
 
         $selection = $this->apartmentSelectionService->applySelection(
             $user,
-            (int) $data['apartment_id'],
+            isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
             $data['apartment_query'],
-            'settings'
+            'settings',
+            null,
+            null,
+            (int) $data['residence_building_id'],
+            $data['residence_dong'] ?? null,
+            $data['residence_ho'] ?? null
         );
 
-        $message = $selection['selected_apartment']
-            ? '프로필 정보와 아파트 설정이 업데이트되었습니다.'
-            : '프로필 정보가 업데이트되었고 아파트 매칭 검수 요청이 접수되었습니다.';
+        $message = $selection['selected_complex']
+            ? '프로필 정보와 공동주택 설정이 업데이트되었습니다.'
+            : '프로필 정보가 업데이트되었고 공동주택 매칭 검수 요청이 접수되었습니다.';
 
         return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
             ->with('status', $message);
@@ -130,7 +154,7 @@ class AccountSettingsController extends Controller
 
     public function requestResidentVerification(Request $request)
     {
-        $user = $request->user()->load('preferredApartment');
+        $user = $request->user()->load(['preferredApartment', 'preferredResidenceComplex', 'preferredResidenceBuilding']);
         $apartmentId = (int) $request->input('apartment_id', 1);
         $data = $request->validate([
             'request_note' => ['nullable', 'string', 'max:2000'],
@@ -138,9 +162,9 @@ class AccountSettingsController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
-        if (! $user->preferred_apartment_id) {
+        if (! $user->preferred_residence_complex_id || ! $user->preferred_residence_building_id) {
             return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
-                ->withErrors(['apartment_query' => '먼저 본인 아파트를 정확히 선택해 주세요.']);
+            ->withErrors(['apartment_query' => '먼저 본인 공동주택을 정확히 선택해 주세요.']);
         }
 
         $hasResidentRole = UserRole::query()
@@ -149,6 +173,13 @@ class AccountSettingsController extends Controller
             ->where('role', 'resident')
             ->exists();
 
+        if (! $hasResidentRole) {
+            $hasResidentRole = UserResidence::query()
+                ->where('user_id', $user->id)
+                ->where('verification_status', 'verified')
+                ->exists();
+        }
+
         if ($hasResidentRole) {
             return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
                 ->with('status', '이미 입주민 인증이 승인되어 있습니다.');
@@ -156,24 +187,44 @@ class AccountSettingsController extends Controller
 
         $systemReviewNote = null;
 
-        if (
-            isset($data['latitude'], $data['longitude'])
-            && $user->preferredApartment
-        ) {
-            $auto = $this->apartmentSelectionService->tryAutoApproveResidentByLocation(
+        if (isset($data['latitude'], $data['longitude']) && $user->preferredResidenceComplex && $user->preferredResidenceBuilding) {
+            $auto = $this->apartmentSelectionService->tryAutoApproveResidentByResidence(
                 $user,
-                $user->preferredApartment,
+                $user->preferredResidenceComplex,
+                $user->preferredResidenceBuilding,
                 (float) $data['latitude'],
                 (float) $data['longitude'],
-                'settings_verification'
+                'settings_verification',
+                $user->preferredApartment
             );
 
             if (($auto['approved'] ?? false) === true) {
                 return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
-                    ->with('status', '위치 기반 검증으로 입주민 인증이 우선 승인되었습니다.');
+                    ->with('status', '위치 기반 검증으로 공동주택 인증이 우선 승인되었습니다.');
             }
 
-            $systemReviewNote = $this->buildLocationMismatchNote($user->preferredApartment, $auto);
+            if ($user->preferredApartment) {
+                $systemReviewNote = $this->buildLocationMismatchNote($user->preferredApartment, $auto);
+            }
+        }
+
+        if (! $user->preferred_apartment_id) {
+            UserResidence::query()
+                ->where('user_id', $user->id)
+                ->where('complex_id', $user->preferred_residence_complex_id)
+                ->update([
+                    'verification_status' => 'pending',
+                    'verification_method' => 'manual',
+                    'evidence_meta' => [
+                        'request_note' => trim((string) ($data['request_note'] ?? '')) ?: null,
+                        'system_review_note' => $systemReviewNote,
+                        'latitude' => isset($data['latitude']) ? (float) $data['latitude'] : null,
+                        'longitude' => isset($data['longitude']) ? (float) $data['longitude'] : null,
+                    ],
+                ]);
+
+            return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
+                ->with('status', '공동주택 인증 요청이 접수되었습니다. 관리자 검수가 진행됩니다.');
         }
 
         $existingPending = ResidentVerificationRequest::query()
@@ -186,6 +237,10 @@ class AccountSettingsController extends Controller
             ResidentVerificationRequest::query()->create([
                 'user_id' => $user->id,
                 'apartment_id' => $user->preferred_apartment_id,
+                'residence_complex_id' => $user->preferred_residence_complex_id,
+                'residence_building_id' => $user->preferred_residence_building_id,
+                'residence_unit_id' => $user->preferred_residence_unit_id,
+                'verification_method' => 'manual',
                 'status' => 'pending',
                 'request_note' => trim((string) ($data['request_note'] ?? '')) ?: null,
                 'admin_note' => $systemReviewNote ?? null,
@@ -196,7 +251,7 @@ class AccountSettingsController extends Controller
         }
 
         return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
-            ->with('status', '입주민 인증 요청이 접수되었습니다. 현재 선택된 아파트 기준으로 관리자 검수가 진행됩니다.');
+            ->with('status', '입주민 인증 요청이 접수되었습니다. 현재 선택된 공동주택 기준으로 관리자 검수가 진행됩니다.');
     }
 
     private function buildLocationMismatchNote(Apartment $apartment, array $autoResult): ?string
@@ -219,7 +274,7 @@ class AccountSettingsController extends Controller
         }
 
         $message = '시스템 위치 검증 결과, 신청 당시 GPS 기준 현재 위치는 「' . $currentLocation . '」로 확인되었습니다. '
-            . '반면 신청 아파트(「' . $apartment->name . '」)의 행정구역은 「' . $apartmentLocation . '」로 확인되어 상호 일치하지 않아 자동 승인이 보류되었습니다. '
+            . '반면 신청 공동주택(「' . $apartment->name . '」)의 행정구역은 「' . $apartmentLocation . '」로 확인되어 상호 일치하지 않아 자동 승인이 보류되었습니다. '
             . '관리자 검수 시 실거주 증빙(관리비 고지서, 임대차/등기 등) 확인 후 승인 여부를 결정해 주세요.';
 
         if (isset($details['distance_meters']) && is_numeric($details['distance_meters'])) {

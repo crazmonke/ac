@@ -38,15 +38,24 @@
             <input type="email" name="email" value="{{ old('email') }}" required>
         </label>
 
-        <label>아파트 선택</label>
+        <label>공동주택 선택</label>
         <div class="autocomplete">
-            <input id="apartmentQuery" type="text" name="apartment_query" value="{{ old('apartment_query', $initialApartmentName) }}" placeholder="아파트명 또는 지역 검색" autocomplete="off" required>
+            <input id="apartmentQuery" type="text" name="apartment_query" value="{{ old('apartment_query', $initialApartmentName) }}" placeholder="공동주택/오피스텔/빌라/도로명 검색" autocomplete="off" required>
             <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', request()->query('apartment_id')) }}">
+            <input id="residenceBuildingId" type="hidden" name="residence_building_id" value="{{ old('residence_building_id', $initialResidenceBuildingId) }}">
             <input id="latitude" type="hidden" name="latitude" value="{{ old('latitude') }}">
             <input id="longitude" type="hidden" name="longitude" value="{{ old('longitude') }}">
             <div id="apartmentSuggestions" class="suggestions" style="display:none;"></div>
         </div>
-        <div class="meta">검색 결과에서 단지를 선택하면 입주민 인증 요청 시 해당 apartment_id가 고정됩니다. 위치 권한을 허용하면 동네 단위 GPS 검증으로 인증이 우선 처리될 수 있습니다.</div>
+        <div class="meta">검색 결과 선택 후 동/호를 입력하면 세대 단위로 가입됩니다. 위치 권한을 허용하면 GPS 검증으로 인증이 우선 처리될 수 있습니다.</div>
+
+        <label>동 (선택)
+            <input type="text" name="residence_dong" value="{{ old('residence_dong') }}" placeholder="예: 101">
+        </label>
+
+        <label>호 (선택)
+            <input type="text" name="residence_ho" value="{{ old('residence_ho') }}" placeholder="예: 1203">
+        </label>
 
         <label>비밀번호
             <input type="password" name="password" required>
@@ -72,10 +81,40 @@
 (function () {
     const queryInput = document.getElementById('apartmentQuery');
     const apartmentIdInput = document.getElementById('apartmentId');
+    const residenceBuildingIdInput = document.getElementById('residenceBuildingId');
     const latitudeInput = document.getElementById('latitude');
     const longitudeInput = document.getElementById('longitude');
     const suggestionBox = document.getElementById('apartmentSuggestions');
+    const registerForm = document.querySelector('form.card');
     let lastController = null;
+
+    async function ensureGeoCoordinates() {
+        if (!latitudeInput || !longitudeInput) {
+            return;
+        }
+
+        if (latitudeInput.value && longitudeInput.value) {
+            return;
+        }
+
+        if (!('geolocation' in navigator)) {
+            return;
+        }
+
+        await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition((position) => {
+                latitudeInput.value = String(position.coords.latitude);
+                longitudeInput.value = String(position.coords.longitude);
+                resolve();
+            }, () => {
+                resolve();
+            }, {
+                enableHighAccuracy: true,
+                timeout: 6000,
+                maximumAge: 0,
+            });
+        });
+    }
 
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -99,6 +138,7 @@
     queryInput.addEventListener('input', async () => {
         const keyword = queryInput.value.trim();
         apartmentIdInput.value = '';
+        residenceBuildingIdInput.value = '';
 
         if (lastController) {
             lastController.abort();
@@ -132,9 +172,9 @@
             }
 
             suggestionBox.innerHTML = rows.map((row) => `
-                <div class="suggestion" data-id="${row.id}" data-name="${row.name}">
+                <div class="suggestion" data-id="${row.id || ''}" data-building-id="${row.building_id || ''}" data-name="${row.name}">
                     ${row.name}
-                    <small>${row.region} · ${row.road_address}</small>
+                    <small>${row.housing_type || 'residence'} · ${row.region} · ${row.road_address}</small>
                 </div>
             `).join('');
             suggestionBox.style.display = 'block';
@@ -150,6 +190,7 @@
         }
 
         apartmentIdInput.value = item.dataset.id;
+        residenceBuildingIdInput.value = item.dataset.buildingId;
         queryInput.value = item.dataset.name;
         closeSuggestions();
     });
@@ -159,6 +200,18 @@
             closeSuggestions();
         }
     });
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (event) => {
+            if (latitudeInput.value && longitudeInput.value) {
+                return;
+            }
+
+            event.preventDefault();
+            await ensureGeoCoordinates();
+            registerForm.submit();
+        });
+    }
 })();
 </script>
 </body>

@@ -12,10 +12,41 @@ class GoogleLocationVerificationService
 
     public function verifyNearApartment(float $latitude, float $longitude, Apartment $apartment): array
     {
+        return $this->verifyNearResidenceProfile(
+            $latitude,
+            $longitude,
+            (string) $apartment->sido,
+            (string) $apartment->sigungu,
+            (string) $apartment->eupmyeondong,
+            (string) $apartment->road_address,
+            null,
+            null,
+            self::MAX_DISTANCE_METERS
+        );
+    }
+
+    public function verifyNearResidenceProfile(
+        float $latitude,
+        float $longitude,
+        string $sido,
+        string $sigungu,
+        string $dong,
+        string $roadAddress,
+        ?float $targetLatitude = null,
+        ?float $targetLongitude = null,
+        int $maxDistanceMeters = self::MAX_DISTANCE_METERS
+    ): array {
         $apiKey = trim((string) config('services.google_maps.api_key'));
+        $distanceOnlyResult = $this->verifyByDistanceOnly(
+            $latitude,
+            $longitude,
+            $targetLatitude,
+            $targetLongitude,
+            $maxDistanceMeters
+        );
 
         if ($apiKey === '') {
-            return [
+            return $distanceOnlyResult ?? [
                 'verified' => false,
                 'reason' => 'google_api_key_missing',
             ];
@@ -30,7 +61,7 @@ class GoogleLocationVerificationService
             ]);
 
         if (! $response->successful()) {
-            return [
+            return $distanceOnlyResult ?? [
                 'verified' => false,
                 'reason' => 'google_api_http_error',
             ];
@@ -39,7 +70,7 @@ class GoogleLocationVerificationService
         $payload = $response->json();
 
         if (! is_array($payload) || (string) Arr::get($payload, 'status', '') !== 'OK') {
-            return [
+            return $distanceOnlyResult ?? [
                 'verified' => false,
                 'reason' => 'google_api_status_not_ok',
             ];
@@ -68,9 +99,9 @@ class GoogleLocationVerificationService
         $gpsDong = $componentByType(['sublocality_level_1', 'sublocality_level_2', 'sublocality', 'neighborhood']);
 
         $normalizedGpsSido = $this->normalizeRegion($gpsSido);
-        $normalizedAptSido = $this->normalizeRegion($apartment->sido);
+        $normalizedAptSido = $this->normalizeRegion($sido);
         $normalizedGpsSigungu = $this->normalizeRegion($gpsSigungu);
-        $normalizedAptSigungu = $this->normalizeRegion($apartment->sigungu);
+        $normalizedAptSigungu = $this->normalizeRegion($sigungu);
 
         $matchesSido = $normalizedGpsSido !== ''
             && $normalizedAptSido !== ''
@@ -80,7 +111,7 @@ class GoogleLocationVerificationService
             && $normalizedAptSigungu !== ''
             && (str_contains($normalizedGpsSigungu, $normalizedAptSigungu) || str_contains($normalizedAptSigungu, $normalizedGpsSigungu));
 
-        $apartmentDong = $this->normalizeRegion($apartment->eupmyeondong);
+        $apartmentDong = $this->normalizeRegion($dong);
         $gpsDongNorm = $this->normalizeRegion($gpsDong);
         $matchesDong = $apartmentDong !== '' && $gpsDongNorm !== ''
             ? (str_contains($gpsDongNorm, $apartmentDong) || str_contains($apartmentDong, $gpsDongNorm))
@@ -99,7 +130,16 @@ class GoogleLocationVerificationService
             ];
         }
 
-        $apartmentCoords = $this->geocodeApartmentCoordinates($apartment, $apiKey);
+        $apartmentCoords = null;
+
+        if ($targetLatitude !== null && $targetLongitude !== null) {
+            $apartmentCoords = [
+                'lat' => $targetLatitude,
+                'lng' => $targetLongitude,
+            ];
+        } else {
+            $apartmentCoords = $this->geocodeAddressCoordinates($sido, $sigungu, $roadAddress, $apiKey);
+        }
 
         if ($apartmentCoords !== null) {
             $distanceMeters = $this->haversineMeters(
@@ -109,7 +149,7 @@ class GoogleLocationVerificationService
                 (float) $apartmentCoords['lng']
             );
 
-            if ($distanceMeters <= self::MAX_DISTANCE_METERS) {
+            if ($distanceMeters <= $maxDistanceMeters) {
                 return [
                     'verified' => true,
                     'reason' => 'matched_by_distance_fallback',
@@ -130,12 +170,45 @@ class GoogleLocationVerificationService
         ];
     }
 
-    private function geocodeApartmentCoordinates(Apartment $apartment, string $apiKey): ?array
+    private function verifyByDistanceOnly(
+        float $latitude,
+        float $longitude,
+        ?float $targetLatitude,
+        ?float $targetLongitude,
+        int $maxDistanceMeters
+    ): ?array {
+        if ($targetLatitude === null || $targetLongitude === null) {
+            return null;
+        }
+
+        $distanceMeters = $this->haversineMeters(
+            $latitude,
+            $longitude,
+            (float) $targetLatitude,
+            (float) $targetLongitude
+        );
+
+        if ($distanceMeters <= $maxDistanceMeters) {
+            return [
+                'verified' => true,
+                'reason' => 'matched_by_distance_without_geocode',
+                'distance_meters' => (int) round($distanceMeters),
+            ];
+        }
+
+        return [
+            'verified' => false,
+            'reason' => 'distance_out_of_range_without_geocode',
+            'distance_meters' => (int) round($distanceMeters),
+        ];
+    }
+
+    private function geocodeAddressCoordinates(string $sido, string $sigungu, string $roadAddress, string $apiKey): ?array
     {
         $address = trim(implode(' ', array_filter([
-            $apartment->sido,
-            $apartment->sigungu,
-            $apartment->road_address,
+            $sido,
+            $sigungu,
+            $roadAddress,
         ])));
 
         if ($address === '') {

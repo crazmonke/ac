@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>아파트 입주민 커뮤니티</title>
+    <title>공동주택 입주민 커뮤니티</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -85,7 +85,7 @@
 
     <section class="hero">
         <span class="pill">MVP · Laravel 11 · SQLite</span>
-        <h1>아파트 입주민 커뮤니티 플랫폼</h1>
+        <h1>공동주택 입주민 커뮤니티 플랫폼</h1>
         <p>
             실거주 인증 기반의 단지 커뮤니티를 위한 단일 저장소 프로젝트입니다.
             현재 저장소는 API와 Blade UI를 함께 운영하는 구조로 초기 구축되어 있으며,
@@ -95,7 +95,7 @@
 
     <section class="grid">
         <article class="card span-4" style="animation-delay:.05s">
-            <h2>아파트 탐색</h2>
+            <h2>공동주택 탐색</h2>
             <p>단지 검색, 기본 정보 조회, 가입 진입.</p>
             <a href="/apartments">페이지 열기</a>
         </article>

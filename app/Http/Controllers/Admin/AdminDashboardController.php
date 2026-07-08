@@ -7,12 +7,16 @@ use App\Models\Apartment;
 use App\Models\ApartmentMatchReview;
 use App\Models\Board;
 use App\Models\BoardCategory;
+use App\Models\ResidenceComplex;
+use App\Models\ResidenceMergeCandidate;
 use App\Models\ResidentVerificationRequest;
 use App\Models\Report;
 use App\Models\User;
+use App\Models\UserResidence;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -52,6 +56,20 @@ class AdminDashboardController extends Controller
             ->limit(50)
             ->get();
 
+        $residenceVerificationRequests = UserResidence::query()
+            ->with(['user', 'complex', 'building', 'unit'])
+            ->where('verification_status', 'pending')
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        $mergeCandidates = ResidenceMergeCandidate::query()
+            ->with(['sourceComplex', 'targetComplex'])
+            ->where('status', 'pending')
+            ->orderByDesc('score')
+            ->limit(50)
+            ->get();
+
         $matchSuggestions = $matchReviews->mapWithKeys(function (ApartmentMatchReview $review) {
             return [
                 $review->id => $this->apartmentSelectionService->search($review->raw_apartment_name, 6),
@@ -61,8 +79,200 @@ class AdminDashboardController extends Controller
         return view('admin.review-queue', [
             'matchReviews' => $matchReviews,
             'verificationRequests' => $verificationRequests,
+            'residenceVerificationRequests' => $residenceVerificationRequests,
+            'mergeCandidates' => $mergeCandidates,
             'matchSuggestions' => $matchSuggestions,
         ]);
+    }
+
+    public function updateMergeCandidate(Request $request, int $id)
+    {
+        $candidate = ResidenceMergeCandidate::query()
+            ->with(['sourceComplex', 'targetComplex'])
+            ->findOrFail($id);
+
+        $data = $request->validate([
+            'status' => ['required', 'in:approved,rejected'],
+        ]);
+
+        DB::transaction(function () use ($request, $candidate, $data) {
+            $candidate->fill([
+                'status' => $data['status'],
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ])->save();
+
+            if ($data['status'] !== 'approved') {
+                return;
+            }
+
+            $source = $candidate->sourceComplex;
+            $target = $candidate->targetComplex;
+
+            if (! $source || ! $target || $source->id === $target->id) {
+                return;
+            }
+
+            $source->fill([
+                'status' => 'merged',
+                'merged_into_id' => $target->id,
+            ])->save();
+
+            UserResidence::query()
+                ->where('complex_id', $source->id)
+                ->update(['complex_id' => $target->id]);
+
+            User::query()
+                ->where('preferred_residence_complex_id', $source->id)
+                ->update(['preferred_residence_complex_id' => $target->id]);
+
+            ResidentVerificationRequest::query()
+                ->where('residence_complex_id', $source->id)
+                ->update(['residence_complex_id' => $target->id]);
+
+            ResidenceComplex::query()
+                ->where('merged_into_id', $source->id)
+                ->update(['merged_into_id' => $target->id]);
+        });
+
+        return redirect('/admin/review-queue')->with('status', '공동주택 중복 병합 검수 상태가 업데이트되었습니다.');
+    }
+
+    public function updateResidenceVerification(Request $request, int $id)
+    {
+        $userResidence = UserResidence::query()->with(['user', 'complex'])->findOrFail($id);
+
+        $data = $request->validate([
+            'status' => ['required', 'in:approved,rejected'],
+        ]);
+
+        $approved = $data['status'] === 'approved';
+
+        $userResidence->fill([
+            'verification_status' => $approved ? 'verified' : 'rejected',
+            'verification_method' => 'admin',
+        ])->save();
+
+        if ($approved) {
+            $region = $this->extractRegionFromResidenceAddress(
+                (string) ($userResidence->building?->road_address ?: $userResidence->complex?->road_address ?: ''),
+                (string) ($userResidence->building?->jibun_address ?: $userResidence->complex?->jibun_address ?: '')
+            );
+
+            $userResidence->user?->forceFill([
+                'preferred_residence_complex_id' => $userResidence->complex_id,
+                'preferred_residence_building_id' => $userResidence->building_id,
+                'preferred_residence_unit_id' => $userResidence->unit_id,
+                'home_sido' => $region['sido'],
+                'home_sigungu' => $region['sigungu'],
+                'home_eupmyeondong' => $region['eupmyeondong'],
+                'home_apartment_name' => $userResidence->complex?->displayName(),
+            ])->save();
+        }
+
+        return redirect('/admin/review-queue')->with('status', $approved ? '공동주택 인증을 승인했습니다.' : '공동주택 인증을 반려했습니다.');
+    }
+
+    public function retryResidenceVerification(Request $request, int $id)
+    {
+        $userResidence = UserResidence::query()
+            ->with(['user.preferredApartment', 'complex', 'building'])
+            ->findOrFail($id);
+
+        $latitude = isset($userResidence->evidence_meta['latitude']) ? (float) $userResidence->evidence_meta['latitude'] : null;
+        $longitude = isset($userResidence->evidence_meta['longitude']) ? (float) $userResidence->evidence_meta['longitude'] : null;
+
+        if ($latitude === null || $longitude === null) {
+            return redirect('/admin/review-queue')->with('status', '재검증 실패: 저장된 GPS 좌표가 없어 자동 재검증을 실행할 수 없습니다.');
+        }
+
+        if (! $userResidence->user || ! $userResidence->complex || ! $userResidence->building) {
+            return redirect('/admin/review-queue')->with('status', '재검증 실패: 사용자/공동주택 데이터가 누락되었습니다.');
+        }
+
+        $result = $this->apartmentSelectionService->tryAutoApproveResidentByResidence(
+            $userResidence->user,
+            $userResidence->complex,
+            $userResidence->building,
+            $latitude,
+            $longitude,
+            'admin_reverify',
+            $userResidence->user->preferredApartment
+        );
+
+        $evidence = is_array($userResidence->evidence_meta) ? $userResidence->evidence_meta : [];
+        $evidence['retry'] = [
+            'at' => now()->toDateTimeString(),
+            'approved' => (bool) ($result['approved'] ?? false),
+            'reason' => (string) ($result['reason'] ?? 'unknown'),
+            'details' => $result['details'] ?? null,
+        ];
+
+        if (($result['approved'] ?? false) === true) {
+            $userResidence->fill([
+                'verification_status' => 'verified',
+                'verification_method' => 'gps',
+                'gps_verified_at' => now(),
+                'distance_m' => isset($result['details']['distance_meters']) ? (int) $result['details']['distance_meters'] : null,
+                'evidence_meta' => $evidence,
+            ])->save();
+
+            return redirect('/admin/review-queue')->with('status', '재검증 성공: 공동주택 인증이 자동 승인되었습니다.');
+        }
+
+        $userResidence->fill([
+            'verification_status' => 'pending',
+            'verification_method' => 'manual',
+            'evidence_meta' => $evidence,
+        ])->save();
+
+        return redirect('/admin/review-queue')->with('status', '재검증 실패: 자동 승인 조건을 충족하지 않았습니다.');
+    }
+
+    public function bulkAutoApproveResidenceVerifications(Request $request)
+    {
+        $data = $request->validate([
+            'mode' => ['required', 'in:preview,execute'],
+            'hours' => ['required', 'integer', 'min:0', 'max:720'],
+            'limit' => ['required', 'integer', 'min:1', 'max:2000'],
+            'include_no_coordinates' => ['nullable', 'boolean'],
+            'admin_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $options = [
+            '--hours' => (int) $data['hours'],
+            '--limit' => (int) $data['limit'],
+        ];
+
+        if ($request->boolean('include_no_coordinates')) {
+            $options['--approve-without-coordinates'] = true;
+        }
+
+        $adminNote = trim((string) ($data['admin_note'] ?? ''));
+        if ($adminNote !== '') {
+            $options['--admin-note'] = $adminNote;
+        }
+
+        if ($data['mode'] === 'execute') {
+            $options['--execute'] = true;
+            $options['--yes'] = true;
+        }
+
+        try {
+            Artisan::call('residences:auto-approve-pending', $options);
+            $output = trim((string) Artisan::output());
+        } catch (\Throwable $e) {
+            return redirect('/admin/review-queue')
+                ->withErrors(['bulk_auto_approve' => '일괄 승인 실행 중 오류가 발생했습니다: ' . $e->getMessage()]);
+        }
+
+        $message = $data['mode'] === 'execute'
+            ? '공동주택 인증 일괄 승인 실행이 완료되었습니다.'
+            : '공동주택 인증 일괄 승인 미리보기가 완료되었습니다.';
+
+        return redirect('/admin/review-queue')
+            ->with('status', $message)
+            ->with('bulkAutoApproveOutput', $output);
     }
 
     public function users(Request $request)
@@ -70,7 +280,7 @@ class AdminDashboardController extends Controller
         $keyword = trim((string) $request->query('q', ''));
 
         $users = User::query()
-            ->with('preferredApartment')
+            ->with(['preferredApartment', 'preferredResidenceComplex'])
             ->withCount(['posts', 'comments'])
             ->withExists([
                 'userRoles as has_verified_role' => function ($query) {
@@ -78,6 +288,9 @@ class AdminDashboardController extends Controller
                         ->where(function ($subQuery) {
                             $subQuery->whereNull('expires_at')->orWhere('expires_at', '>', now());
                         });
+                },
+                'userResidences as has_verified_residence' => function ($query) {
+                    $query->where('verification_status', 'verified');
                 },
             ])
             ->when($keyword !== '', function ($query) use ($keyword) {
@@ -92,10 +305,99 @@ class AdminDashboardController extends Controller
             ->paginate(30)
             ->withQueryString();
 
+        $users->getCollection()->transform(function (User $member) {
+            $regionLabel = trim(implode(' ', array_filter([
+                $member->home_sido,
+                $member->home_sigungu,
+                $member->home_eupmyeondong,
+            ])));
+
+            if ($regionLabel === '' && $member->preferredResidenceComplex) {
+                $region = $this->extractRegionFromResidenceAddress(
+                    (string) ($member->preferredResidenceComplex->road_address ?? ''),
+                    (string) ($member->preferredResidenceComplex->jibun_address ?? '')
+                );
+                $regionLabel = trim(implode(' ', array_filter([
+                    $region['sido'],
+                    $region['sigungu'],
+                    $region['eupmyeondong'],
+                ])));
+            }
+
+            $member->computed_region_label = $regionLabel;
+            $member->computed_residence_name = $member->preferredApartment?->name
+                ?: ($member->home_apartment_name ?: $member->preferredResidenceComplex?->displayName());
+            $member->computed_is_verified = (bool) (($member->has_verified_role ?? false) || ($member->has_verified_residence ?? false));
+
+            return $member;
+        });
+
         return view('admin.users', [
             'users' => $users,
             'q' => $keyword,
         ]);
+    }
+
+    private function extractRegionFromResidenceAddress(string $roadAddress, string $jibunAddress = ''): array
+    {
+        $address = trim($roadAddress !== '' ? $roadAddress : $jibunAddress);
+
+        if ($address === '') {
+            return ['sido' => null, 'sigungu' => null, 'eupmyeondong' => null];
+        }
+
+        $tokens = preg_split('/\s+/u', str_replace(',', ' ', $address)) ?: [];
+        $tokens = array_values(array_filter(array_map(function ($token) {
+            $token = trim((string) $token);
+
+            return $token !== '' ? $token : null;
+        }, $tokens)));
+        $tokens = array_values(array_filter($tokens, fn ($token) => $token !== '대한민국'));
+
+        $sido = null;
+        $cityToken = null;
+        $districtToken = null;
+        $dong = null;
+
+        foreach ($tokens as $token) {
+            if ($sido === null && preg_match('/(도|특별시|광역시|자치시)$/u', $token)) {
+                $sido = $token;
+                continue;
+            }
+
+            if ($cityToken === null && preg_match('/시$/u', $token)) {
+                $cityToken = $token;
+                continue;
+            }
+
+            if ($districtToken === null && preg_match('/(구|군)$/u', $token)) {
+                $districtToken = $token;
+                continue;
+            }
+
+            if ($dong === null && preg_match('/(동|읍|면|가)$/u', $token)) {
+                $dong = $token;
+            }
+        }
+
+        if ($sido === null && $cityToken !== null) {
+            $sido = $cityToken;
+        }
+
+        $sigungu = null;
+        if ($cityToken !== null && $districtToken !== null) {
+            $sigungu = trim($cityToken . ' ' . $districtToken);
+        } elseif ($districtToken !== null) {
+            $sigungu = $districtToken;
+        } elseif ($cityToken !== null) {
+            $sigungu = $cityToken;
+        }
+
+        return [
+            'sido' => $sido,
+            'sigungu' => $sigungu,
+            'eupmyeondong' => $dong,
+        ];
     }
 
     public function boards()
@@ -225,7 +527,7 @@ class AdminDashboardController extends Controller
         ]);
 
         if ($data['status'] === 'resolved' && empty($data['resolved_apartment_id'])) {
-            return back()->withErrors(['resolved_apartment_id' => '확정할 아파트를 선택해 주세요.']);
+            return back()->withErrors(['resolved_apartment_id' => '확정할 공동주택를 선택해 주세요.']);
         }
 
         $review->fill([
@@ -241,7 +543,7 @@ class AdminDashboardController extends Controller
             $review->user->save();
         }
 
-        return redirect('/admin/review-queue')->with('status', '아파트 매칭 검수 상태가 업데이트되었습니다.');
+        return redirect('/admin/review-queue')->with('status', '공동주택 매칭 검수 상태가 업데이트되었습니다.');
     }
 
     public function updateVerificationRequest(Request $request, int $id)
@@ -288,6 +590,26 @@ class AdminDashboardController extends Controller
                     ->where('status', 'pending')
                     ->where('id', '!=', $target->id)
                     ->delete();
+
+                if ($verificationRequest->residence_complex_id) {
+                    UserResidence::query()
+                        ->where('user_id', $verificationRequest->user_id)
+                        ->where('complex_id', $verificationRequest->residence_complex_id)
+                        ->update([
+                            'verification_status' => 'verified',
+                            'verification_method' => 'admin',
+                        ]);
+                }
+            } else {
+                if ($verificationRequest->residence_complex_id) {
+                    UserResidence::query()
+                        ->where('user_id', $verificationRequest->user_id)
+                        ->where('complex_id', $verificationRequest->residence_complex_id)
+                        ->update([
+                            'verification_status' => 'rejected',
+                            'verification_method' => 'admin',
+                        ]);
+                }
             }
         });
 
@@ -296,18 +618,63 @@ class AdminDashboardController extends Controller
 
     public function updateUserVerification(Request $request, int $id)
     {
-        $user = User::query()->with('preferredApartment')->findOrFail($id);
+        $user = User::query()->with(['preferredApartment', 'preferredResidenceComplex', 'preferredResidenceBuilding', 'preferredResidenceUnit'])->findOrFail($id);
 
         $data = $request->validate([
             'action' => ['required', 'in:approve,reject'],
         ]);
 
-        if (! $user->preferred_apartment_id) {
-            return back()->withErrors(['action' => '선택 아파트가 없는 회원은 인증 상태를 변경할 수 없습니다.']);
+        $adminUserId = (int) $request->user()->id;
+
+        if (! $user->preferred_apartment_id && ! $user->preferred_residence_complex_id) {
+            return back()->withErrors(['action' => '선택 공동주택 정보가 없는 회원은 인증 상태를 변경할 수 없습니다.']);
+        }
+
+        if (! $user->preferred_apartment_id && $user->preferred_residence_complex_id) {
+            DB::transaction(function () use ($user, $adminUserId, $data) {
+                $residence = UserResidence::query()->firstOrCreate([
+                    'user_id' => $user->id,
+                    'complex_id' => $user->preferred_residence_complex_id,
+                ], [
+                    'building_id' => $user->preferred_residence_building_id,
+                    'unit_id' => $user->preferred_residence_unit_id,
+                    'verification_method' => 'manual',
+                    'verification_status' => 'pending',
+                    'is_primary' => true,
+                ]);
+
+                $approved = $data['action'] === 'approve';
+
+                $residence->fill([
+                    'verification_status' => $approved ? 'verified' : 'rejected',
+                    'verification_method' => 'admin',
+                    'gps_verified_at' => $approved ? now() : null,
+                ])->save();
+
+                $region = $this->extractRegionFromResidenceAddress(
+                    (string) ($user->preferredResidenceBuilding?->road_address ?: $user->preferredResidenceComplex?->road_address ?: ''),
+                    (string) ($user->preferredResidenceBuilding?->jibun_address ?: $user->preferredResidenceComplex?->jibun_address ?: '')
+                );
+
+                $user->forceFill([
+                    'home_sido' => $region['sido'],
+                    'home_sigungu' => $region['sigungu'],
+                    'home_eupmyeondong' => $region['eupmyeondong'],
+                    'home_apartment_name' => $user->preferredResidenceComplex?->displayName(),
+                ])->save();
+
+                if (! $approved) {
+                    UserRole::query()
+                        ->where('user_id', $user->id)
+                        ->whereIn('role', self::VERIFIED_ROLES)
+                        ->delete();
+                }
+            });
+
+            return back()->with('status', $data['action'] === 'approve' ? '회원 인증을 승인했습니다.' : '회원 인증을 반려했습니다.');
         }
 
         $apartmentId = (int) $user->preferred_apartment_id;
-        $adminUserId = (int) $request->user()->id;
 
         DB::transaction(function () use ($user, $apartmentId, $adminUserId, $data) {
             if ($data['action'] === 'approve') {

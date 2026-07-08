@@ -46,7 +46,7 @@
     <section class="panel toolbar">
         <div class="meta">회원가입 계정 목록과 운영 제어(인증/접근/탈퇴/프로필잠금)를 관리합니다.</div>
         <form method="get" action="/admin/users">
-            <input type="text" name="q" value="{{ $q }}" placeholder="이름/이메일/아파트/지역 검색">
+            <input type="text" name="q" value="{{ $q }}" placeholder="이름/이메일/공동주택/지역 검색">
             <button class="btn btn-primary" type="submit">검색</button>
         </form>
     </section>
@@ -63,7 +63,7 @@
                 <th>가입일</th>
                 <th>인증여부</th>
                 <th>지역</th>
-                <th>아파트명</th>
+                <th>공동주택명</th>
                 <th>접근허용</th>
                 <th>탈퇴</th>
                 <th>프로필잠금</th>
@@ -74,9 +74,9 @@
                 @php
                     $isWithdrawn = (bool) $member->withdrawn_at;
                     $isAccessAllowed = (bool) ($member->access_allowed ?? true);
-                    $isVerified = (bool) ($member->has_verified_role ?? false);
+                    $isVerified = (bool) ($member->computed_is_verified ?? false);
                     $isProfileLocked = (bool) ($member->profile_locked ?? true);
-                    $regionLabel = trim(implode(' ', array_filter([$member->home_sido, $member->home_sigungu, $member->home_eupmyeondong])));
+                    $regionLabel = trim((string) ($member->computed_region_label ?? ''));
                 @endphp
                 <tr>
                     <td>{{ $member->id }}</td>
@@ -110,7 +110,7 @@
                         </div>
                     </td>
                     <td>{{ $regionLabel !== '' ? $regionLabel : '-' }}</td>
-                    <td>{{ $member->preferredApartment?->name ?? ($member->home_apartment_name ?: '-') }}</td>
+                    <td>{{ $member->computed_residence_name ?: '-' }}</td>
                     <td>
                         <div class="actions">
                             @if($isAccessAllowed)

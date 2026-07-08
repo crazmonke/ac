@@ -13,7 +13,12 @@ class ResidentVerificationRequest extends Model
     protected $fillable = [
         'user_id',
         'apartment_id',
+        'residence_complex_id',
+        'residence_building_id',
+        'residence_unit_id',
         'status',
+        'verification_method',
+        'distance_m',
         'request_note',
         'admin_note',
         'reviewed_by',
@@ -24,6 +29,7 @@ class ResidentVerificationRequest extends Model
     {
         return [
             'reviewed_at' => 'datetime',
+            'distance_m' => 'integer',
         ];
     }
 
@@ -40,5 +46,20 @@ class ResidentVerificationRequest extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function residenceComplex(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceComplex::class, 'residence_complex_id');
+    }
+
+    public function residenceBuilding(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceBuilding::class, 'residence_building_id');
+    }
+
+    public function residenceUnit(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceUnit::class, 'residence_unit_id');
     }
 }

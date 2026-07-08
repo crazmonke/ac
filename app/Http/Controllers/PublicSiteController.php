@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Post;
+use App\Models\PostFile;
+use App\Models\PostLike;
+use App\Models\User;
 use App\Services\PermissionService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
@@ -22,80 +25,67 @@ class PublicSiteController extends Controller
         $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
         $user = $request->user();
 
+        if ($user) {
+            $user->loadMissing('preferredResidenceComplex');
+        }
+
         $apartment = ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
             ?? Apartment::query()->find($requestedApartmentId)
             ?? Apartment::query()->orderBy('id')->first();
 
         if (! $apartment) {
-            abort(404, '아파트 데이터가 없습니다.');
+            abort(404, '공동주택 데이터가 없습니다.');
         }
 
-        $apartmentId = (int) $apartment->id;
-
-        $boards = Board::query()
-            ->with('category')
-            ->where(function ($query) use ($apartmentId) {
-                $query->whereNull('apartment_id')
-                    ->orWhere('apartment_id', $apartmentId);
-            })
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get();
-
-        $publicBoards = $boards->filter(fn (Board $board) => $this->permissionService->hasBoardPermission($user, $board, 'read'));
-        $lockedBoards = $boards->reject(fn (Board $board) => $this->permissionService->hasBoardPermission($user, $board, 'read'));
-
-        $notices = Post::query()
-            ->with(['board', 'apartment'])
-            ->where(function ($query) {
-                $this->applyNoticeFilter($query);
-            })
-            ->latest()
-            ->paginate(20, ['*'], 'notice_page')
-            ->withQueryString();
-        $notices = $this->mapPostPaginator($notices, $user);
-
-        $bestCandidatePosts = Post::query()
-            ->with(['board', 'apartment'])
+        $candidates = Post::query()
+            ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
+            ->withCount('likes')
             ->where('visibility', '!=', 'deleted')
-            ->where(function ($query) {
-                $this->applyNonNoticeFilter($query);
-            })
             ->whereHas('board', function ($query) {
                 $query->where('is_active', true);
             })
-            ->whereIn('audience_scope', ['region', 'apartment'])
-            ->orderByDesc('view_count')
-            ->orderByDesc('comment_count')
             ->latest()
-            ->limit(300)
+            ->limit(500)
             ->get();
 
-        $bestTopics = $bestCandidatePosts
-            ->filter(fn (Post $post) => $this->permissionService->canReadPostDetail($user, $post))
-            ->take(10)
+        $feedPosts = $candidates
+            ->filter(fn (Post $post) => $this->shouldShowOnHomeFeed($post, $user, $apartment))
             ->values();
 
-        $latestPosts = Post::query()
-            ->with(['board', 'apartment'])
-            ->where(function ($query) {
-                $this->applyNonNoticeFilter($query);
-            })
-            ->whereHas('board', function ($query) {
-                $query->where('is_active', true);
-            })
-            ->latest()
-            ->limit(20)
-            ->get();
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 20;
+        $feedPaginator = new LengthAwarePaginator(
+            $feedPosts->forPage($page, $perPage)->values(),
+            $feedPosts->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+        $feedPaginator = $this->mapPostPaginator($feedPaginator, $user);
+
+        $isLoggedIn = (bool) $user;
+        $isVerifiedUser = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
+
+        $feedTitle = ! $isLoggedIn
+            ? '전국 동네 공개 피드'
+            : ($isVerifiedUser ? '인증 회원 맞춤 피드' : '비인증 회원 피드');
+
+        $feedDescription = ! $isLoggedIn
+            ? '비회원도 읽을 수 있는 동네 공개 게시글을 최신순으로 제공합니다.'
+            : ($isVerifiedUser
+                ? '인증된 동네 게시글과 내 공동주택 게시글을 최신순으로 보여드립니다.'
+                : '동네 영역 게시글과 비인증 회원도 읽을 수 있는 게시글을 최신순으로 보여드립니다.');
 
         return view('public.home', [
             'apartment' => $apartment,
-            'publicBoards' => $publicBoards,
-            'lockedBoards' => $lockedBoards,
-            'notices' => $notices,
-            'bestTopics' => $this->mapPostCards($bestTopics, $user),
-            'latestPosts' => $this->mapPostCards($latestPosts, $user),
-            'isLoggedIn' => (bool) $user,
+            'feedPosts' => $feedPaginator,
+            'feedTitle' => $feedTitle,
+            'feedDescription' => $feedDescription,
+            'isLoggedIn' => $isLoggedIn,
+            'isVerifiedUser' => $isVerifiedUser,
         ]);
     }
 
@@ -186,6 +176,13 @@ class PublicSiteController extends Controller
     private function mapPostCard(Post $post, $user): array
     {
         $canRead = $this->canReadPost($user, $post);
+        $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
+        $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
+        $likeCount = (int) ($post->likes_count ?? 0);
+        $pollPreview = $this->buildPollPreview($post);
+        $likedByMe = $user
+            ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists()
+            : false;
 
         if ($canRead && $user) {
             $url = '/community/posts/'.$post->id;
@@ -199,19 +196,254 @@ class PublicSiteController extends Controller
             'id' => (int) $post->id,
             'title' => $post->title,
             'created_at' => $post->created_at,
+            'created_label' => $post->created_at?->diffForHumans() ?? '-',
             'display_date' => $this->formatDisplayDate($post->created_at),
+            'author_name' => $authorName,
+            'author_initial' => mb_strtoupper($authorInitial),
             'board_name' => $post->board->name,
+            'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
+            'poll_question' => (string) ($pollPreview['question'] ?? ''),
+            'poll_options_preview' => (array) ($pollPreview['options'] ?? []),
+            'poll_total_votes' => (int) ($pollPreview['total_votes'] ?? 0),
             'apartment_name' => $post->apartment->name,
+            'body_preview' => $this->buildBodyPreview($post->body),
+            'media_items' => $canRead ? $this->extractMediaItems($post) : [],
             'region_label' => $this->regionLabelFromSido($post->apartment->sido),
             'brand_token' => $this->brandTokenFromApartmentName($post->apartment->name),
             'view_count' => (int) $post->view_count,
             'comment_count' => (int) $post->comment_count,
+            'like_count' => $likeCount,
+            'liked_by_me' => $likedByMe,
             'is_notice' => (bool) $post->is_notice,
             'is_guest_visible' => (bool) $post->is_guest_visible,
             'can_read' => $canRead,
             'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
             'url' => $url,
         ];
+    }
+
+    private function buildBodyPreview(?string $html): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $html)) ?: '');
+
+        return mb_strimwidth($text, 0, 220, '...');
+    }
+
+    private function extractMediaItems(Post $post): array
+    {
+        $items = [];
+        $seenUrls = [];
+
+        foreach ($post->files as $file) {
+            $mediaType = $this->resolveMediaType($file);
+            if (! $mediaType) {
+                continue;
+            }
+
+            $url = '/community/files/'.$file->id;
+            if (isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+
+            $items[] = [
+                'type' => $mediaType,
+                'url' => $url,
+                'name' => (string) ($file->original_name ?? 'media'),
+            ];
+        }
+
+        foreach ($this->extractEmbeddedBodyMedia((string) $post->body) as $embeddedMedia) {
+            $url = (string) ($embeddedMedia['url'] ?? '');
+            if ($url === '' || isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+            $items[] = $embeddedMedia;
+        }
+
+        return array_slice($items, 0, 8);
+    }
+
+    private function buildPollPreview(Post $post): array
+    {
+        if ((string) ($post->board?->board_type ?? '') !== 'poll' || ! $post->poll) {
+            return [
+                'is_poll' => false,
+                'question' => '',
+                'options' => [],
+                'total_votes' => 0,
+            ];
+        }
+
+        $options = $post->poll->options
+            ->sortBy('sort_order')
+            ->take(3)
+            ->pluck('label')
+            ->map(fn ($label) => trim((string) $label))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'is_poll' => true,
+            'question' => trim((string) ($post->poll->question ?? '')),
+            'options' => $options,
+            'total_votes' => (int) $post->poll->options->sum('vote_count'),
+        ];
+    }
+
+    private function extractEmbeddedBodyMedia(string $html): array
+    {
+        $items = [];
+        $patterns = [
+            ['regex' => '/<img[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'image'],
+            ['regex' => '/<video[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+            ['regex' => '/<source[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (! preg_match_all($pattern['regex'], $html, $matches)) {
+                continue;
+            }
+
+            foreach (($matches[1] ?? []) as $src) {
+                $url = trim((string) $src);
+                if ($url === '') {
+                    continue;
+                }
+
+                $items[] = [
+                    'type' => $pattern['type'],
+                    'url' => $url,
+                    'name' => 'embedded-media',
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    private function resolveMediaType(PostFile $file): ?string
+    {
+        $mime = Str::lower(trim((string) ($file->mime_type ?? '')));
+
+        if (Str::startsWith($mime, 'image/')) {
+            return 'image';
+        }
+
+        if (Str::startsWith($mime, 'video/')) {
+            return 'video';
+        }
+
+        $sourceName = Str::lower((string) ($file->original_name ?: $file->path ?: ''));
+        $extension = pathinfo($sourceName, PATHINFO_EXTENSION);
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true)) {
+            return 'image';
+        }
+
+        if (in_array($extension, ['mp4', 'mov', 'webm', 'm4v'], true)) {
+            return 'video';
+        }
+
+        return null;
+    }
+
+    private function shouldShowOnHomeFeed(Post $post, ?User $user, Apartment $fallbackApartment): bool
+    {
+        if (! $this->permissionService->canReadPostDetail($user, $post)) {
+            return false;
+        }
+
+        $scope = (string) ($post->audience_scope ?? 'all');
+
+        if (! $user) {
+            return $scope === 'region';
+        }
+
+        if (! $this->permissionService->hasVerifiedRole($user)) {
+            return $scope === 'region' || $this->permissionService->canReadPostDetail($user, $post);
+        }
+
+        if ($scope === 'apartment') {
+            return (int) $post->apartment_id === $this->resolveUserApartmentId($user, $fallbackApartment);
+        }
+
+        if ($scope === 'region') {
+            return $this->isSameNeighborhood($post, $user, $fallbackApartment);
+        }
+
+        return false;
+    }
+
+    private function resolveUserApartmentId(User $user, Apartment $fallbackApartment): int
+    {
+        $preferredApartmentId = (int) ($user->preferred_apartment_id ?? 0);
+        if ($preferredApartmentId > 0) {
+            return $preferredApartmentId;
+        }
+
+        $legacyApartmentId = (int) ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0);
+        if ($legacyApartmentId > 0) {
+            return $legacyApartmentId;
+        }
+
+        return 0;
+    }
+
+    private function isSameNeighborhood(Post $post, User $user, Apartment $fallbackApartment): bool
+    {
+        $targetSido = trim((string) ($user->home_sido ?: ''));
+        $targetSigungu = trim((string) ($user->home_sigungu ?: ''));
+        $targetDong = trim((string) ($user->home_eupmyeondong ?: ''));
+
+        $postSido = trim((string) ($post->region_sido ?: $post->apartment?->sido));
+        $postSigungu = trim((string) ($post->region_sigungu ?: $post->apartment?->sigungu));
+        $postDong = trim((string) ($post->region_eupmyeondong ?: $post->apartment?->eupmyeondong));
+
+        if ($targetSido !== '' && $postSido !== '' && ! $this->regionTokenMatches($targetSido, $postSido, false)) {
+            return false;
+        }
+
+        if ($targetSigungu !== '' && $postSigungu !== '' && ! $this->regionTokenMatches($targetSigungu, $postSigungu, true)) {
+            return false;
+        }
+
+        if ($targetDong !== '' && $postDong !== '' && ! $this->regionTokenMatches($targetDong, $postDong, false)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function regionTokenMatches(string $left, string $right, bool $normalizeCityToken): bool
+    {
+        $lhs = $this->normalizeRegionToken($left, $normalizeCityToken);
+        $rhs = $this->normalizeRegionToken($right, $normalizeCityToken);
+
+        if ($lhs === '' || $rhs === '') {
+            return true;
+        }
+
+        if ($lhs === $rhs) {
+            return true;
+        }
+
+        return str_contains($lhs, $rhs) || str_contains($rhs, $lhs);
+    }
+
+    private function normalizeRegionToken(string $value, bool $normalizeCityToken): string
+    {
+        $normalized = preg_replace('/\s+/u', '', trim($value)) ?: '';
+
+        if (! $normalizeCityToken) {
+            return $normalized;
+        }
+
+        return str_replace('시', '', $normalized);
     }
 
     private function applyNoticeFilter($query): void

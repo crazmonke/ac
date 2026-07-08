@@ -29,7 +29,7 @@
             <div>{{ $pendingReportsCount }}</div>
         </article>
         <article class="card">
-            <strong>대기 아파트 매칭</strong>
+            <strong>대기 공동주택 매칭</strong>
             <div>{{ $pendingMatchReviewsCount }}</div>
         </article>
         <article class="card">

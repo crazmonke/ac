@@ -19,6 +19,7 @@ class Post extends Model
         'board_id',
         'post_topic_id',
         'apartment_id',
+        'residence_complex_id',
         'region_sido',
         'region_sigungu',
         'region_eupmyeondong',
@@ -58,6 +59,11 @@ class Post extends Model
         return $this->belongsTo(Apartment::class);
     }
 
+    public function residenceComplex(): BelongsTo
+    {
+        return $this->belongsTo(ResidenceComplex::class, 'residence_complex_id');
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -66,6 +72,11 @@ class Post extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
+    }
+
+    public function likes(): HasMany
+    {
+        return $this->hasMany(PostLike::class);
     }
 
     public function files(): HasMany

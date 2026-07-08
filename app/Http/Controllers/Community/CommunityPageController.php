@@ -7,8 +7,11 @@ use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\Post;
 use App\Models\PostFile;
+use App\Models\PostLike;
 use App\Models\PostTopic;
+use App\Models\User;
 use App\Services\PermissionService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -23,6 +26,10 @@ class CommunityPageController extends Controller
         $requestedApartmentId = max(1, (int) $request->query('apartment_id', 1));
         $user = $request->user();
 
+        if ($user) {
+            $user->loadMissing('preferredResidenceComplex');
+        }
+
         $apartment = ($user?->preferred_apartment_id ? Apartment::query()->find((int) $user->preferred_apartment_id) : null)
             ?? Apartment::query()->find($requestedApartmentId)
             ?? Apartment::query()->orderBy('id')->first();
@@ -30,29 +37,62 @@ class CommunityPageController extends Controller
         $apartmentName = $apartment?->name ?? '커뮤니티';
         $apartmentId = (int) ($apartment?->id ?? $requestedApartmentId);
         $isVerified = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
-        $preferredApartmentId = (int) ($user?->preferred_apartment_id ?? 0);
+        $preferredApartmentId = $this->resolveUserApartmentId($user);
+        $preferredResidenceComplexId = (int) ($user?->preferred_residence_complex_id ?? 0);
         $scope = (string) $request->query('scope', 'all');
         $topic = trim((string) $request->query('topic', ''));
         $selectedTopicName = $topic !== ''
             ? PostTopic::query()->where('slug', $topic)->value('name')
             : null;
-        $requiresSignupForScope = false;
-        $shouldSplitApartmentFeed = $isVerified && $scope === 'apartment' && $preferredApartmentId > 0;
+        $requiresSignupForScope = ! auth()->check();
+        $shouldSplitApartmentFeed = false;
 
         if (! in_array($scope, ['all', 'region', 'apartment'], true)) {
             $scope = 'all';
         }
 
+        if ($scope === 'apartment' && (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0))) {
+            $requiresSignupForScope = true;
+        }
+
         $postsQuery = Post::query()
-            ->with(['board', 'apartment', 'topic', 'files'])
+            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user', 'poll.options'])
+            ->withCount('likes')
             ->where('visibility', '!=', 'deleted')
             ->whereHas('board', fn ($query) => $query->where('is_active', true))
             ->latest();
 
-        if ($scope === 'region') {
+        if ($scope === 'all') {
+            // 전국 탭: 전국 동네 게시글 최신순.
             $postsQuery->where('audience_scope', 'region');
+        } elseif ($scope === 'region') {
+            // 동네 탭: 로그인 회원의 내 지역 동네 게시글만 노출.
+            $postsQuery->where('audience_scope', 'region');
+            $this->applyNeighborhoodFilter($postsQuery, $user);
         } elseif ($scope === 'apartment') {
+            // 공동주택 탭: 인증 회원의 내 공동주택 게시글만 노출.
             $postsQuery->where('audience_scope', 'apartment');
+
+            if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
+                $postsQuery->whereRaw('1 = 0');
+            } else {
+                $postsQuery->where(function (Builder $query) use ($preferredApartmentId, $preferredResidenceComplexId) {
+                    if ($preferredResidenceComplexId > 0) {
+                        $query->where('residence_complex_id', $preferredResidenceComplexId)
+                            ->orWhere(function (Builder $legacyResidenceQuery) use ($preferredResidenceComplexId) {
+                                $legacyResidenceQuery->whereNull('residence_complex_id')
+                                    ->whereHas('user', function (Builder $userQuery) use ($preferredResidenceComplexId) {
+                                        $userQuery->where('preferred_residence_complex_id', $preferredResidenceComplexId);
+                                    });
+                            });
+                    }
+
+                    if ($preferredApartmentId > 0) {
+                        $method = $preferredResidenceComplexId > 0 ? 'orWhere' : 'where';
+                        $query->{$method}('apartment_id', $preferredApartmentId);
+                    }
+                });
+            }
         }
 
         if ($topic !== '') {
@@ -65,41 +105,40 @@ class CommunityPageController extends Controller
             });
         }
 
-        if ($shouldSplitApartmentFeed) {
-            $homeSido = trim((string) ($user?->home_sido ?? ''));
-            $homeSigungu = trim((string) ($user?->home_sigungu ?? ''));
-            $homeDong = trim((string) ($user?->home_eupmyeondong ?? ''));
-            $homeDongSafe = $homeDong !== '' ? $homeDong : '__NO_DONG__';
-
-            $postsQuery->orderByRaw(
-                'CASE '
-                .'WHEN apartment_id = ? THEN 0 '
-                .'WHEN region_sido = ? AND region_sigungu = ? AND COALESCE(region_eupmyeondong, \'\') = ? THEN 1 '
-                .'WHEN region_sido = ? AND region_sigungu = ? THEN 2 '
-                .'WHEN region_sido = ? THEN 3 '
-                .'ELSE 4 END',
-                [
-                    $preferredApartmentId,
-                    $homeSido,
-                    $homeSigungu,
-                    $homeDongSafe,
-                    $homeSido,
-                    $homeSigungu,
-                    $homeSido,
-                ]
-            )->latest();
-        } else {
-            $postsQuery->latest();
-        }
+        $postsQuery->latest();
 
         $topicsQuery = PostTopic::query()
-            ->whereHas('posts', function ($query) use ($scope) {
+            ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId) {
                 $query->where('visibility', '!=', 'deleted');
 
-                if ($scope === 'region') {
+                if ($scope === 'all') {
                     $query->where('audience_scope', 'region');
+                } elseif ($scope === 'region') {
+                    $query->where('audience_scope', 'region');
+                    $this->applyNeighborhoodFilter($query, $user);
                 } elseif ($scope === 'apartment') {
                     $query->where('audience_scope', 'apartment');
+
+                    if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
+                        $query->whereRaw('1 = 0');
+                    } else {
+                        $query->where(function (Builder $innerQuery) use ($preferredApartmentId, $preferredResidenceComplexId) {
+                            if ($preferredResidenceComplexId > 0) {
+                                $innerQuery->where('residence_complex_id', $preferredResidenceComplexId)
+                                    ->orWhere(function (Builder $legacyResidenceQuery) use ($preferredResidenceComplexId) {
+                                        $legacyResidenceQuery->whereNull('residence_complex_id')
+                                            ->whereHas('user', function (Builder $userQuery) use ($preferredResidenceComplexId) {
+                                                $userQuery->where('preferred_residence_complex_id', $preferredResidenceComplexId);
+                                            });
+                                    });
+                            }
+
+                            if ($preferredApartmentId > 0) {
+                                $method = $preferredResidenceComplexId > 0 ? 'orWhere' : 'where';
+                                $innerQuery->{$method}('apartment_id', $preferredApartmentId);
+                            }
+                        });
+                    }
                 }
             })
             ->orderBy('name');
@@ -119,19 +158,33 @@ class CommunityPageController extends Controller
 
         $posts->through(function (Post $post) use ($user, $apartmentId) {
             $canRead = $this->permissionService->canReadPostDetail($user, $post);
+            $authorName = $post->is_anonymous ? '익명' : trim((string) ($post->user?->name ?? '알 수 없음'));
+            $authorInitial = mb_substr($authorName !== '' ? $authorName : 'U', 0, 1);
+            $pollPreview = $this->buildPollPreview($post);
 
             return [
                 'id' => (int) $post->id,
                 'title' => $post->title,
                 'created_at' => $post->created_at,
+                'created_label' => $post->created_at?->diffForHumans() ?? '-',
+                'author_name' => $authorName,
+                'author_initial' => mb_strtoupper($authorInitial),
                 'board_name' => $post->board->name,
+                'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
+                'poll_question' => (string) ($pollPreview['question'] ?? ''),
+                'poll_options_preview' => (array) ($pollPreview['options'] ?? []),
+                'poll_total_votes' => (int) ($pollPreview['total_votes'] ?? 0),
                 'topic_name' => $post->topic?->name,
-                'apartment_name' => $post->apartment->name,
-                'sido' => $post->apartment->sido,
-                'sigungu' => $post->apartment->sigungu,
+                'apartment_name' => $post->apartment?->name ?: ($post->residenceComplex?->displayName() ?: '공동주택'),
+                'body_preview' => $this->buildBodyPreview($post->body),
+                'media_items' => $canRead ? $this->extractMediaItems($post) : [],
+                'sido' => $post->apartment?->sido ?: ($post->region_sido ?? ''),
+                'sigungu' => $post->apartment?->sigungu ?: ($post->region_sigungu ?? ''),
                 'apartment_id' => (int) $post->apartment_id,
                 'view_count' => (int) $post->view_count,
                 'comment_count' => (int) $post->comment_count,
+                'like_count' => (int) ($post->likes_count ?? 0),
+                'liked_by_me' => $user ? PostLike::query()->where('post_id', $post->id)->where('user_id', $user->id)->exists() : false,
                 'audience_scope' => (string) ($post->audience_scope ?? 'all'),
                 'can_read' => $canRead,
                 'access_label' => $this->permissionService->resolvePostAccessLabel($user, $post),
@@ -147,15 +200,6 @@ class CommunityPageController extends Controller
 
         $ownApartmentPosts = collect();
         $otherApartmentPosts = collect();
-        if ($shouldSplitApartmentFeed) {
-            $pageItems = collect($posts->items());
-            $ownApartmentPosts = $pageItems
-                ->filter(fn (array $item) => (int) ($item['apartment_id'] ?? 0) === $preferredApartmentId)
-                ->values();
-            $otherApartmentPosts = $pageItems
-                ->filter(fn (array $item) => (int) ($item['apartment_id'] ?? 0) !== $preferredApartmentId)
-                ->values();
-        }
 
         $regionLabel = trim((string) ($apartment?->sigungu ?: $apartment?->eupmyeondong ?: $apartment?->sido));
 
@@ -177,10 +221,213 @@ class CommunityPageController extends Controller
         ]);
     }
 
+    private function buildPollPreview(Post $post): array
+    {
+        if ((string) ($post->board?->board_type ?? '') !== 'poll' || ! $post->poll) {
+            return [
+                'is_poll' => false,
+                'question' => '',
+                'options' => [],
+                'total_votes' => 0,
+            ];
+        }
+
+        $options = $post->poll->options
+            ->sortBy('sort_order')
+            ->take(3)
+            ->pluck('label')
+            ->map(fn ($label) => trim((string) $label))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'is_poll' => true,
+            'question' => trim((string) ($post->poll->question ?? '')),
+            'options' => $options,
+            'total_votes' => (int) $post->poll->options->sum('vote_count'),
+        ];
+    }
+
+    private function buildBodyPreview(?string $html): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $html)) ?: '');
+
+        return mb_strimwidth($text, 0, 220, '...');
+    }
+
+    private function extractMediaItems(Post $post): array
+    {
+        $items = [];
+        $seenUrls = [];
+
+        foreach ($post->files as $file) {
+            $mediaType = $this->resolveMediaType($file);
+            if (! $mediaType) {
+                continue;
+            }
+
+            $url = '/community/files/'.$file->id;
+            if (isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+
+            $items[] = [
+                'type' => $mediaType,
+                'url' => $url,
+                'name' => (string) ($file->original_name ?? 'media'),
+            ];
+        }
+
+        foreach ($this->extractEmbeddedBodyMedia((string) $post->body) as $embeddedMedia) {
+            $url = (string) ($embeddedMedia['url'] ?? '');
+            if ($url === '' || isset($seenUrls[$url])) {
+                continue;
+            }
+
+            $seenUrls[$url] = true;
+            $items[] = $embeddedMedia;
+        }
+
+        return array_slice($items, 0, 8);
+    }
+
+    private function extractEmbeddedBodyMedia(string $html): array
+    {
+        $items = [];
+        $patterns = [
+            ['regex' => '/<img[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'image'],
+            ['regex' => '/<video[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+            ['regex' => '/<source[^>]+src=["\']([^"\']+)["\']/i', 'type' => 'video'],
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (! preg_match_all($pattern['regex'], $html, $matches)) {
+                continue;
+            }
+
+            foreach (($matches[1] ?? []) as $src) {
+                $url = trim((string) $src);
+                if ($url === '') {
+                    continue;
+                }
+
+                $items[] = [
+                    'type' => $pattern['type'],
+                    'url' => $url,
+                    'name' => 'embedded-media',
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    private function resolveMediaType(PostFile $file): ?string
+    {
+        $mime = Str::lower(trim((string) ($file->mime_type ?? '')));
+
+        if (Str::startsWith($mime, 'image/')) {
+            return 'image';
+        }
+
+        if (Str::startsWith($mime, 'video/')) {
+            return 'video';
+        }
+
+        $sourceName = Str::lower((string) ($file->original_name ?: $file->path ?: ''));
+        $extension = pathinfo($sourceName, PATHINFO_EXTENSION);
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true)) {
+            return 'image';
+        }
+
+        if (in_array($extension, ['mp4', 'mov', 'webm', 'm4v'], true)) {
+            return 'video';
+        }
+
+        return null;
+    }
+
+    private function resolveUserApartmentId(?User $user): int
+    {
+        if (! $user) {
+            return 0;
+        }
+
+        return (int) ($user->preferred_apartment_id ?? 0);
+    }
+
+    private function applyNeighborhoodFilter(Builder $query, ?User $user): void
+    {
+        if (! $user) {
+            // 비회원은 동네 기준값이 없어 결과를 제한합니다.
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $targetSido = trim((string) ($user->home_sido ?? ''));
+        $targetSigungu = trim((string) ($user->home_sigungu ?? ''));
+        $targetDong = trim((string) ($user->home_eupmyeondong ?? ''));
+
+        if ($targetSido === '' && $targetSigungu === '' && $targetDong === '') {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where(function (Builder $postQuery) use ($targetSido, $targetSigungu, $targetDong) {
+            $postQuery->where(function (Builder $q) use ($targetSido, $targetSigungu, $targetDong) {
+                if ($targetSido !== '') {
+                    $q->where('region_sido', 'like', '%' . $targetSido . '%');
+                }
+
+                if ($targetSigungu !== '') {
+                    $q->where(function (Builder $sigunguQuery) use ($targetSigungu) {
+                        $sigunguQuery->where('region_sigungu', 'like', '%' . $targetSigungu . '%');
+
+                        $compactSigungu = str_replace([' ', '시'], '', $targetSigungu);
+                        if ($compactSigungu !== '') {
+                            $sigunguQuery->orWhereRaw("REPLACE(REPLACE(COALESCE(region_sigungu, ''), ' ', ''), '시', '') LIKE ?", ['%' . $compactSigungu . '%']);
+                        }
+                    });
+                }
+
+                if ($targetDong !== '') {
+                    $q->where('region_eupmyeondong', 'like', '%' . $targetDong . '%');
+                }
+            });
+
+            $postQuery->orWhereHas('apartment', function (Builder $apartmentQuery) use ($targetSido, $targetSigungu, $targetDong) {
+                if ($targetSido !== '') {
+                    $apartmentQuery->where('sido', 'like', '%' . $targetSido . '%');
+                }
+
+                if ($targetSigungu !== '') {
+                    $apartmentQuery->where(function (Builder $sigunguQuery) use ($targetSigungu) {
+                        $sigunguQuery->where('sigungu', 'like', '%' . $targetSigungu . '%');
+
+                        $compactSigungu = str_replace([' ', '시'], '', $targetSigungu);
+                        if ($compactSigungu !== '') {
+                            $sigunguQuery->orWhereRaw("REPLACE(REPLACE(COALESCE(sigungu, ''), ' ', ''), '시', '') LIKE ?", ['%' . $compactSigungu . '%']);
+                        }
+                    });
+                }
+
+                if ($targetDong !== '') {
+                    $apartmentQuery->where('eupmyeondong', 'like', '%' . $targetDong . '%');
+                }
+            });
+        });
+    }
+
     private function resolvePostThumbnailUrl(Post $post): ?string
     {
         $imageFile = $post->files
-            ->first(fn (PostFile $file) => Str::startsWith(Str::lower((string) $file->mime_type), 'image/'));
+            ->first(fn (PostFile $file) => $this->resolveMediaType($file) === 'image');
 
         if ($imageFile) {
             return '/community/files/'.$imageFile->id;

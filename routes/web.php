@@ -22,7 +22,7 @@ Route::get('/terms', [PublicSiteController::class, 'terms']);
 Route::get('/privacy', [PublicSiteController::class, 'privacy']);
 
 Route::view('/apartments', 'placeholder', [
-    'title' => '아파트 검색',
+    'title' => '공동주택 검색',
     'description' => '단지 검색과 선택을 위한 페이지입니다.',
 ]);
 Route::get('/apartments/search', [ApartmentSearchController::class, 'index']);
@@ -37,6 +37,7 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 Route::get('/community', [CommunityPageController::class, 'index']);
+Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
 Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::class, 'index'])
     ->middleware(['auth', 'role:resident,apartmentId']);
 
@@ -49,6 +50,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
     Route::post('/community/editor/photos', [CommunityBoardController::class, 'uploadEditorPhoto']);
+    Route::post('/community/editor/videos', [CommunityBoardController::class, 'uploadEditorVideo']);
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);
@@ -57,10 +59,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
     Route::post('/community/posts/{id}/poll-votes', [CommunityBoardController::class, 'storePollVote']);
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
+    Route::post('/community/posts/{id}/likes', [CommunityBoardController::class, 'likePost']);
+    Route::delete('/community/posts/{id}/likes', [CommunityBoardController::class, 'unlikePost']);
     Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);
     Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);
-    Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
     Route::delete('/community/files/{id}', [CommunityBoardController::class, 'destroyFile']);
     Route::get('/community/{slug}', [CommunityBoardController::class, 'board']);
 
@@ -73,6 +76,10 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/review-queue', [AdminDashboardController::class, 'reviewQueue']);
     Route::put('/review-queue/matches/{id}', [AdminDashboardController::class, 'updateMatchReview']);
     Route::put('/review-queue/verifications/{id}', [AdminDashboardController::class, 'updateVerificationRequest']);
+    Route::put('/review-queue/residence-verifications/{id}', [AdminDashboardController::class, 'updateResidenceVerification']);
+    Route::post('/review-queue/residence-verifications/{id}/retry', [AdminDashboardController::class, 'retryResidenceVerification']);
+    Route::post('/review-queue/residence-verifications/bulk-auto-approve', [AdminDashboardController::class, 'bulkAutoApproveResidenceVerifications']);
+    Route::put('/review-queue/merges/{id}', [AdminDashboardController::class, 'updateMergeCandidate']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
     Route::get('/users', [AdminDashboardController::class, 'users']);
     Route::put('/users/{id}/verification', [AdminDashboardController::class, 'updateUserVerification']);

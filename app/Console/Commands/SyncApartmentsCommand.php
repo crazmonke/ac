@@ -106,7 +106,7 @@ class SyncApartmentsCommand extends Command
             $deactivated = $this->deactivateMissing($source, $seenSourceKeys);
         }
 
-        $this->line('아파트 동기화 결과');
+        $this->line('공동주택 동기화 결과');
         $this->line('- source: ' . $source);
         $this->line('- rows: ' . $rows->count());
         $this->line('- created: ' . $stats['created']);

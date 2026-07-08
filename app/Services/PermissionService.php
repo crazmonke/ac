@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Board;
 use App\Models\Post;
 use App\Models\User;
+use App\Models\UserResidence;
 use App\Models\UserRole;
 
 class PermissionService
@@ -91,9 +92,41 @@ class PermissionService
 
         if ($apartmentId !== null) {
             $query->where('apartment_id', $apartmentId);
+
+            if ($query->exists()) {
+                return true;
+            }
+
+            return UserResidence::query()
+                ->where('user_id', $user->id)
+                ->where('verification_status', 'verified')
+                ->whereHas('complex', function ($complexQuery) use ($apartmentId) {
+                    $complexQuery->where('legacy_apartment_id', $apartmentId);
+                })
+                ->exists();
         }
 
-        return $query->exists();
+        if ($query->exists()) {
+            return true;
+        }
+
+        return UserResidence::query()
+            ->where('user_id', $user->id)
+            ->where('verification_status', 'verified')
+            ->exists();
+    }
+
+    public function hasVerifiedResidenceComplex(User $user, int $residenceComplexId): bool
+    {
+        if ($residenceComplexId <= 0) {
+            return false;
+        }
+
+        return UserResidence::query()
+            ->where('user_id', $user->id)
+            ->where('complex_id', $residenceComplexId)
+            ->where('verification_status', 'verified')
+            ->exists();
     }
 
     public function canReadPostDetail(?User $user, Post $post): bool
@@ -114,7 +147,23 @@ class PermissionService
                 return false;
             }
 
-            return $this->hasVerifiedRole($user, (int) $post->apartment_id);
+            $residenceComplexId = (int) ($post->residence_complex_id ?? 0);
+            if ($residenceComplexId > 0) {
+                return $this->hasVerifiedResidenceComplex($user, $residenceComplexId);
+            }
+
+            if ($this->hasVerifiedRole($user, (int) $post->apartment_id)) {
+                return true;
+            }
+
+            $post->loadMissing('user');
+            $authorResidenceComplexId = (int) ($post->user?->preferred_residence_complex_id ?? 0);
+
+            if ($authorResidenceComplexId > 0) {
+                return $this->hasVerifiedResidenceComplex($user, $authorResidenceComplexId);
+            }
+
+            return false;
         }
 
         $post->loadMissing('board');
