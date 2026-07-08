@@ -64,7 +64,7 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.CAFE24_SSH_KEY }}" | tr -d '\r' > ~/.ssh/cafe24_key
           chmod 600 ~/.ssh/cafe24_key
-          ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -4 -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Upload files via SFTP (retry)
         run: |
@@ -78,7 +78,7 @@ jobs:
           success=0
           for attempt in 1 2 3; do
             echo "SFTP upload attempt $attempt"
-            if sftp -oBatchMode=yes -oStrictHostKeyChecking=yes -i ~/.ssh/cafe24_key \
+            if sftp -4 -oBatchMode=yes -oStrictHostKeyChecking=yes -i ~/.ssh/cafe24_key \
               -P "${{ secrets.CAFE24_PORT }}" \
               "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" < /tmp/sftp_batch.txt; then
               success=1
@@ -95,7 +95,7 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
+          ssh -4 -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
             "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
             DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}' \
             APP_KEY='${{ secrets.APP_KEY }}' \
