@@ -55,6 +55,7 @@ jobs:
             --exclude "tests" \
             --exclude ".env" \
             --exclude "database/*.sqlite" \
+            --exclude "*.sqlite" \
             --exclude "storage/logs/*" \
             ./ .deploy/
 
@@ -65,12 +66,13 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload files via rsync over SSH
+      - name: Upload files via SSH tar stream
         run: |
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/cafe24_key -p ${{ secrets.CAFE24_PORT }} -o StrictHostKeyChecking=yes" \
-            .deploy/ \
-            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/www/"
+          SSH_CMD="ssh -i ~/.ssh/cafe24_key -p ${{ secrets.CAFE24_PORT }} -o StrictHostKeyChecking=yes ${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}"
+
+          $SSH_CMD 'mkdir -p ~/www && find ~/www -mindepth 1 -maxdepth 1 ! -name .env -exec rm -rf {} +'
+
+          tar -C .deploy -czf - . | $SSH_CMD 'tar -xzf - -C ~/www'
 
       - name: Post-deploy artisan tasks
         uses: appleboy/ssh-action@v1.0.3
