@@ -157,8 +157,8 @@ class SyncApartmentsCommand extends Command
 
     private function loadRowsFromGov(?callable $onChunk = null): Collection
     {
-        $baseUrl = trim((string) ($this->option('url') ?: env('APARTMENT_SYNC_SOURCE_URL', 'https://apis.data.go.kr/1613000/AptListService3')));
-        $serviceKey = trim((string) ($this->option('service-key') ?: env('APARTMENT_SYNC_SERVICE_KEY', '')));
+        $baseUrl = trim((string) ($this->option('url') ?: config('services.apartment_sync.source_url', 'https://apis.data.go.kr/1613000/AptListService3')));
+        $serviceKey = trim((string) ($this->option('service-key') ?: config('services.apartment_sync.service_key', '')));
         $rowsPerPage = max(1, min(1000, (int) $this->option('rows')));
 
         if ($serviceKey === '') {

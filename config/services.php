@@ -39,4 +39,9 @@ return [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'apartment_sync' => [
+        'source_url' => env('APARTMENT_SYNC_SOURCE_URL', 'https://apis.data.go.kr/1613000/AptListService3'),
+        'service_key' => env('APARTMENT_SYNC_SERVICE_KEY'),
+    ],
+
 ];
