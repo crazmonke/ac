@@ -52,7 +52,6 @@ jobs:
             --exclude ".git" \
             --exclude ".github" \
             --exclude "node_modules" \
-            --exclude "vendor" \
             --exclude "tests" \
             --exclude ".env" \
             --exclude "database/*.sqlite" \
@@ -93,7 +92,6 @@ jobs:
           fi
 
       - name: Remote deploy and artisan tasks
-        continue-on-error: true
         run: |
           set -euo pipefail
           ssh -4 -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
@@ -120,46 +118,54 @@ jobs:
             echo "Deploy path not found"
             pwd
             ls -la
-              exit 0
+              exit 1
           fi
 
-          if [ ! -f .env ]; then
-            {
-              echo "APP_NAME=Laravel"
-              echo "APP_ENV=production"
-              echo "APP_KEY=$APP_KEY"
-              echo "APP_DEBUG=false"
-              echo "APP_URL=$APP_URL"
-              echo
-              echo "LOG_CHANNEL=stack"
-              echo "LOG_LEVEL=error"
-              echo
-              echo "DB_CONNECTION=mysql"
-              echo "DB_HOST=$DB_HOST"
-              echo "DB_PORT=$DB_PORT"
-              echo "DB_DATABASE=$DB_NAME"
-              echo "DB_USERNAME=$DB_USER"
-              echo "DB_PASSWORD=$DB_PASS"
-              echo
-              echo "BROADCAST_CONNECTION=log"
-              echo "FILESYSTEM_DISK=local"
-              echo "QUEUE_CONNECTION=sync"
-              echo "CACHE_STORE=file"
-              echo "SESSION_DRIVER=file"
-            } > .env
+          {
+            echo "APP_NAME=Laravel"
+            echo "APP_ENV=production"
+            echo "APP_KEY=$APP_KEY"
+            echo "APP_DEBUG=false"
+            echo "APP_URL=$APP_URL"
+            echo
+            echo "LOG_CHANNEL=stack"
+            echo "LOG_LEVEL=error"
+            echo
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=$DB_HOST"
+            echo "DB_PORT=$DB_PORT"
+            echo "DB_DATABASE=$DB_NAME"
+            echo "DB_USERNAME=$DB_USER"
+            echo "DB_PASSWORD=$DB_PASS"
+            echo
+            echo "BROADCAST_CONNECTION=log"
+            echo "FILESYSTEM_DISK=local"
+            echo "QUEUE_CONNECTION=sync"
+            echo "CACHE_STORE=file"
+            echo "SESSION_DRIVER=file"
+          } > .env
+
+          # Cafe24 serves ~/www as docroot, so publish public assets there.
+          if [ -d public ]; then
+            cp -f public/.htaccess ./.htaccess 2>/dev/null || true
+            rsync -a --delete public/ ./ --exclude index.php
+            cat > index.php <<'PHP'
+<?php
+require __DIR__ . '/public/index.php';
+PHP
           fi
 
-          chmod -R ug+rw storage bootstrap/cache || true
+          chmod -R ug+rw storage bootstrap/cache
 
           if [ -z "$PHP_BIN" ]; then
             PHP_BIN="php"
           fi
 
           if [ -f artisan ]; then
-            "$PHP_BIN" artisan migrate --force || true
-            "$PHP_BIN" artisan optimize:clear || true
-            "$PHP_BIN" artisan config:cache || true
-            "$PHP_BIN" artisan route:cache || true
-            "$PHP_BIN" artisan view:cache || true
+            "$PHP_BIN" artisan migrate --force
+            "$PHP_BIN" artisan optimize:clear
+            "$PHP_BIN" artisan config:cache
+            "$PHP_BIN" artisan route:cache
+            "$PHP_BIN" artisan view:cache
           fi
           REMOTE
