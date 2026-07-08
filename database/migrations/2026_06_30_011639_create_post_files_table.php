@@ -11,10 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('post_files')) {
+            return;
+        }
+
         Schema::create('post_files', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('post_id');
+            $table->unsignedBigInteger('user_id');
             $table->string('original_name', 255);
             $table->string('stored_name', 255);
             $table->string('disk', 20)->default('local');
@@ -24,6 +28,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index('post_id');
+            $table->index('user_id');
         });
     }
 
