@@ -39,6 +39,8 @@ class ApartmentSelectionService
             return collect();
         }
 
+        $candidateLimit = max($limit, min(80, $limit * 20));
+
         $apartments = Apartment::query()
             ->where(function (Builder $builder) {
                 $builder->where('is_active', true)
@@ -75,10 +77,14 @@ class ApartmentSelectionService
                         ->orWhere('eupmyeondong', 'like', '%' . $keyword . '%');
                 }
             })
-            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$keyword . '%'])
             ->orderBy('name')
-            ->limit($limit)
-            ->get();
+            ->limit($candidateLimit)
+            ->get()
+            ->sortByDesc(function (Apartment $apartment) use ($keyword, $normalizedKeyword, $searchTerms) {
+                return $this->scoreApartmentMatch($apartment, $keyword, $normalizedKeyword, $searchTerms);
+            })
+            ->take($limit)
+            ->values();
 
         $apartmentRows = $apartments->map(function (Apartment $apartment) {
             $complex = $this->findOrCreateComplexFromApartment($apartment);
@@ -1093,5 +1099,50 @@ class ApartmentSelectionService
         }
 
         return array_values(array_unique($terms));
+    }
+
+    private function scoreApartmentMatch(Apartment $apartment, string $keyword, string $normalizedKeyword, array $searchTerms): int
+    {
+        $name = $this->normalizeText((string) $apartment->name);
+        $road = $this->normalizeText((string) $apartment->road_address);
+        $score = 0;
+
+        if ($normalizedKeyword !== '') {
+            if (str_starts_with($name, $normalizedKeyword)) {
+                $score += 120;
+            }
+
+            if (str_contains($name, $normalizedKeyword)) {
+                $score += 80;
+            }
+
+            if (str_contains($road, $normalizedKeyword)) {
+                $score += 20;
+            }
+        }
+
+        foreach ($searchTerms as $term) {
+            $normalizedTerm = $this->normalizeText((string) $term);
+            if ($normalizedTerm === '') {
+                continue;
+            }
+
+            if (str_starts_with($name, $normalizedTerm)) {
+                $score += 35;
+            }
+
+            if (str_contains($name, $normalizedTerm)) {
+                $score += 25;
+            }
+
+            if (str_contains($road, $normalizedTerm)) {
+                $score += 10;
+            }
+        }
+
+        // Prefer tighter matches when scores are close.
+        $score -= (int) floor(mb_strlen((string) $apartment->name) / 10);
+
+        return $score;
     }
 }
