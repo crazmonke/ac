@@ -117,7 +117,12 @@ jobs:
             echo "Deploy path not found"
             pwd
             ls -la
-              exit 1
+            exit 1
+          fi
+
+          # Prefer the path that actually contains the Laravel app files.
+          if [ ! -f artisan ] && [ -d "$HOME/www" ] && [ -f "$HOME/www/artisan" ]; then
+            cd "$HOME/www"
           fi
 
           {
@@ -151,6 +156,7 @@ jobs:
             printf '%s\n' "<?php" "require __DIR__ . '/public/index.php';" > index.php
           fi
 
+          mkdir -p storage bootstrap/cache
           chmod -R ug+rw storage bootstrap/cache
 
           if [ -z "$PHP_BIN" ]; then
