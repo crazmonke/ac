@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Verify PHP toolchain
         run: |
@@ -27,7 +27,7 @@ jobs:
         run: composer install --no-dev --prefer-dist --optimize-autoloader
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
 
@@ -168,3 +168,8 @@ jobs:
             "$PHP_BIN" artisan view:cache
           fi
           REMOTE
+
+      - name: Post-deploy smoke checks
+        env:
+          SMOKE_BASE_URL: ${{ secrets.APP_URL }}
+        run: ./scripts/smoke-check.sh

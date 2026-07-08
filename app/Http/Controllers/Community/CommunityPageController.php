@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Services\PermissionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CommunityPageController extends Controller
@@ -55,21 +57,26 @@ class CommunityPageController extends Controller
             $requiresSignupForScope = true;
         }
 
-        $postsQuery = Post::query()
-            ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user', 'poll.options'])
-            ->withCount('likes')
-            ->where('visibility', '!=', 'deleted')
-            ->whereHas('board', fn ($query) => $query->where('is_active', true))
-            ->latest();
+        $canQueryCommunityFeed = Schema::hasTable('posts') && Schema::hasTable('boards');
+        $postsQuery = null;
 
-        if ($scope === 'all') {
+        if ($canQueryCommunityFeed) {
+            $postsQuery = Post::query()
+                ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user', 'poll.options'])
+                ->withCount('likes')
+                ->where('visibility', '!=', 'deleted')
+                ->whereHas('board', fn ($query) => $query->where('is_active', true))
+                ->latest();
+        }
+
+        if ($canQueryCommunityFeed && $scope === 'all') {
             // 전국 탭: 전국 동네 게시글 최신순.
             $postsQuery->where('audience_scope', 'region');
-        } elseif ($scope === 'region') {
+        } elseif ($canQueryCommunityFeed && $scope === 'region') {
             // 동네 탭: 로그인 회원의 내 지역 동네 게시글만 노출.
             $postsQuery->where('audience_scope', 'region');
             $this->applyNeighborhoodFilter($postsQuery, $user);
-        } elseif ($scope === 'apartment') {
+        } elseif ($canQueryCommunityFeed && $scope === 'apartment') {
             // 공동주택 탭: 인증 회원의 내 공동주택 게시글만 노출.
             $postsQuery->where('audience_scope', 'apartment');
 
@@ -95,7 +102,7 @@ class CommunityPageController extends Controller
             }
         }
 
-        if ($topic !== '') {
+        if ($canQueryCommunityFeed && $topic !== '') {
             $postsQuery->whereHas('topic', function ($query) use ($topic, $selectedTopicName) {
                 $query->where('slug', $topic);
 
@@ -105,56 +112,75 @@ class CommunityPageController extends Controller
             });
         }
 
-        $postsQuery->latest();
+        if ($canQueryCommunityFeed) {
+            $postsQuery->latest();
+        }
 
-        $topicsQuery = PostTopic::query()
-            ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId) {
-                $query->where('visibility', '!=', 'deleted');
+        $topicFacets = collect();
+        if ($canQueryCommunityFeed && Schema::hasTable('post_topics')) {
+            $topicsQuery = PostTopic::query()
+                ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId) {
+                    $query->where('visibility', '!=', 'deleted');
 
-                if ($scope === 'all') {
-                    $query->where('audience_scope', 'region');
-                } elseif ($scope === 'region') {
-                    $query->where('audience_scope', 'region');
-                    $this->applyNeighborhoodFilter($query, $user);
-                } elseif ($scope === 'apartment') {
-                    $query->where('audience_scope', 'apartment');
+                    if ($scope === 'all') {
+                        $query->where('audience_scope', 'region');
+                    } elseif ($scope === 'region') {
+                        $query->where('audience_scope', 'region');
+                        $this->applyNeighborhoodFilter($query, $user);
+                    } elseif ($scope === 'apartment') {
+                        $query->where('audience_scope', 'apartment');
 
-                    if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
-                        $query->whereRaw('1 = 0');
-                    } else {
-                        $query->where(function (Builder $innerQuery) use ($preferredApartmentId, $preferredResidenceComplexId) {
-                            if ($preferredResidenceComplexId > 0) {
-                                $innerQuery->where('residence_complex_id', $preferredResidenceComplexId)
-                                    ->orWhere(function (Builder $legacyResidenceQuery) use ($preferredResidenceComplexId) {
-                                        $legacyResidenceQuery->whereNull('residence_complex_id')
-                                            ->whereHas('user', function (Builder $userQuery) use ($preferredResidenceComplexId) {
-                                                $userQuery->where('preferred_residence_complex_id', $preferredResidenceComplexId);
-                                            });
-                                    });
-                            }
+                        if (! $isVerified || ($preferredApartmentId <= 0 && $preferredResidenceComplexId <= 0)) {
+                            $query->whereRaw('1 = 0');
+                        } else {
+                            $query->where(function (Builder $innerQuery) use ($preferredApartmentId, $preferredResidenceComplexId) {
+                                if ($preferredResidenceComplexId > 0) {
+                                    $innerQuery->where('residence_complex_id', $preferredResidenceComplexId)
+                                        ->orWhere(function (Builder $legacyResidenceQuery) use ($preferredResidenceComplexId) {
+                                            $legacyResidenceQuery->whereNull('residence_complex_id')
+                                                ->whereHas('user', function (Builder $userQuery) use ($preferredResidenceComplexId) {
+                                                    $userQuery->where('preferred_residence_complex_id', $preferredResidenceComplexId);
+                                                });
+                                        });
+                                }
 
-                            if ($preferredApartmentId > 0) {
-                                $method = $preferredResidenceComplexId > 0 ? 'orWhere' : 'where';
-                                $innerQuery->{$method}('apartment_id', $preferredApartmentId);
-                            }
-                        });
+                                if ($preferredApartmentId > 0) {
+                                    $method = $preferredResidenceComplexId > 0 ? 'orWhere' : 'where';
+                                    $innerQuery->{$method}('apartment_id', $preferredApartmentId);
+                                }
+                            });
+                        }
                     }
-                }
-            })
-            ->orderBy('name');
+                })
+                ->orderBy('name');
 
-        $topicFacets = $topicsQuery
-            ->limit(200)
-            ->get(['name', 'slug'])
-            ->unique(fn ($item) => mb_strtolower(trim((string) $item->name)))
-            ->values()
-            ->take(20);
+            $topicFacets = $topicsQuery
+                ->limit(200)
+                ->get(['name', 'slug'])
+                ->unique(fn ($item) => mb_strtolower(trim((string) $item->name)))
+                ->values()
+                ->take(20);
+        }
 
         $canCreatePost = $isVerified;
 
-        $posts = $postsQuery
-            ->paginate(20)
-            ->withQueryString();
+        if ($canQueryCommunityFeed) {
+            $posts = $postsQuery
+                ->paginate(20)
+                ->withQueryString();
+        } else {
+            $page = max(1, (int) $request->query('page', 1));
+            $posts = new LengthAwarePaginator(
+                collect(),
+                0,
+                20,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+        }
 
         $posts->through(function (Post $post) use ($user, $apartmentId) {
             $canRead = $this->permissionService->canReadPostDetail($user, $post);
