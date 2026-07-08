@@ -145,6 +145,9 @@
     <h1 class="page-title">계정 설정</h1>
 
     <div class="account-actions">
+        @if($user->hasRoleForApartment('admin', $apartmentId) || $user->hasRoleForApartment('admin'))
+            <a class="btn btn-primary" href="/admin">관리자모드</a>
+        @endif
         <form method="post" action="/logout" style="margin:0;">
             @csrf
             <button class="btn btn-danger" type="submit">로그아웃</button>

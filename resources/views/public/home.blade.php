@@ -504,8 +504,10 @@
     </section>
 
     <section class="section">
+        <!--
         <h2 class="section-title">🆕 {{ $feedTitle }}</h2>
         <p class="meta" style="margin:0 0 8px;">{{ $feedDescription }}</p>
+        -->
         <article class="card">
             <ul class="feed-list" id="home-feed-list">
                 @forelse($feedPosts as $item)
