@@ -84,7 +84,7 @@ class WebAuthController extends Controller
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
             'apartment_query' => ['required', 'string', 'max:120'],
             'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
-            'residence_building_id' => ['required', 'integer', 'exists:residence_buildings,id'],
+               'residence_building_id' => ['nullable', 'integer', 'exists:residence_buildings,id'],
             'residence_dong' => ['nullable', 'string', 'max:40'],
             'residence_ho' => ['nullable', 'string', 'max:40'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
@@ -106,7 +106,7 @@ class WebAuthController extends Controller
             'register',
             isset($data['latitude']) ? (float) $data['latitude'] : null,
             isset($data['longitude']) ? (float) $data['longitude'] : null,
-            (int) $data['residence_building_id'],
+               isset($data['residence_building_id']) ? (int) $data['residence_building_id'] : null,
             $data['residence_dong'] ?? null,
             $data['residence_ho'] ?? null
         );
