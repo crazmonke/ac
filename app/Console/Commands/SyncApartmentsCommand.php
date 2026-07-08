@@ -416,6 +416,11 @@ class SyncApartmentsCommand extends Command
         $roadAddress = trim((string) ($item['doroJuso'] ?? $item['roadAddr'] ?? $item['roadAddrPart1'] ?? $item['road_address'] ?? ''));
         $as4 = trim((string) ($item['as4'] ?? ''));
 
+        // Some rows (for example Sejong) can omit sigungu in API responses.
+        if ($sigungu === '') {
+            $sigungu = trim((string) ($item['sggNm'] ?? $item['signgu'] ?? $item['sigunguNm'] ?? $sido));
+        }
+
         if ($roadAddress === '') {
             $rdNm = trim((string) ($item['rdnm'] ?? $item['rdNm'] ?? $item['rd_nm'] ?? ''));
             $buldNo = trim((string) ($item['buldNo'] ?? $item['buld_no'] ?? ''));
