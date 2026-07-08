@@ -150,9 +150,9 @@ jobs:
             cp -f public/.htaccess ./.htaccess 2>/dev/null || true
             rsync -a --delete public/ ./ --exclude index.php
             cat > index.php <<'PHP'
-<?php
-require __DIR__ . '/public/index.php';
-PHP
+              <?php
+              require __DIR__ . '/public/index.php';
+              PHP
           fi
 
           chmod -R ug+rw storage bootstrap/cache
