@@ -66,11 +66,30 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload files via legacy scp
+      - name: Upload files via SFTP (retry)
         run: |
           set -euo pipefail
-          scp -O -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes -r \
-            .deploy/. "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/www/"
+          cat > /tmp/sftp_batch.txt <<'SFTP_CMDS'
+          cd www
+          put -r .deploy/* .
+          bye
+          SFTP_CMDS
+
+          success=0
+          for attempt in 1 2 3; do
+            echo "SFTP upload attempt $attempt"
+            if sftp -oBatchMode=yes -oStrictHostKeyChecking=yes -i ~/.ssh/cafe24_key \
+              -P "${{ secrets.CAFE24_PORT }}" \
+              "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" < /tmp/sftp_batch.txt; then
+              success=1
+              break
+            fi
+          done
+
+          if [ "$success" -ne 1 ]; then
+            echo "SFTP upload failed after retries"
+            exit 1
+          fi
 
       - name: Remote deploy and artisan tasks
         continue-on-error: true
