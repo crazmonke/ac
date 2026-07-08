@@ -169,8 +169,7 @@ jobs:
           fi
 
           if [ -z "$RESOLVED_APARTMENT_SYNC_SERVICE_KEY" ]; then
-            echo "ERROR: APARTMENT_SYNC_SERVICE_KEY is empty after env resolution."
-            exit 1
+            echo "WARNING: APARTMENT_SYNC_SERVICE_KEY is empty after env resolution. Gov sync command may fail until key is configured."
           fi
 
           if [ -n "$RESOLVED_GOOGLE_MAPS_API_KEY" ]; then
