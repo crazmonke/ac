@@ -13,10 +13,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, macOS]
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/.toolcache
+      AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/.toolcache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Prepare local tool cache
+        run: mkdir -p "$RUNNER_TOOL_CACHE"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
