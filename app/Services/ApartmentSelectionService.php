@@ -127,6 +127,10 @@ class ApartmentSelectionService
 
         $fallbackRows = $this->searchRoadCandidatesFromGoogle($keyword, $limit);
 
+        if ($fallbackRows->isEmpty()) {
+            $fallbackRows = $this->searchRoadCandidatesFromNominatim($keyword, $limit);
+        }
+
         if ($fallbackRows->isNotEmpty()) {
             $this->operationalMetricsService->log('residence_search_fallback_hit', null, null, null, [
                 'keyword' => $keyword,
@@ -762,5 +766,123 @@ class ApartmentSelectionService
                 'housing_type' => $complex->housing_type,
             ];
         })->filter()->values();
+    }
+
+    private function searchRoadCandidatesFromNominatim(string $keyword, int $limit): Collection
+    {
+        $response = Http::timeout(8)
+            ->retry(1, 400, throw: false)
+            ->withHeaders([
+                'User-Agent' => 'apaind-residence-search/1.0',
+                'Accept-Language' => 'ko-KR,ko;q=0.9,en;q=0.8',
+            ])
+            ->get('https://nominatim.openstreetmap.org/search', [
+                'q' => $keyword,
+                'format' => 'jsonv2',
+                'addressdetails' => 1,
+                'countrycodes' => 'kr',
+                'limit' => max(1, min($limit, 10)),
+            ]);
+
+        if (! $response->successful()) {
+            return collect();
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            return collect();
+        }
+
+        return collect($payload)
+            ->take($limit)
+            ->map(function ($row) {
+                if (! is_array($row)) {
+                    return null;
+                }
+
+                $displayName = trim((string) Arr::get($row, 'display_name', ''));
+                if ($displayName === '') {
+                    return null;
+                }
+
+                $address = Arr::get($row, 'address', []);
+                if (! is_array($address)) {
+                    $address = [];
+                }
+
+                $road = trim((string) implode(' ', array_filter([
+                    Arr::get($address, 'road'),
+                    Arr::get($address, 'house_number'),
+                ])));
+
+                $jibun = trim((string) implode(' ', array_filter([
+                    Arr::get($address, 'suburb') ?: Arr::get($address, 'quarter') ?: Arr::get($address, 'neighbourhood'),
+                    Arr::get($address, 'city_district') ?: Arr::get($address, 'town') ?: Arr::get($address, 'city'),
+                ])));
+
+                $normalizedKey = $this->residenceNamingService->normalize($displayName);
+                if ($normalizedKey === '') {
+                    return null;
+                }
+
+                $name = $this->residenceNamingService->buildDisplayName(
+                    null,
+                    null,
+                    $road !== '' ? $road : $displayName,
+                    $jibun !== '' ? $jibun : null,
+                    'mixed'
+                );
+
+                $lat = Arr::get($row, 'lat');
+                $lng = Arr::get($row, 'lon');
+
+                $complex = ResidenceComplex::query()->firstOrCreate([
+                    'normalized_key' => $normalizedKey,
+                ], [
+                    'housing_type' => 'mixed',
+                    'official_name' => null,
+                    'alias_name' => null,
+                    'auto_display_name' => $name['display_name'],
+                    'display_name_source' => $name['source'],
+                    'road_address' => $road !== '' ? $road : $displayName,
+                    'jibun_address' => $jibun !== '' ? $jibun : null,
+                    'legal_dong_code' => null,
+                    'postal_code' => null,
+                    'latitude' => is_numeric($lat) ? (float) $lat : null,
+                    'longitude' => is_numeric($lng) ? (float) $lng : null,
+                    'status' => 'active',
+                ]);
+
+                $buildingKey = $this->residenceNamingService->normalize($complex->normalized_key . '|' . (string) ($road !== '' ? $road : $displayName));
+
+                $building = ResidenceBuilding::query()->firstOrCreate([
+                    'normalized_key' => $buildingKey,
+                ], [
+                    'complex_id' => $complex->id,
+                    'building_no' => null,
+                    'building_name' => null,
+                    'road_address' => $road !== '' ? $road : $displayName,
+                    'jibun_address' => $jibun !== '' ? $jibun : null,
+                    'bld_main_no' => null,
+                    'bld_sub_no' => null,
+                    'legal_dong_code' => null,
+                    'latitude' => is_numeric($lat) ? (float) $lat : null,
+                    'longitude' => is_numeric($lng) ? (float) $lng : null,
+                ]);
+
+                return [
+                    'id' => (int) ($complex->legacy_apartment_id ?? 0),
+                    'complex_id' => (int) $complex->id,
+                    'building_id' => (int) $building->id,
+                    'name' => $complex->displayName(),
+                    'label' => $complex->displayName() . ' · ' . ($building->road_address ?: $complex->road_address),
+                    'region' => trim((string) ($complex->jibun_address ?: $complex->road_address)),
+                    'road_address' => (string) ($building->road_address ?: $complex->road_address),
+                    'housing_type' => $complex->housing_type,
+                ];
+            })
+            ->filter()
+            ->values();
     }
 }
