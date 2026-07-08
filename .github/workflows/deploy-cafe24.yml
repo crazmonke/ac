@@ -48,6 +48,7 @@ jobs:
           rm -rf .deploy
           mkdir -p .deploy
           rsync -av --delete \
+            --exclude ".deploy" \
             --exclude ".git" \
             --exclude ".github" \
             --exclude "node_modules" \
@@ -57,18 +58,19 @@ jobs:
             --exclude "storage/logs/*" \
             ./ .deploy/
 
-      - name: Upload files via SFTP/SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.CAFE24_HOST }}
-          username: ${{ secrets.CAFE24_USER }}
-          key: ${{ secrets.CAFE24_SSH_KEY }}
-          port: ${{ secrets.CAFE24_PORT }}
-          source: ".deploy/*"
-          target: "~/www"
-          strip_components: 1
-          overwrite: true
-          debug: true
+      - name: Configure SSH for rsync
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.CAFE24_SSH_KEY }}" > ~/.ssh/cafe24_key
+          chmod 600 ~/.ssh/cafe24_key
+          ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload files via rsync over SSH
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/cafe24_key -p ${{ secrets.CAFE24_PORT }} -o StrictHostKeyChecking=yes" \
+            .deploy/ \
+            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/www/"
 
       - name: Post-deploy artisan tasks
         uses: appleboy/ssh-action@v1.0.3
