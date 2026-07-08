@@ -65,9 +65,10 @@ jobs:
           key: ${{ secrets.CAFE24_SSH_KEY }}
           port: ${{ secrets.CAFE24_PORT }}
           source: ".deploy/*"
-          target: ${{ secrets.CAFE24_DEPLOY_PATH }}
+          target: "~/www"
           strip_components: 1
           overwrite: true
+          debug: true
 
       - name: Post-deploy artisan tasks
         uses: appleboy/ssh-action@v1.0.3
@@ -79,7 +80,20 @@ jobs:
           script_stop: false
           script: |
             set -e
-            cd "${{ secrets.CAFE24_DEPLOY_PATH }}"
+
+            DEPLOY_PATH="${{ secrets.CAFE24_DEPLOY_PATH }}"
+            if [ -n "$DEPLOY_PATH" ] && [ -d "$DEPLOY_PATH" ]; then
+              cd "$DEPLOY_PATH"
+            elif [ -d "$HOME/www" ]; then
+              cd "$HOME/www"
+            elif [ -d "www" ]; then
+              cd "www"
+            else
+              echo "Deploy path not found"
+              pwd
+              ls -la
+              exit 1
+            fi
 
             if [ ! -f .env ]; then
               {
