@@ -18,6 +18,12 @@
         justify-content: space-between;
         flex-wrap: wrap;
         box-shadow: 0 14px 32px rgba(17, 29, 48, 0.16);
+        transform: translateY(0);
+        transition: transform 0.24s ease;
+        will-change: transform;
+    }
+    .admin-nav.nav-hidden {
+        transform: translateY(calc(-100% - 18px));
     }
     .admin-brand {
         display: flex;
@@ -57,9 +63,14 @@
         color: #403010;
     }
     .admin-links .inline-form { display: inline; margin: 0; }
+    @media (prefers-reduced-motion: reduce) {
+        .admin-nav {
+            transition: none;
+        }
+    }
 </style>
 
-<header class="admin-nav">
+<header class="admin-nav" data-scroll-hide-nav>
     <div class="admin-brand">
         <a href="/admin">🛠 관리자</a>
         <span>운영 콘솔</span>
@@ -78,3 +89,56 @@
         </form>
     </nav>
 </header>
+
+<script>
+    (() => {
+        const currentNav = document.currentScript?.previousElementSibling;
+        if (!(currentNav instanceof HTMLElement) || !currentNav.matches('[data-scroll-hide-nav]')) {
+            return;
+        }
+
+        const state = window.__topNavHideOnScrollState || {
+            initialized: false,
+            navs: new Set(),
+            lastScrollY: Math.max(window.scrollY || 0, 0),
+            ticking: false,
+        };
+        state.navs.add(currentNav);
+        window.__topNavHideOnScrollState = state;
+
+        if (state.initialized) {
+            return;
+        }
+        state.initialized = true;
+
+        const minDelta = 8;
+        const revealOffset = 8;
+
+        const setHidden = (isHidden) => {
+            state.navs.forEach((nav) => nav.classList.toggle('nav-hidden', isHidden));
+        };
+
+        const update = () => {
+            const currentY = Math.max(window.scrollY || 0, 0);
+            const delta = currentY - state.lastScrollY;
+
+            if (currentY <= revealOffset) {
+                setHidden(false);
+            } else if (delta > minDelta) {
+                setHidden(true);
+            } else if (delta < -minDelta) {
+                setHidden(false);
+            }
+
+            state.lastScrollY = currentY;
+            state.ticking = false;
+        };
+
+        window.addEventListener('scroll', () => {
+            if (!state.ticking) {
+                window.requestAnimationFrame(update);
+                state.ticking = true;
+            }
+        }, { passive: true });
+    })();
+</script>

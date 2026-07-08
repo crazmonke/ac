@@ -16,6 +16,7 @@ use App\Models\UserResidence;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -226,6 +227,52 @@ class AdminDashboardController extends Controller
         ])->save();
 
         return redirect('/admin/review-queue')->with('status', '재검증 실패: 자동 승인 조건을 충족하지 않았습니다.');
+    }
+
+    public function bulkAutoApproveResidenceVerifications(Request $request)
+    {
+        $data = $request->validate([
+            'mode' => ['required', 'in:preview,execute'],
+            'hours' => ['required', 'integer', 'min:0', 'max:720'],
+            'limit' => ['required', 'integer', 'min:1', 'max:2000'],
+            'include_no_coordinates' => ['nullable', 'boolean'],
+            'admin_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $options = [
+            '--hours' => (int) $data['hours'],
+            '--limit' => (int) $data['limit'],
+        ];
+
+        if ($request->boolean('include_no_coordinates')) {
+            $options['--approve-without-coordinates'] = true;
+        }
+
+        $adminNote = trim((string) ($data['admin_note'] ?? ''));
+        if ($adminNote !== '') {
+            $options['--admin-note'] = $adminNote;
+        }
+
+        if ($data['mode'] === 'execute') {
+            $options['--execute'] = true;
+            $options['--yes'] = true;
+        }
+
+        try {
+            Artisan::call('residences:auto-approve-pending', $options);
+            $output = trim((string) Artisan::output());
+        } catch (\Throwable $e) {
+            return redirect('/admin/review-queue')
+                ->withErrors(['bulk_auto_approve' => '일괄 승인 실행 중 오류가 발생했습니다: ' . $e->getMessage()]);
+        }
+
+        $message = $data['mode'] === 'execute'
+            ? '공동주택 인증 일괄 승인 실행이 완료되었습니다.'
+            : '공동주택 인증 일괄 승인 미리보기가 완료되었습니다.';
+
+        return redirect('/admin/review-queue')
+            ->with('status', $message)
+            ->with('bulkAutoApproveOutput', $output);
     }
 
     public function users(Request $request)

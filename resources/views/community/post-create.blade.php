@@ -358,7 +358,7 @@
                 border-radius: 16px;
             }
             .wrap.mobile-compose-mode #editorBody {
-                min-height: 42vh;
+                min-height: 10vh;
                 border: 0;
                 border-radius: 12px;
                 box-shadow: none;
@@ -444,7 +444,7 @@
             <div class="grid">
                 <input name="title" placeholder="제목" value="{{ old('title') }}" required>
                 <div class="compose-editor-wrap">
-                    <textarea id="editorBody" name="body" placeholder="내용" style="width:100%; min-width:100px; height:360px;" data-editor-required="true">{{ old('body') }}</textarea>
+                    <textarea id="editorBody" name="body" placeholder="내용" style="width:100%; min-width:100px; height:200px;" data-editor-required="true">{{ old('body') }}</textarea>
                     <div class="mobile-compose-tools">
                         <div class="mobile-compose-toolset">
                             <button type="button" class="mobile-compose-button js-mobile-image-button" aria-label="사진 추가">
@@ -460,16 +460,6 @@
                     </div>
                     <div class="mobile-media-preview js-mobile-media-preview" aria-live="polite">
                         <p class="mobile-media-preview-title">첨부된 미디어</p>
-                    </div>
-                    <div class="mobile-compose-actions">
-                        <button type="button" class="mobile-options-trigger js-mobile-options-open mobile-compose-action-icon" aria-label="게시물 옵션">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .27 1.7 1.7 0 0 0-.85 1.47V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.3 19.4a1.7 1.7 0 0 0-1-.27 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.27-1 1.7 1.7 0 0 0-1.47-.85H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.3a1.7 1.7 0 0 0 .27-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.3 4.6a1.7 1.7 0 0 0 1-.27 1.7 1.7 0 0 0 .85-1.47V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1 .27 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.3a1.7 1.7 0 0 0 .27 1 1.7 1.7 0 0 0 1.47.85H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
-                            <span class="sr-only">게시물 옵션</span>
-                        </button>
-                        <button type="submit" class="mobile-compose-submit mobile-compose-action-icon" aria-label="등록">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="sr-only">등록</span>
-                        </button>
                     </div>
                     <input type="file" class="js-mobile-image-input" accept="image/*" multiple hidden>
                     <input type="file" class="js-mobile-video-input" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" multiple hidden>
@@ -501,6 +491,16 @@
                     <label><input type="checkbox" name="poll_allow_multiple" value="1" style="width:auto;" @checked(old('poll_allow_multiple'))> 복수 선택 허용</label>
                     <label><input type="checkbox" name="poll_results_public" value="1" style="width:auto;" @checked(old('poll_results_public', true))> 투표 결과 공개</label>
                 @endif
+                <div class="mobile-compose-actions">
+                    <button type="button" class="mobile-options-trigger js-mobile-options-open mobile-compose-action-icon" aria-label="게시물 옵션">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .27 1.7 1.7 0 0 0-.85 1.47V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.3 19.4a1.7 1.7 0 0 0-1-.27 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.27-1 1.7 1.7 0 0 0-1.47-.85H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.3a1.7 1.7 0 0 0 .27-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.3 4.6a1.7 1.7 0 0 0 1-.27 1.7 1.7 0 0 0 .85-1.47V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1 .27 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.3a1.7 1.7 0 0 0 .27 1 1.7 1.7 0 0 0 1.47.85H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                        <span class="sr-only">게시물 옵션</span>
+                    </button>
+                    <button type="submit" class="mobile-compose-submit mobile-compose-action-icon" aria-label="등록">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                        <span class="sr-only">등록</span>
+                    </button>
+                </div>
                 <div class="publish-dock">
                     <div class="publish-dock-inner">
                         <div class="publish-options">

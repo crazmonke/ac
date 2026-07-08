@@ -21,6 +21,9 @@
         .btn { border: 0; border-radius: 10px; padding: 10px 12px; font-weight: 700; cursor: pointer; }
         .btn-primary { background: #2e4fb8; color: #fff; }
         .btn-danger { background: #b42318; color: #fff; }
+        .btn-muted { background: #455a8f; color: #fff; }
+        .inline-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .output { white-space: pre-wrap; background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 10px; font-size: 0.84rem; overflow: auto; }
         h1, h2, h3 { margin: 0; }
     </style>
 </head>
@@ -31,6 +34,10 @@
 
     @if(session('status'))
         <div class="card" style="background:#e8f6f1; border-color:#bee6d9; color:#166b53;">{{ session('status') }}</div>
+    @endif
+
+    @if($errors->has('bulk_auto_approve'))
+        <div class="card" style="background:#fff1f2; border-color:#fecdd3; color:#9f1239;">{{ $errors->first('bulk_auto_approve') }}</div>
     @endif
 
     <section class="section">
@@ -98,6 +105,41 @@
 
     <section class="section">
         <h2>공동주택 인증 검수</h2>
+        <article class="card" style="margin-top:12px; border-style: dashed;">
+            <h3>일괄 승인 실행</h3>
+            <p class="meta" style="margin-top:8px;">검수 큐의 pending 공동주택 인증 요청을 범위 제한으로 일괄 처리합니다. 먼저 미리보기 후 실제 실행을 권장합니다.</p>
+            <form method="post" action="/admin/review-queue/residence-verifications/bulk-auto-approve" class="form-grid" style="margin-top:10px;">
+                @csrf
+                <div class="inline-grid">
+                    <label>
+                        조회 시간 범위(시간)
+                        <input type="number" name="hours" min="0" max="720" value="{{ old('hours', 72) }}" required>
+                    </label>
+                    <label>
+                        최대 처리 건수
+                        <input type="number" name="limit" min="1" max="2000" value="{{ old('limit', 200) }}" required>
+                    </label>
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; color:#1a2a44; font-weight:600;">
+                    <input type="checkbox" name="include_no_coordinates" value="1" @checked(old('include_no_coordinates', true)) style="width:auto;">
+                    GPS 좌표 누락 건도 관리자 기준으로 일괄 승인
+                </label>
+                <label>
+                    관리자 메모(선택)
+                    <input type="text" name="admin_note" maxlength="500" value="{{ old('admin_note', '검수큐 일괄 승인 처리') }}" placeholder="예: 검수큐 일괄 승인 처리">
+                </label>
+                <div class="actions">
+                    <button class="btn btn-muted" type="submit" name="mode" value="preview">미리보기 실행</button>
+                    <button class="btn btn-danger" type="submit" name="mode" value="execute" onclick="return confirm('선택한 조건으로 실제 일괄 승인을 실행할까요?');">실제 일괄 승인</button>
+                </div>
+            </form>
+            @if(session('bulkAutoApproveOutput'))
+                <div style="margin-top:10px;">
+                    <div class="meta" style="margin-bottom:6px;">최근 실행 로그</div>
+                    <pre class="output">{{ session('bulkAutoApproveOutput') }}</pre>
+                </div>
+            @endif
+        </article>
         <div class="grid" style="margin-top:12px;">
             @forelse($residenceVerificationRequests as $requestItem)
                 @php

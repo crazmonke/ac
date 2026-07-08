@@ -257,7 +257,7 @@
         @if($latestResidenceVerification)
             <p class="meta">최근 공동주택 인증 상태: {{ $latestResidenceVerification->verification_status }} · {{ $latestResidenceVerification->complex?->displayName() ?? '미지정' }}</p>
         @endif
-        <form method="post" action="/settings/resident-verification-request">
+        <form id="residentVerificationForm" method="post" action="/settings/resident-verification-request">
             @csrf
             <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
             <input id="verificationLatitude" type="hidden" name="latitude" value="{{ old('latitude') }}">
@@ -291,8 +291,37 @@
     const residenceBuildingId = document.getElementById('residenceBuildingId');
     const verificationLatitude = document.getElementById('verificationLatitude');
     const verificationLongitude = document.getElementById('verificationLongitude');
+    const residentVerificationForm = document.getElementById('residentVerificationForm');
     const suggestionBox = document.getElementById('apartmentSuggestions');
     let lastController = null;
+
+    async function ensureVerificationCoordinates() {
+        if (!verificationLatitude || !verificationLongitude) {
+            return;
+        }
+
+        if (verificationLatitude.value && verificationLongitude.value) {
+            return;
+        }
+
+        if (!('geolocation' in navigator)) {
+            return;
+        }
+
+        await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition((position) => {
+                verificationLatitude.value = String(position.coords.latitude);
+                verificationLongitude.value = String(position.coords.longitude);
+                resolve();
+            }, () => {
+                resolve();
+            }, {
+                enableHighAccuracy: true,
+                timeout: 6000,
+                maximumAge: 0,
+            });
+        });
+    }
 
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -390,6 +419,18 @@
             closeSuggestions();
         }
     });
+
+    if (residentVerificationForm) {
+        residentVerificationForm.addEventListener('submit', async (event) => {
+            if (verificationLatitude.value && verificationLongitude.value) {
+                return;
+            }
+
+            event.preventDefault();
+            await ensureVerificationCoordinates();
+            residentVerificationForm.submit();
+        });
+    }
 })();
 </script>
 </body>

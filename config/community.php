@@ -25,4 +25,8 @@ return [
         'market',
         'lost',
     ],
+
+    'gps_auto_approve' => [
+        'distance_meters' => (int) env('COMMUNITY_GPS_AUTO_APPROVE_DISTANCE_METERS', 3000),
+    ],
 ];

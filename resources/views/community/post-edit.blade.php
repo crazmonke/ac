@@ -231,7 +231,7 @@
                 padding: 14px 12px 20px;
             }
             .wrap.mobile-compose-mode #editorBody {
-                min-height: 42vh;
+                min-height: 10vh;
                 border: 0;
                 border-radius: 12px;
                 box-shadow: none;
@@ -289,7 +289,7 @@
             <div style="display:grid; gap:10px;">
                 <input name="title" value="{{ old('title', $post->title) }}" required>
                 <div class="compose-editor-wrap">
-                    <textarea id="editorBody" name="body" style="width:100%; min-width:100px; height:360px;" data-editor-required="true">{{ old('body', $post->body) }}</textarea>
+                    <textarea id="editorBody" name="body" style="width:100%; min-width:100px; height:200px;" data-editor-required="true">{{ old('body', $post->body) }}</textarea>
                     <div class="mobile-compose-tools">
                         <button type="button" class="mobile-compose-button js-mobile-image-button">사진 추가</button>
                         <button type="button" class="mobile-compose-button js-mobile-video-button">영상 추가</button>

@@ -37,9 +37,16 @@ class GoogleLocationVerificationService
         int $maxDistanceMeters = self::MAX_DISTANCE_METERS
     ): array {
         $apiKey = trim((string) config('services.google_maps.api_key'));
+        $distanceOnlyResult = $this->verifyByDistanceOnly(
+            $latitude,
+            $longitude,
+            $targetLatitude,
+            $targetLongitude,
+            $maxDistanceMeters
+        );
 
         if ($apiKey === '') {
-            return [
+            return $distanceOnlyResult ?? [
                 'verified' => false,
                 'reason' => 'google_api_key_missing',
             ];
@@ -54,7 +61,7 @@ class GoogleLocationVerificationService
             ]);
 
         if (! $response->successful()) {
-            return [
+            return $distanceOnlyResult ?? [
                 'verified' => false,
                 'reason' => 'google_api_http_error',
             ];
@@ -63,7 +70,7 @@ class GoogleLocationVerificationService
         $payload = $response->json();
 
         if (! is_array($payload) || (string) Arr::get($payload, 'status', '') !== 'OK') {
-            return [
+            return $distanceOnlyResult ?? [
                 'verified' => false,
                 'reason' => 'google_api_status_not_ok',
             ];
@@ -160,6 +167,39 @@ class GoogleLocationVerificationService
             'gps_sido' => $gpsSido,
             'gps_sigungu' => $gpsSigungu,
             'gps_dong' => $gpsDong,
+        ];
+    }
+
+    private function verifyByDistanceOnly(
+        float $latitude,
+        float $longitude,
+        ?float $targetLatitude,
+        ?float $targetLongitude,
+        int $maxDistanceMeters
+    ): ?array {
+        if ($targetLatitude === null || $targetLongitude === null) {
+            return null;
+        }
+
+        $distanceMeters = $this->haversineMeters(
+            $latitude,
+            $longitude,
+            (float) $targetLatitude,
+            (float) $targetLongitude
+        );
+
+        if ($distanceMeters <= $maxDistanceMeters) {
+            return [
+                'verified' => true,
+                'reason' => 'matched_by_distance_without_geocode',
+                'distance_meters' => (int) round($distanceMeters),
+            ];
+        }
+
+        return [
+            'verified' => false,
+            'reason' => 'distance_out_of_range_without_geocode',
+            'distance_meters' => (int) round($distanceMeters),
         ];
     }
 

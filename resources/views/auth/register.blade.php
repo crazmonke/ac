@@ -85,7 +85,36 @@
     const latitudeInput = document.getElementById('latitude');
     const longitudeInput = document.getElementById('longitude');
     const suggestionBox = document.getElementById('apartmentSuggestions');
+    const registerForm = document.querySelector('form.card');
     let lastController = null;
+
+    async function ensureGeoCoordinates() {
+        if (!latitudeInput || !longitudeInput) {
+            return;
+        }
+
+        if (latitudeInput.value && longitudeInput.value) {
+            return;
+        }
+
+        if (!('geolocation' in navigator)) {
+            return;
+        }
+
+        await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition((position) => {
+                latitudeInput.value = String(position.coords.latitude);
+                longitudeInput.value = String(position.coords.longitude);
+                resolve();
+            }, () => {
+                resolve();
+            }, {
+                enableHighAccuracy: true,
+                timeout: 6000,
+                maximumAge: 0,
+            });
+        });
+    }
 
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -171,6 +200,18 @@
             closeSuggestions();
         }
     });
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (event) => {
+            if (latitudeInput.value && longitudeInput.value) {
+                return;
+            }
+
+            event.preventDefault();
+            await ensureGeoCoordinates();
+            registerForm.submit();
+        });
+    }
 })();
 </script>
 </body>

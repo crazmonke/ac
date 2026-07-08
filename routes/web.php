@@ -78,6 +78,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::put('/review-queue/verifications/{id}', [AdminDashboardController::class, 'updateVerificationRequest']);
     Route::put('/review-queue/residence-verifications/{id}', [AdminDashboardController::class, 'updateResidenceVerification']);
     Route::post('/review-queue/residence-verifications/{id}/retry', [AdminDashboardController::class, 'retryResidenceVerification']);
+    Route::post('/review-queue/residence-verifications/bulk-auto-approve', [AdminDashboardController::class, 'bulkAutoApproveResidenceVerifications']);
     Route::put('/review-queue/merges/{id}', [AdminDashboardController::class, 'updateMergeCandidate']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
     Route::get('/users', [AdminDashboardController::class, 'users']);

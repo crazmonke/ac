@@ -328,13 +328,23 @@ class ApartmentSelectionService
         $verificationSigungu = (string) ($legacyApartment?->sigungu ?: ($regionSnapshot['sigungu'] ?? ''));
         $verificationDong = (string) ($legacyApartment?->eupmyeondong ?: ($regionSnapshot['eupmyeondong'] ?? ''));
 
-        $distanceThreshold = match ($complex->housing_type) {
+        $baseDistanceThreshold = match ($complex->housing_type) {
             'apartment' => 300,
             'officetel' => 120,
             'villa' => 100,
             'urban_living' => 100,
             default => 150,
         };
+
+        $configuredDistanceThreshold = (int) config('community.gps_auto_approve.distance_meters', 3000);
+        $distanceThreshold = max($baseDistanceThreshold, $configuredDistanceThreshold);
+
+        $targetLatitude = $building->latitude !== null
+            ? (float) $building->latitude
+            : ($complex->latitude !== null ? (float) $complex->latitude : null);
+        $targetLongitude = $building->longitude !== null
+            ? (float) $building->longitude
+            : ($complex->longitude !== null ? (float) $complex->longitude : null);
 
         $verification = $this->locationVerificationService->verifyNearResidenceProfile(
             $latitude,
@@ -343,8 +353,8 @@ class ApartmentSelectionService
             $verificationSigungu,
             $verificationDong,
             (string) ($building->road_address ?: $complex->road_address),
-            $building->latitude,
-            $building->longitude,
+            $targetLatitude,
+            $targetLongitude,
             $distanceThreshold
         );
 
