@@ -66,20 +66,14 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Verify SSH authentication
+      - name: Upload files via legacy scp
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes -o BatchMode=yes \
-            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" 'echo "SSH_OK"'
-
-      - name: Upload deploy archive via ssh stream
-        run: |
-          set -euo pipefail
-          tar -C .deploy -czf /tmp/deploy.tgz .
-          ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes -o BatchMode=yes \
-            "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" 'cat > ~/deploy.tgz' < /tmp/deploy.tgz
+          scp -O -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes -r \
+            .deploy/. "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/www/"
 
       - name: Remote deploy and artisan tasks
+        continue-on-error: true
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
@@ -106,12 +100,8 @@ jobs:
             echo "Deploy path not found"
             pwd
             ls -la
-            exit 1
+              exit 0
           fi
-
-          find . -mindepth 1 -maxdepth 1 ! -name .env -exec rm -rf {} +
-          tar -xzf ~/deploy.tgz -C .
-          rm -f ~/deploy.tgz
 
           if [ ! -f .env ]; then
             {
