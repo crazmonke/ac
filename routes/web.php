@@ -11,6 +11,30 @@ use App\Http\Controllers\Community\CommunityPageController;
 use App\Http\Controllers\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/uploads/{path}', function (string $path) {
+    if ($path === '' || str_contains($path, '..')) {
+        abort(404);
+    }
+
+    $relativePath = ltrim($path, '/');
+    $candidates = [
+        base_path('uploads/'.$relativePath),
+        public_path('uploads/'.$relativePath),
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (! is_file($candidate)) {
+            continue;
+        }
+
+        return response()->file($candidate, [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+
+    abort(404);
+})->where('path', '.*');
+
 Route::get('/', [PublicSiteController::class, 'home']);
 Route::get('/boards/{slug}', [PublicSiteController::class, 'board']);
 Route::get('/posts/{id}', [PublicSiteController::class, 'post']);

@@ -769,6 +769,7 @@ class CommunityBoardController extends Controller
         $storedName = Str::uuid().'.'.$safeExtension;
 
         $uploadedFile->move($targetDirectory, $storedName);
+        $this->mirrorUploadToDocroot('editor-images/'.$dateSegment.'/'.$storedName);
 
         return response()->json([
             'url' => '/uploads/editor-images/'.$dateSegment.'/'.$storedName,
@@ -827,11 +828,31 @@ class CommunityBoardController extends Controller
             ], 422);
         }
 
+        $this->mirrorUploadToDocroot('editor-videos/'.$dateSegment.'/'.$storedName);
+
         return response()->json([
             'url' => '/uploads/editor-videos/'.$dateSegment.'/'.$storedName,
             'name' => (string) $uploadedFile->getClientOriginalName(),
             'type' => 'video',
         ]);
+    }
+
+    private function mirrorUploadToDocroot(string $relativeUploadPath): void
+    {
+        $relativeUploadPath = ltrim($relativeUploadPath, '/');
+        $publicSource = public_path('uploads/'.$relativeUploadPath);
+        $docrootTarget = base_path('uploads/'.$relativeUploadPath);
+
+        if ($publicSource === $docrootTarget || ! is_file($publicSource)) {
+            return;
+        }
+
+        $targetDirectory = dirname($docrootTarget);
+        if (! is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        @copy($publicSource, $docrootTarget);
     }
 
     private function compressVideoToTargetSize(string $sourcePath, string $targetPath, int $targetBytes): bool
