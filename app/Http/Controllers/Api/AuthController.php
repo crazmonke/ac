@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FcmToken;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -67,6 +68,23 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $data = $request->validate([
+            'fcm_token' => ['nullable', 'string', 'max:255'],
+            'device_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (! empty($data['fcm_token']) || ! empty($data['device_id'])) {
+            FcmToken::query()
+                ->where('user_id', $request->user()->id)
+                ->when(! empty($data['fcm_token']), function ($query) use ($data) {
+                    $query->where('token', $data['fcm_token']);
+                })
+                ->when(empty($data['fcm_token']) && ! empty($data['device_id']), function ($query) use ($data) {
+                    $query->where('device_id', $data['device_id']);
+                })
+                ->delete();
+        }
+
         $request->user()?->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Logged out.']);

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\PostFileController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ReportController;
@@ -12,6 +13,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:20,1');
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:30,1');
+
+Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+    Route::post('/fcm-token', [FcmTokenController::class, 'store']);
+    Route::delete('/fcm-token', [FcmTokenController::class, 'destroy']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
