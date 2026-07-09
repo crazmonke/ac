@@ -147,13 +147,14 @@ class PermissionService
                 return false;
             }
 
+            $apartmentId = (int) ($post->apartment_id ?? 0);
+            if ($apartmentId > 0 && $this->hasVerifiedRole($user, $apartmentId)) {
+                return true;
+            }
+
             $residenceComplexId = (int) ($post->residence_complex_id ?? 0);
             if ($residenceComplexId > 0) {
                 return $this->hasVerifiedResidenceComplex($user, $residenceComplexId);
-            }
-
-            if ($this->hasVerifiedRole($user, (int) $post->apartment_id)) {
-                return true;
             }
 
             $post->loadMissing('user');

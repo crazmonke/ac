@@ -446,7 +446,7 @@
                     .'<span class="chip">'.e($post['board_name']).'</span>'
                     .'<span class="chip">'.($post['audience_scope'] === 'region' ? '동네 전용' : ($post['audience_scope'] === 'apartment' ? '공동주택 전용' : '전체')).'</span>'
                     .(!empty($post['topic_name']) ? '<span class="chip">#'.e($post['topic_name']).'</span>' : '')
-                    .'<span class="chip">'.e(($post['sigungu'] ?: $post['sido']).' · '.$post['apartment_name']).'</span>'
+                    .'<span class="chip">'.e(($post['sigungu'] ?: $post['sido']).($post['audience_scope'] === 'apartment' && !empty($post['apartment_name']) ? ' · '.$post['apartment_name'] : '')).'</span>'
                     .($post['is_guest_visible'] ? '<span class="chip guest-open">비회원 공개</span>' : (!empty($post['access_label']) ? '<span class="chip locked">'.e($post['access_label']).'</span>' : ''))
                     .'</div>'
                     .'<div class="post-actions">'

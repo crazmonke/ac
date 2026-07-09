@@ -451,7 +451,7 @@
 
     <section class="card">
         <div class="post-head">
-            <div class="meta">{{ $post->apartment->name }} · {{ $post->board->name }}</div>
+            <div class="meta">{{ $post->audience_scope === 'apartment' ? ($post->apartment->name.' · ') : '동네전용 · ' }}{{ $post->board->name }}</div>
             <h1 class="post-title">{{ $post->title }}</h1>
             <div class="author-row">
                 <div class="author">
