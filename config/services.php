@@ -44,4 +44,12 @@ return [
         'service_key' => env('APARTMENT_SYNC_SERVICE_KEY'),
     ],
 
+    'adsense' => [
+        'client_id' => env('ADSENSE_CLIENT_ID', 'ca-pub-7984252442494010'),
+        'home_hero_slot' => env('ADSENSE_HOME_HERO_SLOT', '1649371006'),
+        'home_feed_slot' => env('ADSENSE_HOME_FEED_SLOT', '6299062458'),
+        'home_feed_layout_key' => env('ADSENSE_HOME_FEED_LAYOUT_KEY', '-ex+6g-2p-8d+pe'),
+        'home_feed_interval' => max(0, (int) env('ADSENSE_HOME_FEED_INTERVAL', 5)),
+    ],
+
 ];

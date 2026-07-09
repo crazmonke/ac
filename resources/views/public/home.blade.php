@@ -1,3 +1,11 @@
+@php
+    $adsenseClientId = trim((string) config('services.adsense.client_id'));
+    $adsenseHomeHeroSlot = trim((string) config('services.adsense.home_hero_slot'));
+    $adsenseHomeFeedSlot = trim((string) config('services.adsense.home_feed_slot'));
+    $adsenseHomeFeedLayoutKey = trim((string) config('services.adsense.home_feed_layout_key'));
+    $adsenseHomeFeedInterval = max(0, (int) config('services.adsense.home_feed_interval', 5));
+    $adsenseEnabled = $adsenseClientId !== '' && ($adsenseHomeHeroSlot !== '' || $adsenseHomeFeedSlot !== '');
+@endphp
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,6 +15,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;700;800&display=swap" rel="stylesheet">
+    @if($adsenseEnabled)
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ $adsenseClientId }}" crossorigin="anonymous"></script>
+    @endif
     <style>
         :root {
             --bg: #f4f8fb;
@@ -80,6 +91,12 @@
             background: rgba(255, 255, 255, 0.17);
             border: 1px solid rgba(255, 255, 255, 0.26);
         }
+        .hero-ad-panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 14px;
+        }
         .quick-login {
             background: var(--card);
             border: 1px solid var(--line);
@@ -113,6 +130,32 @@
         }
         .card h4 { margin: 0 0 4px; }
         .meta { color: var(--muted); font-size: 0.85rem; }
+        .ad-label {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 4px 8px;
+            background: #eef3f8;
+            color: #5f7187;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+        .ad-copy {
+            margin-top: 8px;
+            color: #41546d;
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }
+        .adsense-slot {
+            display: block;
+            width: 100%;
+            min-height: 120px;
+        }
+        .hero-ad-slot {
+            margin-top: 10px;
+            min-height: 140px;
+        }
         .status {
             display: inline-block;
             border-radius: 999px;
@@ -126,6 +169,7 @@
         .feed-list { list-style: none; margin: 0; padding: 0; }
         .feed-item { border-top: 1px solid #e4ebf2; padding: 12px 0; }
         .feed-item:first-child { border-top: 0; padding-top: 2px; }
+        .feed-ad-item { border-top: 1px solid #e4ebf2; padding: 12px 0; }
         .feed-row { display: flex; gap: 10px; align-items: flex-start; }
         .avatar {
             width: 36px;
@@ -207,6 +251,16 @@
             height: 220px;
             object-fit: cover;
             display: block;
+        }
+        .feed-ad-shell {
+            border: 1px solid #dfe7f1;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #fcfdff, #f7faff);
+            padding: 12px;
+        }
+        .feed-ad-slot {
+            margin-top: 10px;
+            min-height: 160px;
         }
         .media-lightbox {
             position: fixed;
@@ -503,6 +557,18 @@
         @endguest
     </section>
 
+    @if($adsenseEnabled && $adsenseHomeHeroSlot !== '')
+        <section class="hero-ad-panel" aria-label="홈 상단 광고">
+            <span class="ad-label">광고</span>
+            <div class="ad-copy">회원 상태 안내 아래에 자연스럽게 노출되는 스폰서 영역입니다.</div>
+            <ins class="adsbygoogle adsense-slot hero-ad-slot"
+                 data-ad-client="{{ $adsenseClientId }}"
+                 data-ad-slot="{{ $adsenseHomeHeroSlot }}"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+        </section>
+    @endif
+
     <section class="section">
         <!--
         <h2 class="section-title">🆕 {{ $feedTitle }}</h2>
@@ -585,6 +651,24 @@
                             </div>
                         </div>
                     </li>
+                    @if($adsenseEnabled && $adsenseHomeFeedSlot !== '' && $adsenseHomeFeedInterval > 0 && $loop->iteration % $adsenseHomeFeedInterval === 0 && ! $loop->last)
+                        <li class="feed-ad-item" aria-label="피드 광고">
+                            <div class="feed-ad-shell">
+                                <span class="ad-label">광고</span>
+                                <div class="ad-copy">게시글 흐름 사이에 자연스럽게 노출되는 스폰서 콘텐츠입니다.</div>
+                                <ins class="adsbygoogle adsense-slot feed-ad-slot"
+                                     data-ad-client="{{ $adsenseClientId }}"
+                                     data-ad-slot="{{ $adsenseHomeFeedSlot }}"
+                                     @if($adsenseHomeFeedLayoutKey !== '')
+                                         data-ad-format="fluid"
+                                         data-ad-layout-key="{{ $adsenseHomeFeedLayoutKey }}"
+                                     @else
+                                         data-ad-format="auto"
+                                         data-full-width-responsive="true"
+                                     @endif></ins>
+                            </div>
+                        </li>
+                    @endif
                 @empty
                     <li class="meta">현재 노출 가능한 게시글이 없습니다.</li>
                 @endforelse
@@ -1007,6 +1091,30 @@
         }
     });
 
+    const initializeAds = function (root) {
+        if (!{{ $adsenseEnabled ? 'true' : 'false' }}) {
+            return;
+        }
+
+        const scope = root || document;
+
+        scope.querySelectorAll('.adsbygoogle').forEach((element) => {
+            if (element.dataset.adInit === '1') {
+                return;
+            }
+
+            element.dataset.adInit = '1';
+
+            try {
+                (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (error) {
+                element.dataset.adInit = '0';
+            }
+        });
+    };
+
+    initializeAds(document);
+
     document.addEventListener('submit', async (event) => {
         const form = event.target.closest('form[data-like-form]');
         if (!form) {
@@ -1132,6 +1240,12 @@
             nextList.querySelectorAll('.feed-item').forEach((item) => {
                 list.appendChild(item);
             });
+
+            nextList.querySelectorAll('.feed-ad-item').forEach((item) => {
+                list.appendChild(item);
+            });
+
+            initializeAds(list);
 
             loader.dataset.nextUrl = nextLoader ? (nextLoader.dataset.nextUrl || '') : '';
 

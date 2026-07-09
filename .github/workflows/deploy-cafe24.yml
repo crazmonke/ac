@@ -102,6 +102,11 @@ jobs:
             GOOGLE_MAPS_API_KEY='${{ secrets.GOOGLE_MAPS_API_KEY }}' \
             APARTMENT_SYNC_SOURCE_URL='${{ secrets.APARTMENT_SYNC_SOURCE_URL }}' \
             APARTMENT_SYNC_SERVICE_KEY='${{ secrets.APARTMENT_SYNC_SERVICE_KEY }}' \
+            ADSENSE_CLIENT_ID='${{ secrets.ADSENSE_CLIENT_ID }}' \
+            ADSENSE_HOME_HERO_SLOT='${{ secrets.ADSENSE_HOME_HERO_SLOT }}' \
+            ADSENSE_HOME_FEED_SLOT='${{ secrets.ADSENSE_HOME_FEED_SLOT }}' \
+            ADSENSE_HOME_FEED_LAYOUT_KEY='${{ secrets.ADSENSE_HOME_FEED_LAYOUT_KEY }}' \
+            ADSENSE_HOME_FEED_INTERVAL='${{ secrets.ADSENSE_HOME_FEED_INTERVAL }}' \
             'bash -s' <<'REMOTE'
           set -e
 
@@ -162,6 +167,11 @@ jobs:
           RESOLVED_GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-$(read_prev_env GOOGLE_MAPS_API_KEY)}"
           RESOLVED_APARTMENT_SYNC_SOURCE_URL="${APARTMENT_SYNC_SOURCE_URL:-$(read_prev_env APARTMENT_SYNC_SOURCE_URL)}"
           RESOLVED_APARTMENT_SYNC_SERVICE_KEY="${APARTMENT_SYNC_SERVICE_KEY:-$(read_prev_env APARTMENT_SYNC_SERVICE_KEY)}"
+          RESOLVED_ADSENSE_CLIENT_ID="${ADSENSE_CLIENT_ID:-$(read_prev_env ADSENSE_CLIENT_ID)}"
+          RESOLVED_ADSENSE_HOME_HERO_SLOT="${ADSENSE_HOME_HERO_SLOT:-$(read_prev_env ADSENSE_HOME_HERO_SLOT)}"
+          RESOLVED_ADSENSE_HOME_FEED_SLOT="${ADSENSE_HOME_FEED_SLOT:-$(read_prev_env ADSENSE_HOME_FEED_SLOT)}"
+          RESOLVED_ADSENSE_HOME_FEED_LAYOUT_KEY="${ADSENSE_HOME_FEED_LAYOUT_KEY:-$(read_prev_env ADSENSE_HOME_FEED_LAYOUT_KEY)}"
+          RESOLVED_ADSENSE_HOME_FEED_INTERVAL="${ADSENSE_HOME_FEED_INTERVAL:-$(read_prev_env ADSENSE_HOME_FEED_INTERVAL)}"
 
           if [ -z "$RESOLVED_GOOGLE_MAPS_API_KEY" ]; then
             echo "WARNING: GOOGLE_MAPS_API_KEY is empty after env resolution. Address fallback quality may be reduced until key is configured."
@@ -181,6 +191,26 @@ jobs:
 
           if [ -n "$RESOLVED_APARTMENT_SYNC_SERVICE_KEY" ]; then
             echo "APARTMENT_SYNC_SERVICE_KEY=$RESOLVED_APARTMENT_SYNC_SERVICE_KEY" >> .env
+          fi
+
+          if [ -n "$RESOLVED_ADSENSE_CLIENT_ID" ]; then
+            echo "ADSENSE_CLIENT_ID=$RESOLVED_ADSENSE_CLIENT_ID" >> .env
+          fi
+
+          if [ -n "$RESOLVED_ADSENSE_HOME_HERO_SLOT" ]; then
+            echo "ADSENSE_HOME_HERO_SLOT=$RESOLVED_ADSENSE_HOME_HERO_SLOT" >> .env
+          fi
+
+          if [ -n "$RESOLVED_ADSENSE_HOME_FEED_SLOT" ]; then
+            echo "ADSENSE_HOME_FEED_SLOT=$RESOLVED_ADSENSE_HOME_FEED_SLOT" >> .env
+          fi
+
+          if [ -n "$RESOLVED_ADSENSE_HOME_FEED_LAYOUT_KEY" ]; then
+            echo "ADSENSE_HOME_FEED_LAYOUT_KEY=$RESOLVED_ADSENSE_HOME_FEED_LAYOUT_KEY" >> .env
+          fi
+
+          if [ -n "$RESOLVED_ADSENSE_HOME_FEED_INTERVAL" ]; then
+            echo "ADSENSE_HOME_FEED_INTERVAL=$RESOLVED_ADSENSE_HOME_FEED_INTERVAL" >> .env
           fi
 
           # Cafe24 serves ~/www as docroot, so publish public assets there.
