@@ -324,9 +324,13 @@
         }
         .mobile-compose-actions {
             display: none;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 8px;
             margin-top: 10px;
+        }
+        .mobile-compose-action-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
         }
         .mobile-compose-action-icon {
             min-height: 42px;
@@ -350,6 +354,19 @@
             min-height: 42px;
             border-radius: 12px;
             font-weight: 800;
+        }
+        .mobile-compose-action-cancel {
+            min-height: 42px;
+            border-radius: 12px;
+            font-weight: 800;
+            background: #dde7f3;
+            color: #20324b;
+            border: 1px solid #c9d4e4;
+        }
+        a.btn.mobile-compose-action-cancel {
+            background: #dde7f3;
+            color: #20324b;
+            border: 1px solid #c9d4e4;
         }
 
         @media (max-width: 768px) {
@@ -496,10 +513,16 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .27 1.7 1.7 0 0 0-.85 1.47V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.3 19.4a1.7 1.7 0 0 0-1-.27 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.27-1 1.7 1.7 0 0 0-1.47-.85H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.3a1.7 1.7 0 0 0 .27-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.3 4.6a1.7 1.7 0 0 0 1-.27 1.7 1.7 0 0 0 .85-1.47V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1 .27 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.3a1.7 1.7 0 0 0 .27 1 1.7 1.7 0 0 0 1.47.85H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
                         <span class="sr-only">게시물 옵션</span>
                     </button>
-                    <button type="submit" class="mobile-compose-submit mobile-compose-action-icon" aria-label="등록">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                        <span class="sr-only">등록</span>
-                    </button>
+                    <div class="mobile-compose-action-row">
+                        <button type="submit" class="mobile-compose-submit mobile-compose-action-icon" aria-label="등록">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                            <span class="sr-only">등록</span>
+                        </button>
+                        <a class="btn mobile-compose-action-icon mobile-compose-action-cancel" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}@if(!empty($requestedTopicSlug))&topic={{ urlencode($requestedTopicSlug) }}@endif" aria-label="취소">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                            <span class="sr-only">취소</span>
+                        </a>
+                    </div>
                 </div>
                 <div class="publish-dock">
                     <div class="publish-dock-inner">

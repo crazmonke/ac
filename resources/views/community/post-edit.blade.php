@@ -33,7 +33,56 @@
         textarea { min-height: 140px; }
         button, a.btn { border: 0; border-radius: 8px; background: #0f6f67; color: #fff; padding: 8px 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
         a.btn.secondary { background: #dde7f3; color: #20324b; }
-        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .actions {
+            display: grid;
+            gap: 8px;
+            width: 100%;
+            margin-top: 2px;
+        }
+        .action-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .actions .compose-action-icon-btn {
+            min-width: 44px !important;
+            width: 100% !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            border-radius: 12px;
+            padding: 0 !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .actions .mobile-options-trigger.compose-action-icon-btn {
+            display: inline-flex;
+            width: 100% !important;
+            min-width: 100% !important;
+            min-height: 44px !important;
+            height: 44px !important;
+            border-radius: 12px;
+            padding: 0 !important;
+        }
+        .actions .action-save {
+            background: #0f6f67;
+            color: #fff;
+            border: 0;
+        }
+        .compose-action-icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .compose-action-icon-btn.cancel {
+            background: #dde7f3;
+            color: #20324b;
+            border: 1px solid #c9d4e4;
+        }
         .meta { color: #5b6d82; font-size: 0.9rem; }
         .back-chip {
             display: inline-flex;
@@ -106,9 +155,39 @@
             background: #f2f6fb;
             color: #20324b;
             min-height: 36px;
-            padding: 8px 12px;
-            font-size: 0.88rem;
+            min-width: 36px;
+            width: 36px;
+            height: 36px;
+            padding: 0;
             font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-compose-button svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .mobile-compose-toolset {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         .mobile-compose-note {
             display: none;
@@ -291,8 +370,16 @@
                 <div class="compose-editor-wrap">
                     <textarea id="editorBody" name="body" style="width:100%; min-width:100px; height:200px;" data-editor-required="true">{{ old('body', $post->body) }}</textarea>
                     <div class="mobile-compose-tools">
-                        <button type="button" class="mobile-compose-button js-mobile-image-button">사진 추가</button>
-                        <button type="button" class="mobile-compose-button js-mobile-video-button">영상 추가</button>
+                        <div class="mobile-compose-toolset">
+                            <button type="button" class="mobile-compose-button js-mobile-image-button" aria-label="사진 추가">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h3l1.5 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><circle cx="12" cy="13" r="3.2"/></svg>
+                                <span class="sr-only">사진 추가</span>
+                            </button>
+                            <button type="button" class="mobile-compose-button js-mobile-video-button" aria-label="영상 추가">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>
+                                <span class="sr-only">영상 추가</span>
+                            </button>
+                        </div>
                         <span class="mobile-compose-note">모바일에서는 간편 작성 모드로 동작합니다.</span>
                     </div>
                     <div class="mobile-media-preview js-mobile-media-preview" aria-live="polite">
@@ -331,9 +418,20 @@
                 <label class="js-post-option-field"><input type="checkbox" name="is_anonymous" value="1" style="width:auto;" @checked(old('is_anonymous', $post->is_anonymous))> 익명</label>
                 <label class="js-post-option-field"><input type="checkbox" name="is_guest_visible" value="1" style="width:auto;" @checked(old('is_guest_visible', $post->is_guest_visible))> 비회원에게 본문 공개</label>
                 <div class="actions">
-                    <button type="button" class="mobile-options-trigger js-mobile-options-open">게시물 옵션</button>
-                    <button type="submit">수정 저장</button>
-                    <a class="btn secondary" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">취소</a>
+                    <button type="button" class="mobile-options-trigger js-mobile-options-open compose-action-icon-btn action-option" aria-label="게시물 옵션" title="게시물 옵션">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .27 1.7 1.7 0 0 0-.85 1.47V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.3 19.4a1.7 1.7 0 0 0-1-.27 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.27-1 1.7 1.7 0 0 0-1.47-.85H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.3a1.7 1.7 0 0 0 .27-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.3 4.6a1.7 1.7 0 0 0 1-.27 1.7 1.7 0 0 0 .85-1.47V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1 .27 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.3a1.7 1.7 0 0 0 .27 1 1.7 1.7 0 0 0 1.47.85H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                        <span class="sr-only">게시물 옵션</span>
+                    </button>
+                    <div class="action-row">
+                        <button type="submit" class="compose-action-icon-btn action-save" aria-label="수정 저장" title="수정 저장">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                            <span class="sr-only">수정 저장</span>
+                        </button>
+                        <a class="btn compose-action-icon-btn cancel action-cancel" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}" aria-label="취소" title="취소">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                            <span class="sr-only">취소</span>
+                        </a>
+                    </div>
                 </div>
             </div>
 
