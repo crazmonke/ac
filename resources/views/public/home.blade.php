@@ -616,7 +616,9 @@
                                 @endif
                                 <div class="chips">
                                     <span class="chip">{{ $item['board_name'] }}</span>
-                                    <span class="chip">{{ $item['apartment_name'] }}</span>
+                                    @if(($item['audience_scope'] ?? 'all') === 'apartment')
+                                        <span class="chip">{{ $item['apartment_name'] }}</span>
+                                    @endif
                                     @if(!empty($item['access_label']))
                                         <span class="chip locked">{{ $item['access_label'] }}</span>
                                     @endif

@@ -220,6 +220,7 @@ class PublicSiteController extends Controller
             'poll_question' => (string) ($pollPreview['question'] ?? ''),
             'poll_options_preview' => (array) ($pollPreview['options'] ?? []),
             'poll_total_votes' => (int) ($pollPreview['total_votes'] ?? 0),
+            'audience_scope' => (string) ($post->audience_scope ?? 'all'),
             'apartment_name' => $post->apartment->name,
             'body_preview' => $this->buildBodyPreview($post->body),
             'media_items' => $canRead ? $this->extractMediaItems($post) : [],
