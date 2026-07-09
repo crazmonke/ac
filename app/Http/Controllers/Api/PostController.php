@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Board;
 use App\Models\Post;
 use App\Services\PermissionService;
+use App\Services\FcmMessagingService;
 use Illuminate\Http\Request;
 use App\Models\User;
 
 class PostController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissionService)
-    {
+    public function __construct(
+        private readonly PermissionService $permissionService,
+        private readonly FcmMessagingService $fcmMessagingService,
+    ) {
     }
 
     public function index(int $boardId)
@@ -46,6 +49,20 @@ class PostController extends Controller
         $data['visibility'] = $data['visibility'] ?? 'resident_only';
 
         $post = Post::query()->create($data);
+
+        if ($data['is_notice']) {
+            $this->fcmMessagingService->sendNotice((int) $post->id, (int) $post->apartment_id, [
+                'board_id' => (string) $board->id,
+                'board_slug' => (string) $board->slug,
+                'title' => $post->title,
+            ]);
+        } else {
+            $this->fcmMessagingService->sendNewPost((int) $post->id, (int) $post->apartment_id, [
+                'board_id' => (string) $board->id,
+                'board_slug' => (string) $board->slug,
+                'title' => $post->title,
+            ]);
+        }
 
         return response()->json(['data' => $post], 201);
     }

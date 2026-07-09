@@ -63,4 +63,34 @@ class FcmTokenTest extends TestCase
             'token' => 'sample-fcm-token',
         ]);
     }
+
+    public function test_same_user_and_device_updates_existing_token(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/fcm-token', [
+            'token' => 'token-old',
+            'platform' => 'ios',
+            'device_id' => 'device-123',
+            'device_name' => 'iPhone',
+            'app_version' => '1.0.0',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/fcm-token', [
+            'token' => 'token-new',
+            'platform' => 'ios',
+            'device_id' => 'device-123',
+            'device_name' => 'iPhone',
+            'app_version' => '1.0.1',
+        ])->assertOk();
+
+        $this->assertDatabaseCount('fcm_tokens', 1);
+        $this->assertDatabaseHas('fcm_tokens', [
+            'user_id' => $user->id,
+            'device_id' => 'device-123',
+            'token' => 'token-new',
+            'app_version' => '1.0.1',
+        ]);
+    }
 }

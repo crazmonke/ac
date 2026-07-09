@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\FcmMessagingService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissionService)
-    {
+    public function __construct(
+        private readonly PermissionService $permissionService,
+        private readonly FcmMessagingService $fcmMessagingService,
+    ) {
     }
 
     public function index(int $postId)
@@ -52,6 +55,13 @@ class CommentController extends Controller
         $comment = Comment::query()->create($data);
 
         $post->increment('comment_count');
+
+        $this->fcmMessagingService->sendComment((int) $post->id, (int) $post->apartment_id, [
+            'comment_id' => (string) $comment->id,
+            'board_id' => (string) $post->board_id,
+            'board_slug' => (string) ($post->board?->slug ?? ''),
+            'title' => $post->title,
+        ]);
 
         return response()->json(['data' => $comment], 201);
     }

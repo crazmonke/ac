@@ -18,20 +18,51 @@ class FcmTokenController extends Controller
             'app_version' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $token = FcmToken::query()->updateOrCreate(
-            [
-                'user_id' => $request->user()->id,
-                'device_id' => $data['device_id'] ?? null,
-                'token' => $data['token'],
-            ],
-            [
-                'platform' => $data['platform'] ?? null,
-                'device_name' => $data['device_name'] ?? null,
-                'app_version' => $data['app_version'] ?? null,
-                'last_seen_at' => now(),
-                'enabled' => true,
-            ]
-        );
+        $userId = $request->user()->id;
+        $deviceId = $data['device_id'] ?? null;
+
+        $query = FcmToken::query()->where('user_id', $userId);
+
+        if (! empty($deviceId)) {
+            $token = $query->where('device_id', $deviceId)->first();
+
+            if (! $token) {
+                $token = new FcmToken();
+                $token->user_id = $userId;
+                $token->device_id = $deviceId;
+            }
+        } else {
+            $token = $query->where('token', $data['token'])->first() ?? new FcmToken();
+            $token->user_id = $userId;
+        }
+
+        $token->fill([
+            'token' => $data['token'],
+            'platform' => $data['platform'] ?? null,
+            'device_name' => $data['device_name'] ?? null,
+            'app_version' => $data['app_version'] ?? null,
+            'last_seen_at' => now(),
+            'enabled' => true,
+        ]);
+
+        if (! empty($deviceId)) {
+            $token->device_id = $deviceId;
+        }
+
+        $token->save();
+
+        if (! empty($deviceId)) {
+            FcmToken::query()
+                ->where('user_id', $userId)
+                ->where('device_id', $deviceId)
+                ->where('id', '!=', $token->id)
+                ->delete();
+        }
+
+        FcmToken::query()
+            ->where('user_id', '!=', $userId)
+            ->where('token', $data['token'])
+            ->delete();
 
         return response()->json([
             'data' => $token,
