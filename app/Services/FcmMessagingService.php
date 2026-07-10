@@ -177,7 +177,7 @@ class FcmMessagingService
         return '/community/posts/' . $postId . ($query ? ('?' . http_build_query($query)) : '');
     }
 
-    private function normalizeData(array $data): array
+    private function normalizeData(array $data): object
     {
         $normalized = [];
 
@@ -194,7 +194,7 @@ class FcmMessagingService
             $normalized[$key] = is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
-        return $normalized;
+        return (object) $normalized;
     }
 
     private function getAccessToken(): ?string

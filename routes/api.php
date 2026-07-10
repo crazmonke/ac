@@ -10,7 +10,16 @@ use App\Http\Controllers\Api\PostFileController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostLikeController;
 use App\Http\Controllers\Api\ReportController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+// WebView(쿠키 세션)에서 앱용 Bearer 토큰을 발급받는 엔드포인트
+Route::middleware('auth:web')->get('/app-token', function (Request $request) {
+    $user = $request->user('web');
+    $user->tokens()->where('name', 'app-fcm')->delete();
+    $token = $user->createToken('app-fcm', ['fcm']);
+    return response()->json(['token' => $token->plainTextToken]);
+});
 
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:20,1');
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:30,1');
