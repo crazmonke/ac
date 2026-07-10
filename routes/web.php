@@ -117,6 +117,8 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/boards/{id}', [AdminDashboardController::class, 'destroyBoard']);
     Route::get('/reports', [AdminDashboardController::class, 'reports']);
     Route::put('/reports/{id}', [AdminDashboardController::class, 'updateReport']);
+    Route::get('/notifications', [AdminDashboardController::class, 'notifications']);
+    Route::post('/notifications', [AdminDashboardController::class, 'sendNotification']);
     Route::get('/server-info', function () {
         return view('admin.server-info', [
             'phpSettings' => [

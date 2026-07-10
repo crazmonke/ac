@@ -56,12 +56,14 @@ class CommentController extends Controller
 
         $post->increment('comment_count');
 
-        $this->fcmMessagingService->sendComment((int) $post->id, (int) $post->apartment_id, [
-            'comment_id' => (string) $comment->id,
-            'board_id' => (string) $post->board_id,
-            'board_slug' => (string) ($post->board?->slug ?? ''),
-            'title' => $post->title,
-        ]);
+        if ($post->user_id && $post->user_id !== $request->user()->id) {
+            $this->fcmMessagingService->sendCommentToUser((int) $post->user_id, (int) $post->id, (int) $post->apartment_id, [
+                'comment_id' => (string) $comment->id,
+                'board_id' => (string) $post->board_id,
+                'board_slug' => (string) ($post->board?->slug ?? ''),
+                'title' => $post->title,
+            ]);
+        }
 
         return response()->json(['data' => $comment], 201);
     }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\PostFileController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\PostLikeController;
 use App\Http\Controllers\Api\ReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/posts/{id}', [PostController::class, 'show']);
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+    Route::post('/posts/{id}/like', [PostLikeController::class, 'toggle'])
+        ->middleware('throttle:60,1');
 
     Route::get('/posts/{postId}/comments', [CommentController::class, 'index']);
     Route::post('/posts/{postId}/comments', [CommentController::class, 'store'])

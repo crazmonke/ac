@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\UserResidence;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
+use App\Services\FcmMessagingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +26,10 @@ class AdminDashboardController extends Controller
 {
     private const VERIFIED_ROLES = ['resident', 'household_rep', 'owner_verified', 'tenant_verified'];
 
-    public function __construct(private readonly ApartmentSelectionService $apartmentSelectionService)
-    {
+    public function __construct(
+        private readonly ApartmentSelectionService $apartmentSelectionService,
+        private readonly FcmMessagingService $fcmMessagingService,
+    ) {
     }
 
     public function index()
@@ -336,6 +339,24 @@ class AdminDashboardController extends Controller
             'users' => $users,
             'q' => $keyword,
         ]);
+    }
+
+    public function notifications()
+    {
+        return view('admin.notifications');
+    }
+
+    public function sendNotification(Request $request)
+    {
+        $data = $request->validate([
+            'topic' => ['required', 'in:notice,new_post,comment'],
+            'title' => ['required', 'string', 'max:100'],
+            'body' => ['required', 'string', 'max:300'],
+        ]);
+
+        $this->fcmMessagingService->sendTopicNotification($data['topic'], $data['title'], $data['body']);
+
+        return redirect('/admin/notifications')->with('status', '알림이 발송되었습니다.');
     }
 
     private function extractRegionFromResidenceAddress(string $roadAddress, string $jibunAddress = ''): array

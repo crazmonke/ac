@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FcmToken;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,76 @@ class FcmMessagingService
             '게시글에 새 댓글이 도착했습니다.',
             $this->buildPayload('comment', $postId, $apartmentId, $extraData)
         );
+    }
+
+    public function sendCommentToUser(int $userId, int $postId, ?int $apartmentId = null, array $extraData = []): void
+    {
+        $this->sendToUserDevices(
+            $userId,
+            '새 댓글이 달렸습니다',
+            '게시글에 새 댓글이 도착했습니다.',
+            $this->buildPayload('comment', $postId, $apartmentId, $extraData)
+        );
+    }
+
+    public function sendLikeToUser(int $userId, int $postId, ?int $apartmentId = null, array $extraData = []): void
+    {
+        $this->sendToUserDevices(
+            $userId,
+            '게시글에 좋아요가 달렸습니다',
+            '내 게시글을 누군가 좋아합니다.',
+            $this->buildPayload('like', $postId, $apartmentId, $extraData)
+        );
+    }
+
+    public function sendToUserDevices(int $userId, string $title, string $body, array $data = []): void
+    {
+        $tokens = FcmToken::query()
+            ->where('user_id', $userId)
+            ->where('enabled', true)
+            ->pluck('token');
+
+        foreach ($tokens as $token) {
+            $this->sendToToken($token, $title, $body, $data);
+        }
+    }
+
+    public function sendToToken(string $token, string $title, string $body, array $data = []): void
+    {
+        $projectId = config('services.firebase.project_id');
+
+        if (! $projectId) {
+            return;
+        }
+
+        $accessToken = $this->getAccessToken();
+
+        if (! $accessToken) {
+            return;
+        }
+
+        $payload = [
+            'message' => [
+                'token' => $token,
+                'notification' => [
+                    'title' => $title,
+                    'body' => $body,
+                ],
+                'data' => $this->normalizeData($data),
+            ],
+        ];
+
+        $response = Http::withToken($accessToken)
+            ->acceptJson()
+            ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
+
+        if (! $response->successful()) {
+            Log::warning('FCM token notification failed.', [
+                'token' => substr($token, 0, 20) . '...',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
     }
 
     public function sendNewPost(int $postId, ?int $apartmentId = null, array $extraData = []): void
