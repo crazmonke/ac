@@ -202,14 +202,11 @@
     });
 
     if (registerForm) {
-        registerForm.addEventListener('submit', async (event) => {
-            if (latitudeInput.value && longitudeInput.value) {
-                return;
-            }
-
+        registerForm.addEventListener('submit', function(event) {
             event.preventDefault();
-            await ensureGeoCoordinates();
-            registerForm.submit();
+            ensureGeoCoordinates().then(function() {
+                registerForm.submit();
+            });
         });
     }
 })();
