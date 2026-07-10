@@ -82,9 +82,9 @@ class WebAuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
-            'apartment_query' => ['required', 'string', 'max:120'],
-            'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
-               'residence_building_id' => ['nullable', 'integer', 'exists:residence_buildings,id'],
+            'apartment_query' => ['nullable', 'string', 'max:120'],
+            'apartment_id' => ['required', 'integer', 'exists:apartments,id'],
+            'residence_building_id' => ['nullable', 'integer', 'exists:residence_buildings,id'],
             'residence_dong' => ['nullable', 'string', 'max:40'],
             'residence_ho' => ['nullable', 'string', 'max:40'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
@@ -92,17 +92,21 @@ class WebAuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
+        $apartmentQuery = $data['apartment_query']
+            ?? Apartment::query()->find((int) $data['apartment_id'])?->name
+            ?? '';
+
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'preferred_apartment_id' => $data['apartment_id'] ?? null,
+            'preferred_apartment_id' => (int) $data['apartment_id'],
             'password' => $data['password'],
         ]);
 
         $selection = $this->apartmentSelectionService->applySelection(
             $user,
-            isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
-            $data['apartment_query'],
+            (int) $data['apartment_id'],
+            $apartmentQuery,
             'register',
             isset($data['latitude']) ? (float) $data['latitude'] : null,
             isset($data['longitude']) ? (float) $data['longitude'] : null,
