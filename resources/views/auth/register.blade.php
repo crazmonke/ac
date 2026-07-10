@@ -10,16 +10,37 @@
         .card { width: min(430px, 100%); background: #fff; border: 1px solid #d6e1ef; border-radius: 14px; padding: 22px; }
         h1 { margin: 0 0 14px; font-size: 1.45rem; }
         label { display: block; margin-top: 10px; font-size: 0.9rem; }
-        input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #c8d5e7; margin-top: 6px; }
-        .btn { margin-top: 16px; width: 100%; border: 0; background: #0b7a75; color: #fff; padding: 11px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+        input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #c8d5e7; margin-top: 6px; font: inherit; color: inherit; background: #fff; box-sizing: border-box; }
+        select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+        select:disabled { background-color: #f3f6fa; color: #94a3b8; cursor: not-allowed; }
+        .btn { margin-top: 16px; width: 100%; border: 0; background: #0b7a75; color: #fff; padding: 11px; border-radius: 8px; cursor: pointer; font-weight: 700; font: inherit; font-weight: 700; }
         .err { margin-top: 10px; color: #b42318; font-size: 0.9rem; }
         .meta { margin-top: 14px; font-size: 0.86rem; color: #53657a; }
-        .autocomplete { position: relative; }
-        .suggestions { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid #d6e1ef; border-radius: 10px; box-shadow: 0 12px 24px rgba(20, 35, 60, 0.08); overflow: hidden; z-index: 10; }
-        .suggestion { padding: 10px 12px; cursor: pointer; border-top: 1px solid #eef3f8; }
-        .suggestion:first-child { border-top: 0; }
-        .suggestion small { display: block; color: #64748b; margin-top: 4px; }
         a { color: #0f6f67; text-decoration: none; font-weight: 700; }
+
+        /* region cascading selects */
+        .region-selects { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+
+        /* apartment name combobox */
+        .apt-combobox { position: relative; margin-top: 6px; }
+        .apt-combobox input { margin-top: 0; }
+        .apt-dropdown {
+            position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+            background: #fff; border: 1px solid #d6e1ef; border-radius: 10px;
+            box-shadow: 0 12px 24px rgba(20, 35, 60, 0.08);
+            max-height: 220px; overflow-y: auto; z-index: 10;
+        }
+        .apt-option {
+            padding: 10px 12px; cursor: pointer; border-top: 1px solid #eef3f8;
+            font-size: 0.9rem;
+        }
+        .apt-option:first-child { border-top: 0; }
+        .apt-option:hover, .apt-option.focused { background: #f0f7ff; }
+        .apt-option small { display: block; color: #64748b; margin-top: 3px; font-size: 0.8rem; }
+        .apt-option mark { background: #fef08a; border-radius: 2px; }
+        .apt-combobox-wrap { display: none; margin-top: 8px; }
+        .apt-combobox-wrap.visible { display: block; }
+        .apt-loading { font-size: 0.85rem; color: #64748b; margin-top: 6px; padding: 2px 0; }
     </style>
 </head>
 <body>
@@ -39,15 +60,32 @@
         </label>
 
         <label>공동주택 선택</label>
-        <div class="autocomplete">
-            <input id="apartmentQuery" type="text" name="apartment_query" value="{{ old('apartment_query', $initialApartmentName) }}" placeholder="공동주택/오피스텔/빌라/도로명 검색" autocomplete="off" required>
-            <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', request()->query('apartment_id')) }}">
-            <input id="residenceBuildingId" type="hidden" name="residence_building_id" value="{{ old('residence_building_id', $initialResidenceBuildingId) }}">
-            <input id="latitude" type="hidden" name="latitude" value="{{ old('latitude') }}">
-            <input id="longitude" type="hidden" name="longitude" value="{{ old('longitude') }}">
-            <div id="apartmentSuggestions" class="suggestions" style="display:none;"></div>
+        <div class="region-selects">
+            <select id="sidoSelect">
+                <option value="">도/특별시/광역시 선택</option>
+            </select>
+            <select id="sigunguSelect" disabled>
+                <option value="">시/군/구 선택</option>
+            </select>
+            <select id="eupmyeondongSelect" disabled>
+                <option value="">읍/면/동 선택</option>
+            </select>
         </div>
-        <div class="meta">검색 결과 선택 후 동/호를 입력하면 세대 단위로 가입됩니다. 위치 권한을 허용하면 GPS 검증으로 인증이 우선 처리될 수 있습니다.</div>
+
+        <div class="apt-combobox-wrap" id="aptComboboxWrap">
+            <div class="apt-combobox" id="aptCombobox">
+                <input id="aptNameInput" type="text" placeholder="공동주택명 검색 (예: 현대)" autocomplete="off">
+                <div id="aptDropdown" class="apt-dropdown" style="display:none;"></div>
+            </div>
+        </div>
+
+        <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', request()->query('apartment_id')) }}">
+        <input id="residenceBuildingId" type="hidden" name="residence_building_id" value="{{ old('residence_building_id') }}">
+        <input id="latitude" type="hidden" name="latitude" value="{{ old('latitude') }}">
+        <input id="longitude" type="hidden" name="longitude" value="{{ old('longitude') }}">
+        <div id="aptSelectError" class="err" style="display:none;">공동주택을 선택해 주세요.</div>
+
+        <div class="meta">읍/면/동까지 선택 후 공동주택을 골라주세요. 동/호를 입력하면 세대 단위로 가입됩니다. 위치 권한을 허용하면 GPS 검증으로 인증이 우선 처리됩니다.</div>
 
         <label>동 (선택)
             <input type="text" name="residence_dong" value="{{ old('residence_dong') }}" placeholder="예: 101">
@@ -79,139 +117,246 @@
 
 <script>
 (function () {
-    const queryInput = document.getElementById('apartmentQuery');
-    const apartmentIdInput = document.getElementById('apartmentId');
+    const sidoSelect         = document.getElementById('sidoSelect');
+    const sigunguSelect      = document.getElementById('sigunguSelect');
+    const eupmyeondongSelect = document.getElementById('eupmyeondongSelect');
+    const aptComboboxWrap    = document.getElementById('aptComboboxWrap');
+    const aptNameInput       = document.getElementById('aptNameInput');
+    const aptDropdown        = document.getElementById('aptDropdown');
+    const apartmentIdInput   = document.getElementById('apartmentId');
     const residenceBuildingIdInput = document.getElementById('residenceBuildingId');
-    const latitudeInput = document.getElementById('latitude');
-    const longitudeInput = document.getElementById('longitude');
-    const suggestionBox = document.getElementById('apartmentSuggestions');
-    const registerForm = document.querySelector('form.card');
-    let lastController = null;
+    const latitudeInput      = document.getElementById('latitude');
+    const longitudeInput     = document.getElementById('longitude');
+    const aptSelectError     = document.getElementById('aptSelectError');
+    const registerForm       = document.querySelector('form.card');
+
+    let allApartments = [];   // full list for current eupmyeondong
+    let selectedAptName = '';
+
+    // ── geolocation ──────────────────────────────────────────────────────────
 
     async function ensureGeoCoordinates() {
-        if (!latitudeInput || !longitudeInput) {
-            return;
-        }
-
-        if (latitudeInput.value && longitudeInput.value) {
-            return;
-        }
-
-        if (!('geolocation' in navigator)) {
-            return;
-        }
-
+        if (!latitudeInput || !longitudeInput) return;
+        if (latitudeInput.value && longitudeInput.value) return;
+        if (!('geolocation' in navigator)) return;
         await new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition((position) => {
-                latitudeInput.value = String(position.coords.latitude);
-                longitudeInput.value = String(position.coords.longitude);
-                resolve();
-            }, () => {
-                resolve();
-            }, {
-                enableHighAccuracy: true,
-                timeout: 6000,
-                maximumAge: 0,
-            });
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    latitudeInput.value  = String(pos.coords.latitude);
+                    longitudeInput.value = String(pos.coords.longitude);
+                    resolve();
+                },
+                () => resolve(),
+                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+            );
         });
     }
 
     if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition((position) => {
-            latitudeInput.value = String(position.coords.latitude);
-            longitudeInput.value = String(position.coords.longitude);
-        }, () => {
-            latitudeInput.value = '';
-            longitudeInput.value = '';
-        }, {
-            enableHighAccuracy: false,
-            timeout: 4000,
-            maximumAge: 300000,
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                latitudeInput.value  = String(pos.coords.latitude);
+                longitudeInput.value = String(pos.coords.longitude);
+            },
+            () => {},
+            { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+        );
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    function resetSelect(sel, placeholder) {
+        sel.innerHTML = `<option value="">${placeholder}</option>`;
+        sel.disabled = true;
+    }
+
+    function clearAptSelection() {
+        apartmentIdInput.value        = '';
+        residenceBuildingIdInput.value = '';
+        selectedAptName = '';
+        aptNameInput.value = '';
+        allApartments = [];
+    }
+
+    function closeDropdown() {
+        aptDropdown.style.display = 'none';
+        aptDropdown.innerHTML = '';
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function highlightMatch(text, query) {
+        if (!query) return escHtml(text);
+        const idx = text.toLowerCase().indexOf(query.toLowerCase());
+        if (idx < 0) return escHtml(text);
+        return escHtml(text.slice(0, idx)) +
+               `<mark>${escHtml(text.slice(idx, idx + query.length))}</mark>` +
+               escHtml(text.slice(idx + query.length));
+    }
+
+    // ── cascading region API calls ────────────────────────────────────────────
+
+    async function fetchRegions(params) {
+        const qs  = new URLSearchParams(params).toString();
+        const res = await fetch(`/apartments/regions?${qs}`, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return json.data || [];
+    }
+
+    async function fetchApartmentsByRegion(sido, sigungu, eupmyeondong) {
+        const qs  = new URLSearchParams({ sido, sigungu, eupmyeondong }).toString();
+        const res = await fetch(`/apartments/by-region?${qs}`, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return json.data || [];
+    }
+
+    // ── populate selects ──────────────────────────────────────────────────────
+
+    async function loadSido() {
+        const items = await fetchRegions({ level: 'sido' });
+        items.forEach((v) => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = v;
+            sidoSelect.appendChild(opt);
         });
     }
 
-    function closeSuggestions() {
-        suggestionBox.style.display = 'none';
-        suggestionBox.innerHTML = '';
+    sidoSelect.addEventListener('change', async () => {
+        resetSelect(sigunguSelect, '시/군/구 선택');
+        resetSelect(eupmyeondongSelect, '읍/면/동 선택');
+        aptComboboxWrap.classList.remove('visible');
+        clearAptSelection();
+        closeDropdown();
+
+        const sido = sidoSelect.value;
+        if (!sido) return;
+
+        const items = await fetchRegions({ level: 'sigungu', sido });
+        items.forEach((v) => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = v;
+            sigunguSelect.appendChild(opt);
+        });
+        sigunguSelect.disabled = false;
+    });
+
+    sigunguSelect.addEventListener('change', async () => {
+        resetSelect(eupmyeondongSelect, '읍/면/동 선택');
+        aptComboboxWrap.classList.remove('visible');
+        clearAptSelection();
+        closeDropdown();
+
+        const sido    = sidoSelect.value;
+        const sigungu = sigunguSelect.value;
+        if (!sido || !sigungu) return;
+
+        const items = await fetchRegions({ level: 'eupmyeondong', sido, sigungu });
+        items.forEach((v) => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = v;
+            eupmyeondongSelect.appendChild(opt);
+        });
+        eupmyeondongSelect.disabled = false;
+    });
+
+    eupmyeondongSelect.addEventListener('change', async () => {
+        clearAptSelection();
+        closeDropdown();
+
+        const sido         = sidoSelect.value;
+        const sigungu      = sigunguSelect.value;
+        const eupmyeondong = eupmyeondongSelect.value;
+
+        if (!sido || !sigungu || !eupmyeondong) {
+            aptComboboxWrap.classList.remove('visible');
+            return;
+        }
+
+        aptComboboxWrap.classList.add('visible');
+        aptNameInput.placeholder = '불러오는 중…';
+        aptNameInput.disabled = true;
+
+        allApartments = await fetchApartmentsByRegion(sido, sigungu, eupmyeondong);
+
+        aptNameInput.disabled = false;
+        aptNameInput.placeholder = `공동주택명 검색 (${allApartments.length}개)`;
+        aptNameInput.focus();
+    });
+
+    // ── apartment name combobox ───────────────────────────────────────────────
+
+    function renderDropdown(query) {
+        const q = query.trim().toLowerCase();
+        const filtered = q
+            ? allApartments.filter((a) => a.name.toLowerCase().includes(q))
+            : allApartments;
+
+        if (!filtered.length) {
+            aptDropdown.innerHTML = '<div class="apt-option" style="color:#94a3b8;cursor:default;">검색 결과 없음</div>';
+            aptDropdown.style.display = 'block';
+            return;
+        }
+
+        aptDropdown.innerHTML = filtered.map((a) => `
+            <div class="apt-option" data-id="${a.id}" data-building-id="${a.building_id || ''}" data-name="${escHtml(a.name)}">
+                ${highlightMatch(a.name, query.trim())}
+                <small>${escHtml(a.road_address || '')}</small>
+            </div>
+        `).join('');
+        aptDropdown.style.display = 'block';
     }
 
-    queryInput.addEventListener('input', async () => {
-        const keyword = queryInput.value.trim();
+    aptNameInput.addEventListener('input', () => {
         apartmentIdInput.value = '';
         residenceBuildingIdInput.value = '';
-
-        if (lastController) {
-            lastController.abort();
-        }
-
-        if (keyword.length < 2) {
-            closeSuggestions();
-            return;
-        }
-
-        lastController = new AbortController();
-
-        try {
-            const response = await fetch(`/apartments/search?q=${encodeURIComponent(keyword)}`, {
-                headers: { Accept: 'application/json' },
-                signal: lastController.signal,
-            });
-
-            if (!response.ok) {
-                closeSuggestions();
-                return;
-            }
-
-            const payload = await response.json();
-            const rows = payload.data || [];
-
-            if (!rows.length) {
-                suggestionBox.innerHTML = '<div class="suggestion">검색 결과가 없습니다.</div>';
-                suggestionBox.style.display = 'block';
-                return;
-            }
-
-            suggestionBox.innerHTML = rows.map((row) => `
-                <div class="suggestion" data-id="${row.id || ''}" data-building-id="${row.building_id || ''}" data-name="${row.name}">
-                    ${row.name}
-                    <small>${row.housing_type || 'residence'} · ${row.region} · ${row.road_address}</small>
-                </div>
-            `).join('');
-            suggestionBox.style.display = 'block';
-        } catch (error) {
-            closeSuggestions();
-        }
+        selectedAptName = '';
+        renderDropdown(aptNameInput.value);
     });
 
-    suggestionBox.addEventListener('click', (event) => {
-        const item = event.target.closest('.suggestion[data-id]');
-        if (!item) {
-            return;
-        }
+    aptNameInput.addEventListener('focus', () => {
+        if (allApartments.length) renderDropdown(aptNameInput.value);
+    });
 
-        apartmentIdInput.value = item.dataset.id;
+    aptDropdown.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.apt-option[data-id]');
+        if (!item) return;
+        e.preventDefault();
+        apartmentIdInput.value        = item.dataset.id;
         residenceBuildingIdInput.value = item.dataset.buildingId;
-        queryInput.value = item.dataset.name;
-        closeSuggestions();
+        selectedAptName = item.dataset.name;
+        aptNameInput.value = item.dataset.name;
+        aptSelectError.style.display = 'none';
+        closeDropdown();
     });
 
-    document.addEventListener('click', (event) => {
-        if (!event.target.closest('.autocomplete')) {
-            closeSuggestions();
-        }
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#aptCombobox')) closeDropdown();
     });
+
+    // ── form submit ───────────────────────────────────────────────────────────
 
     if (registerForm) {
-        registerForm.addEventListener('submit', function(event) {
-            if (latitudeInput.value && longitudeInput.value) {
+        registerForm.addEventListener('submit', function (event) {
+            if (!apartmentIdInput.value) {
+                event.preventDefault();
+                aptSelectError.style.display = 'block';
+                aptComboboxWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+            aptSelectError.style.display = 'none';
+
+            if (latitudeInput.value && longitudeInput.value) return;
             event.preventDefault();
-            ensureGeoCoordinates().then(function() {
-                registerForm.submit();
-            });
+            ensureGeoCoordinates().then(function () { registerForm.submit(); });
         });
     }
+
+    // ── init ──────────────────────────────────────────────────────────────────
+    loadSido();
 })();
 </script>
 </body>

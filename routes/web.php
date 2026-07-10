@@ -50,6 +50,8 @@ Route::view('/apartments', 'placeholder', [
     'description' => '단지 검색과 선택을 위한 페이지입니다.',
 ]);
 Route::get('/apartments/search', [ApartmentSearchController::class, 'index']);
+Route::get('/apartments/regions', [ApartmentSearchController::class, 'regions']);
+Route::get('/apartments/by-region', [ApartmentSearchController::class, 'byRegion']);
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
