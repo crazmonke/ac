@@ -201,8 +201,17 @@
         }
     });
 
-    // submit 핸들러 없이 기본 폼 제출을 사용한다.
-    // WKWebView는 Promise 내 form.submit() 호출 시 사용자 제스처 컨텍스트 단절로 제출이 차단된다.
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(event) {
+            if (latitudeInput.value && longitudeInput.value) {
+                return;
+            }
+            event.preventDefault();
+            ensureGeoCoordinates().then(function() {
+                registerForm.submit();
+            });
+        });
+    }
 })();
 </script>
 </body>
