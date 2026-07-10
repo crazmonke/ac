@@ -753,7 +753,7 @@ class CommunityBoardController extends Controller
     public function uploadEditorPhoto(Request $request)
     {
         $data = $request->validate([
-            'file' => ['required', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,heic,heif,avif'],
+            'file' => ['required', 'file', 'max:51200', 'mimes:jpg,jpeg,png,gif,webp,heic,heif,avif'],
         ]);
 
         $uploadedFile = $data['file'];
@@ -780,7 +780,7 @@ class CommunityBoardController extends Controller
     public function uploadEditorVideo(Request $request)
     {
         $data = $request->validate([
-            'file' => ['required', 'file', 'max:102400', 'mimes:mp4,mov,webm,m4v'],
+            'file' => ['required', 'file', 'max:512000', 'mimes:mp4,mov,webm,m4v'],
         ]);
 
         $uploadedFile = $data['file'];
@@ -791,7 +791,7 @@ class CommunityBoardController extends Controller
             mkdir($targetDirectory, 0755, true);
         }
 
-        $maxOutputBytes = 10 * 1024 * 1024;
+        $maxOutputBytes = 100 * 1024 * 1024;
         $originalExtension = Str::lower((string) $uploadedFile->getClientOriginalExtension());
         $tempName = Str::uuid().'.'.($originalExtension !== '' ? $originalExtension : 'mp4');
         $tempPath = $targetDirectory.'/'.$tempName;

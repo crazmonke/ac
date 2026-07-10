@@ -264,6 +264,41 @@
             align-items: center;
             justify-content: center;
         }
+        .mobile-media-uploading {
+            background: #f0f4f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .upload-progress-wrap { width: 80%; text-align: center; }
+        .upload-progress-name {
+            display: block;
+            font-size: 0.72rem;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 6px;
+        }
+        .upload-progress-bar {
+            height: 6px;
+            background: #d1d9e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .upload-progress-fill {
+            height: 100%;
+            background: #0b7a75;
+            border-radius: 3px;
+            transition: width 0.15s ease;
+        }
+        .upload-progress-pct {
+            display: block;
+            font-size: 0.78rem;
+            color: #0b7a75;
+            font-weight: 600;
+            margin-top: 4px;
+        }
         .mobile-options-trigger {
             display: none;
             width: 100%;
@@ -651,8 +686,8 @@
 
     const csrfToken = form.querySelector('input[name="_token"]')?.value || '';
     const phpUploadLimitBytes = {{ (int) ($phpUploadLimitBytes ?? 8388608) }};
-    const editorImageLimitBytes = Math.min(phpUploadLimitBytes, 20 * 1024 * 1024);
-    const editorVideoInputLimitBytes = 100 * 1024 * 1024;
+    const editorImageLimitBytes = Math.min(phpUploadLimitBytes, 50 * 1024 * 1024);
+    const editorVideoInputLimitBytes = 500 * 1024 * 1024;
     const mobileMediaAssets = [];
     let mobileMediaSeq = 0;
 
@@ -745,27 +780,47 @@
         throw new Error(`이미지 용량이 너무 큽니다. ${formatBytes(editorImageLimitBytes)} 이하 파일을 선택해 주세요.`);
     };
 
-    const uploadEditorImage = async (file) => {
+    const uploadWithProgress = (url, formData, onProgress) =>
+        new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', url);
+            xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    onProgress(Math.round((e.loaded / e.total) * 100));
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try { resolve(JSON.parse(xhr.responseText)); }
+                    catch { reject(new Error('응답 파싱 실패')); }
+                } else {
+                    try {
+                        const p = JSON.parse(xhr.responseText);
+                        reject(new Error(p?.errors?.file?.[0] || p?.message || '업로드 실패'));
+                    } catch { reject(new Error('업로드 실패')); }
+                }
+            });
+
+            xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+            xhr.addEventListener('abort', () => reject(new Error('업로드 취소')));
+            xhr.send(formData);
+        });
+
+    const uploadEditorImage = async (file, onProgress = null) => {
         const preparedFile = await prepareImageFile(file);
         const formData = new FormData();
         formData.append('file', preparedFile);
 
-        const response = await fetch('/community/editor/photos', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                Accept: 'application/json',
-            },
-            body: formData,
-        });
+        const payload = await uploadWithProgress(
+            '/community/editor/photos',
+            formData,
+            (pct) => onProgress?.(pct)
+        );
 
-        if (!response.ok) {
-            const payload = await response.json().catch(() => null);
-            const message = payload?.errors?.file?.[0] || payload?.message || '이미지 업로드에 실패했습니다.';
-            throw new Error(message);
-        }
-
-        const payload = await response.json();
         if (!payload?.url) {
             throw new Error('이미지 업로드 응답이 올바르지 않습니다.');
         }
@@ -773,7 +828,7 @@
         return payload;
     };
 
-    const uploadEditorVideo = async (file) => {
+    const uploadEditorVideo = async (file, onProgress = null) => {
         if (!file || !String(file.type || '').startsWith('video/')) {
             throw new Error('영상 파일만 업로드할 수 있습니다.');
         }
@@ -789,22 +844,12 @@
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('/community/editor/videos', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                Accept: 'application/json',
-            },
-            body: formData,
-        });
+        const payload = await uploadWithProgress(
+            '/community/editor/videos',
+            formData,
+            (pct) => onProgress?.(pct)
+        );
 
-        if (!response.ok) {
-            const payload = await response.json().catch(() => null);
-            const message = payload?.errors?.file?.[0] || payload?.message || '영상 업로드에 실패했습니다.';
-            throw new Error(message);
-        }
-
-        const payload = await response.json();
         if (!payload?.url) {
             throw new Error('영상 업로드 응답이 올바르지 않습니다.');
         }
@@ -963,13 +1008,34 @@
             }
 
             for (const file of files) {
+                const placeholderId = `m_${Date.now()}_${mobileMediaSeq}`;
+                const placeholder = document.createElement('div');
+                placeholder.className = 'mobile-media-item mobile-media-uploading';
+                placeholder.dataset.mediaId = placeholderId;
+                placeholder.innerHTML = `
+                    <div class="upload-progress-wrap">
+                        <span class="upload-progress-name">${escapeHtml(file.name)}</span>
+                        <div class="upload-progress-bar"><div class="upload-progress-fill" style="width:0%"></div></div>
+                        <span class="upload-progress-pct">0%</span>
+                    </div>`;
+                mobileMediaPreview.classList.add('has-items');
+                mobileMediaPreview.appendChild(placeholder);
+
                 try {
-                    const payload = await uploadEditorImage(file);
+                    const payload = await uploadEditorImage(file, (pct) => {
+                        const fill = placeholder.querySelector('.upload-progress-fill');
+                        const label = placeholder.querySelector('.upload-progress-pct');
+                        if (fill) fill.style.width = pct + '%';
+                        if (label) label.textContent = pct + '%';
+                    });
+                    placeholder.remove();
                     registerMobileMedia('image', {
                         url: payload.url,
                         name: payload.name || file.name || 'image',
                     });
                 } catch (error) {
+                    placeholder.remove();
+                    renderMobileMediaPreview();
                     alert(error?.message || '이미지 업로드에 실패했습니다.');
                 }
             }
@@ -990,13 +1056,34 @@
             }
 
             for (const file of files) {
+                const placeholderId = `m_${Date.now()}_${mobileMediaSeq}`;
+                const placeholder = document.createElement('div');
+                placeholder.className = 'mobile-media-item mobile-media-uploading';
+                placeholder.dataset.mediaId = placeholderId;
+                placeholder.innerHTML = `
+                    <div class="upload-progress-wrap">
+                        <span class="upload-progress-name">${escapeHtml(file.name)}</span>
+                        <div class="upload-progress-bar"><div class="upload-progress-fill" style="width:0%"></div></div>
+                        <span class="upload-progress-pct">0%</span>
+                    </div>`;
+                mobileMediaPreview.classList.add('has-items');
+                mobileMediaPreview.appendChild(placeholder);
+
                 try {
-                    const payload = await uploadEditorVideo(file);
+                    const payload = await uploadEditorVideo(file, (pct) => {
+                        const fill = placeholder.querySelector('.upload-progress-fill');
+                        const label = placeholder.querySelector('.upload-progress-pct');
+                        if (fill) fill.style.width = pct + '%';
+                        if (label) label.textContent = pct + '%';
+                    });
+                    placeholder.remove();
                     registerMobileMedia('video', {
                         url: payload.url,
                         name: payload.name || file.name || 'video',
                     });
                 } catch (error) {
+                    placeholder.remove();
+                    renderMobileMediaPreview();
                     alert(error?.message || '영상 업로드에 실패했습니다.');
                 }
             }

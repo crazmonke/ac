@@ -115,4 +115,17 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/boards/{id}', [AdminDashboardController::class, 'destroyBoard']);
     Route::get('/reports', [AdminDashboardController::class, 'reports']);
     Route::put('/reports/{id}', [AdminDashboardController::class, 'updateReport']);
+    Route::get('/server-info', function () {
+        return view('admin.server-info', [
+            'phpSettings' => [
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'post_max_size'       => ini_get('post_max_size'),
+                'max_execution_time'  => ini_get('max_execution_time'),
+                'max_input_time'      => ini_get('max_input_time'),
+                'memory_limit'        => ini_get('memory_limit'),
+            ],
+            'ffmpegPath'      => trim((string) shell_exec('which ffmpeg 2>/dev/null')),
+            'ffmpegVersion'   => trim((string) shell_exec('ffmpeg -version 2>&1 | head -1')) ?: '확인 불가',
+        ]);
+    });
 });
