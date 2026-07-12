@@ -135,12 +135,32 @@
 
     // ── geolocation ──────────────────────────────────────────────────────────
 
+    function _appGetPosition(success, error, options) {
+        if (typeof AppGeoBridge !== 'undefined') {
+            var id = Math.random().toString(36).substr(2, 9);
+            window['_geoCallback_' + id] = function(lat, lng, acc) {
+                delete window['_geoCallback_' + id];
+                delete window['_geoError_' + id];
+                success({ coords: { latitude: lat, longitude: lng, accuracy: acc, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+            };
+            window['_geoError_' + id] = function(code, msg) {
+                delete window['_geoCallback_' + id];
+                delete window['_geoError_' + id];
+                if (error) error({ code: code, message: msg });
+            };
+            AppGeoBridge.postMessage('get:' + id);
+        } else if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(success, error, options);
+        } else if (error) {
+            error({ code: 2, message: 'Not supported' });
+        }
+    }
+
     async function ensureGeoCoordinates() {
         if (!latitudeInput || !longitudeInput) return;
         if (latitudeInput.value && longitudeInput.value) return;
-        if (!('geolocation' in navigator)) return;
         await new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition(
+            _appGetPosition(
                 (pos) => {
                     latitudeInput.value  = String(pos.coords.latitude);
                     longitudeInput.value = String(pos.coords.longitude);
@@ -152,16 +172,14 @@
         });
     }
 
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                latitudeInput.value  = String(pos.coords.latitude);
-                longitudeInput.value = String(pos.coords.longitude);
-            },
-            () => {},
-            { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
-        );
-    }
+    _appGetPosition(
+        (pos) => {
+            latitudeInput.value  = String(pos.coords.latitude);
+            longitudeInput.value = String(pos.coords.longitude);
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+    );
 
     // ── helpers ───────────────────────────────────────────────────────────────
 

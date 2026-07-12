@@ -298,6 +298,27 @@
     const suggestionBox = document.getElementById('apartmentSuggestions');
     let lastController = null;
 
+    function _appGetPosition(success, error, options) {
+        if (typeof AppGeoBridge !== 'undefined') {
+            var id = Math.random().toString(36).substr(2, 9);
+            window['_geoCallback_' + id] = function(lat, lng, acc) {
+                delete window['_geoCallback_' + id];
+                delete window['_geoError_' + id];
+                success({ coords: { latitude: lat, longitude: lng, accuracy: acc, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+            };
+            window['_geoError_' + id] = function(code, msg) {
+                delete window['_geoCallback_' + id];
+                delete window['_geoError_' + id];
+                if (error) error({ code: code, message: msg });
+            };
+            AppGeoBridge.postMessage('get:' + id);
+        } else if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(success, error, options);
+        } else if (error) {
+            error({ code: 2, message: 'Not supported' });
+        }
+    }
+
     async function ensureVerificationCoordinates() {
         if (!verificationLatitude || !verificationLongitude) {
             return;
@@ -307,12 +328,8 @@
             return;
         }
 
-        if (!('geolocation' in navigator)) {
-            return;
-        }
-
         await new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition((position) => {
+            _appGetPosition((position) => {
                 verificationLatitude.value = String(position.coords.latitude);
                 verificationLongitude.value = String(position.coords.longitude);
                 resolve();
@@ -326,23 +343,21 @@
         });
     }
 
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition((position) => {
-            if (verificationLatitude && verificationLongitude) {
-                verificationLatitude.value = String(position.coords.latitude);
-                verificationLongitude.value = String(position.coords.longitude);
-            }
-        }, () => {
-            if (verificationLatitude && verificationLongitude) {
-                verificationLatitude.value = '';
-                verificationLongitude.value = '';
-            }
-        }, {
-            enableHighAccuracy: false,
-            timeout: 4000,
-            maximumAge: 300000,
-        });
-    }
+    _appGetPosition((position) => {
+        if (verificationLatitude && verificationLongitude) {
+            verificationLatitude.value = String(position.coords.latitude);
+            verificationLongitude.value = String(position.coords.longitude);
+        }
+    }, () => {
+        if (verificationLatitude && verificationLongitude) {
+            verificationLatitude.value = '';
+            verificationLongitude.value = '';
+        }
+    }, {
+        enableHighAccuracy: false,
+        timeout: 4000,
+        maximumAge: 300000,
+    });
 
     if (!queryInput || !apartmentIdInput || !suggestionBox || queryInput.readOnly) {
         return;
