@@ -5,22 +5,43 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class BannerController extends Controller
 {
-    private function handleFileUpload(Request $request, string $fileFieldName, string $pathFieldName): ?string
+    private function saveBannerFile(\Illuminate\Http\UploadedFile $file): string
     {
-        if ($request->hasFile($fileFieldName)) {
-            $file = $request->file($fileFieldName);
-            if ($file->isValid()) {
-                // Cafe24 호환성: public/uploads에 직접 저장
-                $uploadDir = 'uploads/banners';
-                $path = $file->store($uploadDir, 'public');
-                return $path;
-            }
+        $ext      = strtolower($file->getClientOriginalExtension());
+        $filename = 'banner_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $destDir  = public_path('uploads/banners');
+
+        if (! is_dir($destDir)) {
+            mkdir($destDir, 0755, true);
         }
-        return null;
+
+        $file->move($destDir, $filename);
+
+        return 'uploads/banners/' . $filename;
+    }
+
+    private function deleteBannerFile(?string $path): void
+    {
+        if ($path && file_exists(public_path($path))) {
+            @unlink(public_path($path));
+        }
+    }
+
+    public function uploadTemp(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:jpeg,jpg,png,gif,webp,mp4,webm,ogg|max:102400',
+        ]);
+
+        $path = $this->saveBannerFile($request->file('file'));
+
+        return response()->json([
+            'path' => $path,
+            'url'  => asset($path),
+        ]);
     }
 
     public function index()
@@ -38,28 +59,29 @@ class BannerController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'type' => 'required|in:image,video,text',
-            'image_url' => 'nullable|url',
-            'image_file' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
-            'video_url' => 'nullable|url',
-            'video_file' => 'nullable|file|mimes:mp4,webm,ogg|max:102400',
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string|max:500',
+            'type'         => 'required|in:image,video,text',
+            'image_url'    => 'nullable|url',
+            'image_path'   => 'nullable|string|max:500',
+            'image_file'   => 'nullable|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
+            'video_url'    => 'nullable|url',
+            'video_path'   => 'nullable|string|max:500',
+            'video_file'   => 'nullable|file|mimes:mp4,webm,ogg|max:102400',
             'text_content' => 'nullable|string',
-            'button_url' => 'nullable|url',
-            'sort_order' => 'nullable|integer',
-            'is_active' => 'boolean',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'button_url'   => 'nullable|url',
+            'sort_order'   => 'nullable|integer',
+            'is_active'    => 'boolean',
+            'start_date'   => 'nullable|date',
+            'end_date'     => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        // 파일 업로드 처리
-        if ($imagePath = $this->handleFileUpload($request, 'image_file', 'image_path')) {
-            $validated['image_path'] = $imagePath;
+        // 파일이 직접 첨부된 경우 (fallback)
+        if ($request->hasFile('image_file') && $request->file('image_file')->isValid()) {
+            $validated['image_path'] = $this->saveBannerFile($request->file('image_file'));
         }
-
-        if ($videoPath = $this->handleFileUpload($request, 'video_file', 'video_path')) {
-            $validated['video_path'] = $videoPath;
+        if ($request->hasFile('video_file') && $request->file('video_file')->isValid()) {
+            $validated['video_path'] = $this->saveBannerFile($request->file('video_file'));
         }
 
         Banner::create($validated);
@@ -80,38 +102,40 @@ class BannerController extends Controller
     public function update(Request $request, Banner $banner)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'type' => 'required|in:image,video,text',
-            'image_url' => 'nullable|url',
-            'image_file' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
-            'video_url' => 'nullable|url',
-            'video_file' => 'nullable|file|mimes:mp4,webm,ogg|max:102400',
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string|max:500',
+            'type'         => 'required|in:image,video,text',
+            'image_url'    => 'nullable|url',
+            'image_path'   => 'nullable|string|max:500',
+            'image_file'   => 'nullable|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
+            'video_url'    => 'nullable|url',
+            'video_path'   => 'nullable|string|max:500',
+            'video_file'   => 'nullable|file|mimes:mp4,webm,ogg|max:102400',
             'text_content' => 'nullable|string',
-            'button_url' => 'nullable|url',
-            'sort_order' => 'nullable|integer',
-            'is_active' => 'boolean',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'button_url'   => 'nullable|url',
+            'sort_order'   => 'nullable|integer',
+            'is_active'    => 'boolean',
+            'start_date'   => 'nullable|date',
+            'end_date'     => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        // 기존 파일 삭제 및 새 파일 업로드
-        if ($request->hasFile('image_file')) {
-            if ($banner->image_path && Storage::disk('public')->exists($banner->image_path)) {
-                Storage::disk('public')->delete($banner->image_path);
-            }
-            if ($imagePath = $this->handleFileUpload($request, 'image_file', 'image_path')) {
-                $validated['image_path'] = $imagePath;
-            }
+        // 새 이미지가 업로드된 경우 기존 파일 삭제
+        $newImagePath = $validated['image_path'] ?? null;
+        if ($newImagePath && $newImagePath !== $banner->image_path) {
+            $this->deleteBannerFile($banner->image_path);
+        }
+        if ($request->hasFile('image_file') && $request->file('image_file')->isValid()) {
+            $this->deleteBannerFile($banner->image_path);
+            $validated['image_path'] = $this->saveBannerFile($request->file('image_file'));
         }
 
-        if ($request->hasFile('video_file')) {
-            if ($banner->video_path && Storage::disk('public')->exists($banner->video_path)) {
-                Storage::disk('public')->delete($banner->video_path);
-            }
-            if ($videoPath = $this->handleFileUpload($request, 'video_file', 'video_path')) {
-                $validated['video_path'] = $videoPath;
-            }
+        $newVideoPath = $validated['video_path'] ?? null;
+        if ($newVideoPath && $newVideoPath !== $banner->video_path) {
+            $this->deleteBannerFile($banner->video_path);
+        }
+        if ($request->hasFile('video_file') && $request->file('video_file')->isValid()) {
+            $this->deleteBannerFile($banner->video_path);
+            $validated['video_path'] = $this->saveBannerFile($request->file('video_file'));
         }
 
         $banner->update($validated);
@@ -121,13 +145,8 @@ class BannerController extends Controller
 
     public function destroy(Banner $banner)
     {
-        // 파일 삭제
-        if ($banner->image_path && Storage::disk('public')->exists($banner->image_path)) {
-            Storage::disk('public')->delete($banner->image_path);
-        }
-        if ($banner->video_path && Storage::disk('public')->exists($banner->video_path)) {
-            Storage::disk('public')->delete($banner->video_path);
-        }
+        $this->deleteBannerFile($banner->image_path);
+        $this->deleteBannerFile($banner->video_path);
 
         $banner->delete();
 
@@ -137,7 +156,7 @@ class BannerController extends Controller
     public function reorder(Request $request)
     {
         $validated = $request->validate([
-            'banner_ids' => 'required|array',
+            'banner_ids'   => 'required|array',
             'banner_ids.*' => 'integer|exists:banners,id',
         ]);
 

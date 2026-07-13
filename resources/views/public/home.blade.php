@@ -656,11 +656,11 @@
             <div class="flicking-camera">
                 @foreach($banners as $banner)
                     <div class="banner-slide" data-banner-id="{{ $banner->id }}">
-                        @if($banner->type === 'image' && $banner->image_url)
-                            <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" loading="lazy">
-                        @elseif($banner->type === 'video' && $banner->video_url)
-                                <video src="{{ $banner->video_url }}" muted autoplay loop playsinline></video>
-                            @endif
+                        @if($banner->type === 'image' && ($banner->image_url || $banner->image_path))
+                            <img src="{{ $banner->image_url ?: asset($banner->image_path) }}" alt="{{ $banner->title }}" loading="lazy">
+                        @elseif($banner->type === 'video' && ($banner->video_url || $banner->video_path))
+                            <video src="{{ $banner->video_url ?: asset($banner->video_path) }}" muted autoplay loop playsinline></video>
+                        @endif
                             @if($banner->button_url)
                                 <a href="{{ $banner->button_url }}" class="banner-content">
                                     <h2>{{ $banner->title }}</h2>

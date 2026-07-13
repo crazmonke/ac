@@ -122,6 +122,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/posts', [AdminDashboardController::class, 'posts']);
     Route::post('/posts/bulk', [AdminDashboardController::class, 'bulkPostAction']);
     Route::delete('/posts/{id}', [AdminDashboardController::class, 'destroyPost']);
+    Route::post('/banners/upload-temp', [\App\Http\Controllers\Admin\BannerController::class, 'uploadTemp']);
     Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class);
     Route::post('/banners/reorder', \App\Http\Controllers\Admin\BannerController::class . '@reorder');
     Route::get('/server-info', function () {
