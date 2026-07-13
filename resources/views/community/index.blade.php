@@ -10,8 +10,35 @@
         .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
         .meta { color: #5b6d82; font-size: 0.92rem; }
         .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-        .scope-tab { border: 1px solid #d5dfec; border-radius: 999px; padding: 7px 12px; text-decoration: none; color: #20344f; background: #fff; font-weight: 700; }
+        .scope-tab { border: 1px solid #d5dfec; border-radius: 999px; padding: 6px 11px; text-decoration: none; color: #20344f; background: #fff; font-size: 0.92rem; padding: 6px 11px; line-height: 1.15; }
         .scope-tab.active { background: #0f6f67; border-color: #0f6f67; color: #fff; }
+        .board-tabs-container { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .board-tabs-container .board-tab-item { font-size: 0.92rem; padding: 6px 11px; line-height: 1.15; white-space: nowrap; }
+        .board-tab-scroll { display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; flex: 1 1 auto; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-x; cursor: grab; }
+        .board-tab-scroll::-webkit-scrollbar { display: none; }
+        .board-tab-scroll.dragging { cursor: grabbing; user-select: none; }
+        .board-tab-scroll .board-tab-item { flex: 0 0 auto; }
+        .board-tab-item {
+            flex: 0 0 auto;
+            padding: 7px 12px;
+            text-decoration: none;
+            color: #20344f;
+            font-weight: 700;
+            font-size: 0.92rem;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border: 1px solid #d5dfec;
+            border-radius: 999px;
+            transition: background-color 150ms, color 150ms, border-color 150ms;
+            position: relative;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .board-tab-item:hover { background: #f5f6f8; }
+        .board-tab-item.active { background: #0f6f67; color: #fff; border-color: #0f6f67; }
         .scope-tabs-topic { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
         .scope-tabs-topic .scope-tab { font-size: 0.92rem; padding: 6px 11px; line-height: 1.15; white-space: nowrap; }
         .topic-scroll { display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; flex: 1 1 auto; min-width: 0; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-x; cursor: grab; }
@@ -353,47 +380,44 @@
 
     <div class="top">
         <h1 style="margin:0;">커뮤니티</h1>
-        <div class="meta">
-            <!--
-            @if(auth()->check() && $isVerified)
-                인증회원 모드: 전국(동네)/동네(내 지역)/공동주택(내 단지) 열람 + 글쓰기 가능
-            @elseif(auth()->check())
-                비인증회원 모드: 전국(동네)/동네(내 지역) 상세 열람 가능, 공동주택은 인증 후 열람 가능
+        @if($canCreatePost)
+            @if($selectedBoardSlug !== '')
+                <a class="scope-tab active desktop-write-cta" href="/community/boards/{{ $selectedBoardSlug }}/create?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif">글쓰기</a>
             @else
-                비회원 모드: 전국 동네 공개 게시글 열람
+                <a class="scope-tab active desktop-write-cta" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif">글쓰기</a>
             @endif
-            -->
-        </div>
+        @elseif(auth()->check())
+            <div class="empty-box" style="margin:0; padding:8px 10px;">글쓰기는 인증회원만 가능합니다. 단지 인증을 완료해 주세요.</div>
+        @else
+            <a class="scope-tab" href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">로그인 후 글쓰기</a>
+        @endif
     </div>
 
     <div class="scope-tabs">
-        <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="/community?scope=all&apartment_id={{ $apartmentId }}">전국</a>
-        <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="/community?scope=region&apartment_id={{ $apartmentId }}">동네</a>
-        <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="/community?scope=apartment&apartment_id={{ $apartmentId }}">공동주택</a>
+        <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="{{ $scopeTabUrls['all'] }}">전국</a>
+        <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="{{ $scopeTabUrls['region'] }}">동네</a>
+        <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="{{ $scopeTabUrls['apartment'] }}">공동주택</a>
     </div>
 
     <div class="scope-tabs-topic">
-        <a class="scope-tab {{ $topic === '' ? 'active' : '' }}" href="/community?scope={{ $scope }}&apartment_id={{ $apartmentId }}">전체</a>
+        <a class="scope-tab {{ $topic === '' ? 'active' : '' }}" href="{{ $topicTabUrls['all'] }}">전체</a>
         <div class="topic-scroll" data-topic-scroll>
             @foreach($topicFacets as $facet)
-                <a class="scope-tab {{ $topic === $facet->slug ? 'active' : '' }}"
-                   href="/community?scope={{ $scope }}&topic={{ $facet->slug }}&apartment_id={{ $apartmentId }}">#{{ $facet->name }}</a>
+                <a class="scope-tab {{ $topic === $facet->slug ? 'active' : '' }}" href="{{ $topicTabUrls[$facet->slug] }}">#{{ $facet->name }}</a>
             @endforeach
         </div>
     </div>
 
-    <section class="panel" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <div class="meta" style="font-size:0.95rem;">
-            작성할 게시판을 고르고 태그를 지정해 글을 등록할 수 있습니다.
+    @if($boardsFromCommunityCategory->isNotEmpty())
+        <div class="board-tabs-container">
+            <a class="board-tab-item {{ $selectedBoardSlug === '' ? 'active' : '' }}" href="{{ $boardTabUrls['all'] }}">전체</a>
+            <div class="board-tab-scroll" data-board-tab-scroll>
+                @foreach($boardsFromCommunityCategory as $board)
+                    <a class="board-tab-item {{ $selectedBoardSlug === $board->slug ? 'active' : '' }}" href="{{ $boardTabUrls[$board->slug] }}">{{ $board->name }}</a>
+                @endforeach
+            </div>
         </div>
-        @if($canCreatePost)
-            <a class="scope-tab active desktop-write-cta" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif">글쓰기</a>
-        @elseif(auth()->check())
-            <div class="empty-box" style="margin:0; padding:8px 10px;">글쓰기는 인증회원만 가능합니다. 단지 인증을 완료해 주세요.</div>
-        @else
-            <a class="scope-tab" href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">회원가입 후 글쓰기</a>
-        @endif
-    </section>
+    @endif
 
     <section class="panel">
         @php
@@ -506,9 +530,9 @@
                 @empty
                     @if($requiresSignupForScope)
                         <li class="empty-box">
-                            동네/공동주택 범위 게시글은 회원가입 후 단지 인증을 완료하면 볼 수 있습니다.
+                            동네/공동주택 범위 게시글은 나의 공동주택 찾기 후 단지 인증을 완료하면 볼 수 있습니다.
                             <br>
-                            <a href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">회원가입 및 인증 진행하기</a>
+                            <a href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">나의 공동주택 찾기 및 인증 진행하기</a>
                         </li>
                     @else
                         <li class="meta">노출할 게시글이 없습니다.</li>
@@ -535,7 +559,11 @@
 </div>
 
 @if($canCreatePost)
-    <a class="mobile-write-fab" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
+    @if($selectedBoardSlug !== '')
+        <a class="mobile-write-fab" href="/community/boards/{{ $selectedBoardSlug }}/create?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
+    @else
+        <a class="mobile-write-fab" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
+    @endif
         <svg class="mobile-write-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9.2"></circle>
             <path d="M12 7.6v8.8"></path>
@@ -1008,6 +1036,84 @@ document.querySelectorAll('.requires-signup').forEach((link) => {
         }
     });
 });
+
+// Board tab scroll drag functionality (touch only)
+const boardTabScroll = document.querySelector('[data-board-tab-scroll]');
+if (boardTabScroll) {
+    let isDragging = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let didDrag = false;
+    const dragThreshold = 6;
+    const enablePointerDrag = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+    if (enablePointerDrag) {
+        boardTabScroll.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse') {
+                return;
+            }
+
+            isDragging = true;
+            didDrag = false;
+            startX = event.clientX;
+            startScrollLeft = boardTabScroll.scrollLeft;
+            boardTabScroll.classList.add('dragging');
+
+            if (typeof boardTabScroll.setPointerCapture === 'function') {
+                boardTabScroll.setPointerCapture(event.pointerId);
+            }
+        });
+
+        boardTabScroll.addEventListener('pointermove', (event) => {
+            if (!isDragging) {
+                return;
+            }
+
+            const deltaX = event.clientX - startX;
+            if (Math.abs(deltaX) > dragThreshold) {
+                didDrag = true;
+            }
+
+            boardTabScroll.scrollLeft = startScrollLeft - deltaX;
+        });
+
+        const finishBoardDrag = (event) => {
+            if (!isDragging) {
+                return;
+            }
+
+            isDragging = false;
+            boardTabScroll.classList.remove('dragging');
+
+            if (typeof boardTabScroll.releasePointerCapture === 'function') {
+                try {
+                    boardTabScroll.releasePointerCapture(event.pointerId);
+                } catch (error) {
+                    // Ignore invalid release attempts.
+                }
+            }
+        };
+
+        boardTabScroll.addEventListener('pointerup', finishBoardDrag);
+        boardTabScroll.addEventListener('pointercancel', finishBoardDrag);
+        boardTabScroll.addEventListener('pointerleave', (event) => {
+            if (event.pointerType === 'mouse') {
+                finishBoardDrag(event);
+            }
+        });
+
+        boardTabScroll.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', (event) => {
+                if (!didDrag) {
+                    return;
+                }
+
+                event.preventDefault();
+                didDrag = false;
+            });
+        });
+    }
+}
 
 const topicScroll = document.querySelector('[data-topic-scroll]');
 if (topicScroll) {

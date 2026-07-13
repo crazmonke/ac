@@ -107,7 +107,7 @@
             <div class="err">{{ $errors->first() }}</div>
         @endif
 
-        <button class="btn" type="submit">회원가입 완료</button>
+        <button class="btn" type="submit">나의 공동주택 찾기 완료</button>
 
         <div class="meta">
             이미 계정이 있으신가요? <a href="/login">로그인</a>

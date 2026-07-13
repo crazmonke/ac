@@ -70,7 +70,7 @@
 document.querySelectorAll('.requires-signup').forEach((link) => {
     link.addEventListener('click', (event) => {
         event.preventDefault();
-        const shouldMove = window.confirm('이 게시글 본문은 회원 전용입니다. 회원가입 페이지로 이동할까요?');
+        const shouldMove = window.confirm('이 게시글 본문은 회원 전용입니다. 로그인 페이지로 이동할까요?');
         if (shouldMove) {
             window.location.href = link.dataset.signupUrl || '/register';
         }

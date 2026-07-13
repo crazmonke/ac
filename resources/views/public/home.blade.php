@@ -552,7 +552,7 @@
                     <input type="password" name="password" placeholder="비밀번호" required>
                     <button class="btn btn-primary" style="width:100%;" type="submit">로그인</button>
                 </form>
-                <a class="btn btn-soft" style="width:100%; margin-top:8px;" href="/register">회원가입 하고 전체 글 보기</a>
+                <a class="btn btn-soft" style="width:100%; margin-top:8px;" href="/register">나의 공동주택 찾기</a>
             </aside>
         @endguest
     </section>
@@ -688,7 +688,7 @@
         <div class="footer-links">
             <a href="/privacy">개인정보</a>
             <a href="/terms">이용약관</a>
-            <a href="/register">회원가입</a>
+            <a href="/register">나의 공동주택 찾기</a>
             <a href="/service/signup-guide">가입안내</a>
             <a href="/reports/new?apartment_id={{ $apartment->id }}">신고접수</a>
         </div>

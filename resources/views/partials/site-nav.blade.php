@@ -229,16 +229,20 @@
 <header class="site-nav" data-scroll-hide-nav>
     <div class="site-nav-inner">
         <div class="site-brand">
-            <span class="site-brand-badge">A</span>
+            <a href="/">
+                <span class="site-brand-badge">A</span>
+            </a>
             <a href="/">아파인드</a>
         </div>
         <nav class="site-actions" aria-label="주요 메뉴">
+            <!--
             <a class="site-icon-link" href="/?apartment_id={{ $apartmentId }}" aria-label="홈">
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M3 10.8 12 4l9 6.8"/><path d="M5.5 10.8V20h13V10.8"/><path d="M10 20v-5h4v5"/></svg>
                 </span>
                 <span class="site-icon-label">홈</span>
             </a>
+            -->
             <a class="site-icon-link" href="/community?apartment_id={{ $apartmentId }}" aria-label="커뮤니티">
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><circle cx="7" cy="9" r="2"/><circle cx="12" cy="7.5" r="2"/><circle cx="17" cy="9" r="2"/><path d="M4.5 18a2.8 2.8 0 0 1 5.5 0"/><path d="M9 18a3.4 3.4 0 0 1 6.8 0"/><path d="M14 18a2.8 2.8 0 0 1 5.5 0"/></svg>

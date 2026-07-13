@@ -80,7 +80,7 @@
                 @if($isLoggedIn)
                     <a class="btn" href="/settings?apartment_id={{ $apartmentId }}">인증 상태 확인/변경</a>
                 @else
-                    <a class="btn" href="/register?redirect={{ urlencode('/posts/'.$post->id.'?apartment_id='.$apartmentId) }}">회원가입하고 본문 보기</a>
+                    <a class="btn" href="/register?redirect={{ urlencode('/posts/'.$post->id.'?apartment_id='.$apartmentId) }}">'나의 공동주택 찾기'하고 본문 보기</a>
                 @endif
             </div>
         @endif

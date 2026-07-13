@@ -65,6 +65,7 @@ class CommunityPageController extends Controller
             $scope = 'all';
         }
 
+        $selectedBoardSlug = (string) $request->query('board', '');
         $postsQuery = null;
 
         if ($canQueryCommunityFeed) {
@@ -82,7 +83,7 @@ class CommunityPageController extends Controller
         if ($canQueryCommunityFeed && $scope === 'all') {
             // 전국 탭: 전국 동네 게시글 최신순.
             if ($hasAudienceScopeColumn) {
-                $postsQuery->where('audience_scope', 'region');
+                $postsQuery->whereIn('audience_scope', ['region', 'all']);
             }
         } elseif ($canQueryCommunityFeed && $scope === 'region') {
             // 동네 탭: 로그인 회원의 내 지역 동네 게시글만 노출.
@@ -128,6 +129,12 @@ class CommunityPageController extends Controller
             });
         }
 
+        if ($canQueryCommunityFeed && $selectedBoardSlug !== '') {
+            $postsQuery->whereHas('board', function ($query) use ($selectedBoardSlug) {
+                $query->where('slug', $selectedBoardSlug);
+            });
+        }
+
         if ($canQueryCommunityFeed) {
             $postsQuery->latest();
         }
@@ -140,7 +147,7 @@ class CommunityPageController extends Controller
 
                     if ($scope === 'all') {
                         if ($hasAudienceScopeColumn) {
-                            $query->where('audience_scope', 'region');
+                            $query->whereIn('audience_scope', ['region', 'all']);
                         }
                     } elseif ($scope === 'region') {
                         if ($hasAudienceScopeColumn) {
@@ -253,6 +260,64 @@ class CommunityPageController extends Controller
 
         $regionLabel = trim((string) ($apartment?->sigungu ?: $apartment?->eupmyeondong ?: $apartment?->sido));
 
+        // Get boards from "커뮤니티" category for board tab menu
+        $boardsFromCommunityCategory = collect();
+        $encodedTopic = $topic !== '' ? urlencode($topic) : '';
+        
+        // Build helper function for URL construction with preserved parameters
+        $buildUrl = function (array $overrides = []) use ($apartmentId, $scope, $topic, $selectedBoardSlug, $encodedTopic) {
+            $params = [
+                'scope' => $overrides['scope'] ?? $scope,
+                'apartment_id' => $apartmentId,
+            ];
+            if (!empty($overrides['topic'] ?? $topic)) {
+                $params['topic'] = $overrides['topic'] ?? $encodedTopic;
+            }
+            if (!empty($overrides['board'] ?? $selectedBoardSlug)) {
+                $params['board'] = $overrides['board'] ?? $selectedBoardSlug;
+            }
+            return '/community?' . http_build_query($params);
+        };
+        
+        // Build URLs for scope tabs
+        $scopeTabUrls = [
+            'all' => $buildUrl(['scope' => 'all']),
+            'region' => $buildUrl(['scope' => 'region']),
+            'apartment' => $buildUrl(['scope' => 'apartment']),
+        ];
+        
+        // Build URLs for topic tabs
+        $topicTabUrls = [];
+        $topicTabUrls['all'] = $buildUrl(['topic' => '']);
+        foreach ($topicFacets as $facet) {
+            $topicTabUrls[$facet->slug] = $buildUrl(['topic' => $facet->slug]);
+        }
+        
+        if (Schema::hasTable('board_categories') && Schema::hasTable('boards')) {
+            $communityCategory = \App\Models\BoardCategory::query()
+                ->where('name', '커뮤니티')
+                ->where(function ($query) use ($apartmentId) {
+                    $query->where('apartment_id', $apartmentId)
+                        ->orWhereNull('apartment_id');
+                })
+                ->first();
+            
+            if ($communityCategory) {
+                $boardsFromCommunityCategory = $communityCategory->boards()
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get(['id', 'name', 'slug'])
+                    ->values();
+            }
+        }
+        
+        // Build URLs for board tabs
+        $boardTabUrls = [];
+        $boardTabUrls['all'] = $buildUrl(['board' => '']);
+        foreach ($boardsFromCommunityCategory as $board) {
+            $boardTabUrls[$board->slug] = $buildUrl(['board' => $board->slug]);
+        }
+
         return view('community.index', [
             'apartmentId' => $apartmentId,
             'apartmentName' => $apartmentName,
@@ -268,6 +333,11 @@ class CommunityPageController extends Controller
             'preferredApartmentName' => trim((string) ($user?->home_apartment_name ?? '')),
             'ownApartmentPosts' => $ownApartmentPosts,
             'otherApartmentPosts' => $otherApartmentPosts,
+            'boardsFromCommunityCategory' => $boardsFromCommunityCategory,
+            'selectedBoardSlug' => $selectedBoardSlug,
+            'scopeTabUrls' => $scopeTabUrls,
+            'topicTabUrls' => $topicTabUrls,
+            'boardTabUrls' => $boardTabUrls,
         ]);
     }
 
