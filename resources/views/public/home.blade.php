@@ -57,9 +57,126 @@
         .btn-soft { background: #fff; border: 1px solid var(--line); color: var(--ink); }
         .hero {
             margin-top: 16px;
-            display: grid;
-            gap: 12px;
-            grid-template-columns: 1fr;
+            position: relative;
+            border-radius: 22px;
+            overflow: hidden;
+            background: #f0f0f0;
+            aspect-ratio: 16 / 9;
+            min-height: 250px;
+            max-height: 500px;
+        }
+        .flicking-viewport {
+            width: 100%;
+            height: 100%;
+        }
+        .flicking-camera {
+            display: flex;
+            height: 100%;
+        }
+        .banner-slide {
+            width: 100%;
+            height: 100%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .banner-slide img,
+        .banner-slide video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            inset: 0;
+        }
+        .banner-content {
+            position: relative;
+            z-index: 2;
+            padding: 24px;
+            color: #fff;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: background 0.3s ease;
+        }
+        .banner-content:hover {
+            background: linear-gradient(135deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25)) !important;
+        }
+        .banner-content h2 {
+            margin: 0 0 8px;
+            font-size: clamp(1.25rem, 4vw, 2rem);
+            line-height: 1.3;
+        }
+        .banner-content p {
+            margin: 0 0 16px;
+            font-size: clamp(0.9rem, 2vw, 1rem);
+            opacity: 0.95;
+            max-width: 600px;
+        }
+        .banner-btn {
+            display: none;
+        }
+        .banner-btn:hover {
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .banner-indicators {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 6px;
+        }
+        .banner-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+        .banner-indicator.active {
+            background: #fff;
+            transform: scale(1.2);
+        }
+        .banner-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 9;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            border: 0;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #0f7a72;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        .banner-nav:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .banner-nav.prev { left: 16px; }
+        .banner-nav.next { right: 16px; }
+        @media (min-width: 900px) {
+            .banner-nav { display: flex; }
+            .hero { min-height: 350px; }
         }
         .hero-main {
             background: linear-gradient(140deg, rgba(18, 76, 110, 0.96), rgba(15, 122, 114, 0.94));
@@ -532,30 +649,72 @@
         <p class="danger-text">{{ session('status') }}</p>
     @endif
 
-    <section class="hero">
-        <article class="hero-main">
-            <span class="hero-badge">상태별 맞춤 게시글 노출</span>
-            <h1>로그인/인증 상태에 맞춰 읽을 수 있는 게시글만 최신순으로 보여줍니다.</h1>
-            <p>
-                로그인 전에는 전국 동네 공개 게시글을, 로그인 후에는 계정 상태에 맞는 게시글을 최신순으로 제공합니다.
-                인증 회원은 인증 동네 + 내 공동주택 게시글, 비인증 회원은 동네/비인증 열람 가능 게시글 중심으로 확인할 수 있습니다.
-            </p>
-        </article>
+    @if($banners && $banners->count() > 0)
+        <section class="hero" id="hero-banner">
+            <div class="flicking-viewport">
+                <div class="flicking-camera">
+                    @foreach($banners as $banner)
+                        <div class="banner-slide" data-banner-id="{{ $banner->id }}">
+                            @if($banner->type === 'image' && $banner->image_url)
+                                <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" loading="lazy">
+                            @elseif($banner->type === 'video' && $banner->video_url)
+                                <video src="{{ $banner->video_url }}" muted autoplay loop playsinline></video>
+                            @endif
+                            @if($banner->button_url)
+                                <a href="{{ $banner->button_url }}" class="banner-content">
+                                    <h2>{{ $banner->title }}</h2>
+                                    @if($banner->description)
+                                        <p>{{ $banner->description }}</p>
+                                    @endif
+                                </a>
+                            @else
+                                <div class="banner-content">
+                                    <h2>{{ $banner->title }}</h2>
+                                    @if($banner->description)
+                                        <p>{{ $banner->description }}</p>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @if($banners->count() > 1)
+                <button type="button" class="banner-nav prev" aria-label="이전 배너">‹</button>
+                <button type="button" class="banner-nav next" aria-label="다음 배너">›</button>
+                <div class="banner-indicators" id="banner-indicators">
+                    @foreach($banners as $index => $banner)
+                        <button type="button" class="banner-indicator {{ $index === 0 ? 'active' : '' }}" data-index="{{ $index }}" aria-label="배너 {{ $index + 1 }}"></button>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+    @else
+        <section class="hero">
+            <article class="hero-main">
+                <span class="hero-badge">상태별 맞춤 게시글 노출</span>
+                <h1>로그인/인증 상태에 맞춰 읽을 수 있는 게시글만 최신순으로 보여줍니다.</h1>
+                <p>
+                    로그인 전에는 전국 동네 공개 게시글을, 로그인 후에는 계정 상태에 맞는 게시글을 최신순으로 제공합니다.
+                    인증 회원은 인증 동네 + 내 공동주택 게시글, 비인증 회원은 동네/비인증 열람 가능 게시글 중심으로 확인할 수 있습니다.
+                </p>
+            </article>
 
-        @guest
-            <aside class="quick-login">
-                <h3>빠른 로그인</h3>
-                <p class="help">바로 로그인해서 댓글/작성/전용 게시판을 이용하세요.</p>
-                <form method="post" action="/login">
-                    @csrf
-                    <input type="email" name="email" placeholder="이메일" required>
-                    <input type="password" name="password" placeholder="비밀번호" required>
-                    <button class="btn btn-primary" style="width:100%;" type="submit">로그인</button>
-                </form>
-                <a class="btn btn-soft" style="width:100%; margin-top:8px;" href="/register">나의 공동주택 찾기</a>
-            </aside>
-        @endguest
-    </section>
+            @guest
+                <aside class="quick-login">
+                    <h3>빠른 로그인</h3>
+                    <p class="help">바로 로그인해서 댓글/작성/전용 게시판을 이용하세요.</p>
+                    <form method="post" action="/login">
+                        @csrf
+                        <input type="email" name="email" placeholder="이메일" required>
+                        <input type="password" name="password" placeholder="비밀번호" required>
+                        <button class="btn btn-primary" style="width:100%;" type="submit">로그인</button>
+                    </form>
+                    <a class="btn btn-soft" style="width:100%; margin-top:8px;" href="/register">나의 공동주택 찾기</a>
+                </aside>
+            @endguest
+        </section>
+    @endif
 
     @if($adsenseEnabled && $adsenseHomeHeroSlot !== '')
         <section class="hero-ad-panel" aria-label="홈 상단 광고">
@@ -1265,6 +1424,151 @@
     }, { rootMargin: '240px 0px' });
 
     observer.observe(loader);
+})();
+</script>
+<script>
+// 간단한 배너 캐러셀 (Flicking 라이브러리 없이)
+(() => {
+    const heroBanner = document.getElementById('hero-banner');
+    if (!heroBanner) {
+        return;
+    }
+
+    const viewport = heroBanner.querySelector('.flicking-viewport');
+    const camera = heroBanner.querySelector('.flicking-camera');
+    const slides = heroBanner.querySelectorAll('.banner-slide');
+    const indicators = heroBanner.querySelectorAll('.banner-indicator');
+    
+    if (!viewport || !camera || slides.length === 0) {
+        return;
+    }
+
+    let currentIndex = 0;
+    let autoPlayInterval = null;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartIndex = 0;
+
+    const updateSlidePosition = (index, smooth = true) => {
+        const offset = -index * 100;
+        camera.style.transition = smooth ? 'transform 0.5s cubic-bezier(0.22, 0.7, 0.24, 1)' : 'none';
+        camera.style.transform = `translateX(${offset}%)`;
+        
+        indicators.forEach((indicator, i) => {
+            indicator.classList.toggle('active', i === index);
+        });
+    };
+
+    const goToSlide = (index) => {
+        currentIndex = (index + slides.length) % slides.length;
+        updateSlidePosition(currentIndex);
+    };
+
+    const nextSlide = () => {
+        goToSlide(currentIndex + 1);
+    };
+
+    const prevSlide = () => {
+        goToSlide(currentIndex - 1);
+    };
+
+    const startAutoPlay = () => {
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
+        autoPlayInterval = setInterval(nextSlide, 5000);
+    };
+
+    const stopAutoPlay = () => {
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
+    };
+
+    // 초기 설정
+    updateSlidePosition(0, false);
+
+    // 네비게이션 버튼
+    const prevBtn = heroBanner.querySelector('.banner-nav.prev');
+    const nextBtn = heroBanner.querySelector('.banner-nav.next');
+
+    if (prevBtn) prevBtn.addEventListener('click', () => { stopAutoPlay(); prevSlide(); startAutoPlay(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { stopAutoPlay(); nextSlide(); startAutoPlay(); });
+
+    // 인디케이터
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => { stopAutoPlay(); goToSlide(index); startAutoPlay(); });
+    });
+
+    // 터치/마우스 드래그
+    viewport.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartIndex = currentIndex;
+        stopAutoPlay();
+        camera.style.transition = 'none';
+    });
+
+    viewport.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - dragStartX;
+        const offset = (-(dragStartIndex * 100) + (deltaX / viewport.clientWidth) * 100);
+        camera.style.transform = `translateX(${offset}%)`;
+    });
+
+    viewport.addEventListener('mouseup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const deltaX = e.clientX - dragStartX;
+        if (Math.abs(deltaX) > 50) {
+            if (deltaX > 0) prevSlide();
+            else nextSlide();
+        } else {
+            updateSlidePosition(dragStartIndex);
+        }
+        startAutoPlay();
+    });
+
+    viewport.addEventListener('mouseleave', () => {
+        if (isDragging) {
+            isDragging = false;
+            updateSlidePosition(dragStartIndex);
+            startAutoPlay();
+        }
+    });
+
+    // 터치 지원
+    viewport.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        dragStartX = e.touches[0].clientX;
+        dragStartIndex = currentIndex;
+        stopAutoPlay();
+        camera.style.transition = 'none';
+    });
+
+    viewport.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.touches[0].clientX - dragStartX;
+        const offset = (-(dragStartIndex * 100) + (deltaX / viewport.clientWidth) * 100);
+        camera.style.transform = `translateX(${offset}%)`;
+    });
+
+    viewport.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const deltaX = e.changedTouches[0].clientX - dragStartX;
+        if (Math.abs(deltaX) > 50) {
+            if (deltaX > 0) prevSlide();
+            else nextSlide();
+        } else {
+            updateSlidePosition(dragStartIndex);
+        }
+        startAutoPlay();
+    });
+
+    // 호버 시 자동 회전 중지
+    viewport.addEventListener('mouseenter', stopAutoPlay);
+    viewport.addEventListener('mouseleave', startAutoPlay);
+    viewport.addEventListener('touchstart', stopAutoPlay);
+    viewport.addEventListener('touchend', startAutoPlay);
+
+    startAutoPlay();
 })();
 </script>
 </body>

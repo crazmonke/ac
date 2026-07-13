@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Apartment;
+use App\Models\Banner;
 use App\Models\Board;
 use App\Models\Post;
 use App\Models\PostFile;
@@ -94,6 +95,17 @@ class PublicSiteController extends Controller
                 ? '인증된 동네 게시글과 내 공동주택 게시글을 최신순으로 보여드립니다.'
                 : '동네 영역 게시글과 비인증 회원도 읽을 수 있는 게시글을 최신순으로 보여드립니다.');
 
+        $banners = Banner::active()->ordered()->get()->map(function ($banner) {
+            // 업로드된 파일이 있으면 그것을 우선 사용
+            if ($banner->type === 'image' && $banner->image_path) {
+                $banner->image_url = asset('storage/' . $banner->image_path);
+            }
+            if ($banner->type === 'video' && $banner->video_path) {
+                $banner->video_url = asset('storage/' . $banner->video_path);
+            }
+            return $banner;
+        });
+
         return view('public.home', [
             'apartment' => $apartment,
             'feedPosts' => $feedPaginator,
@@ -101,6 +113,7 @@ class PublicSiteController extends Controller
             'feedDescription' => $feedDescription,
             'isLoggedIn' => $isLoggedIn,
             'isVerifiedUser' => $isVerifiedUser,
+            'banners' => $banners,
         ]);
     }
 

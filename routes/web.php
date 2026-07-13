@@ -97,7 +97,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/reports', [ReportWebController::class, 'store']);
 });
 
-Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index']);
     Route::get('/review-queue', [AdminDashboardController::class, 'reviewQueue']);
     Route::put('/review-queue/matches/{id}', [AdminDashboardController::class, 'updateMatchReview']);
@@ -122,6 +122,8 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/posts', [AdminDashboardController::class, 'posts']);
     Route::post('/posts/bulk', [AdminDashboardController::class, 'bulkPostAction']);
     Route::delete('/posts/{id}', [AdminDashboardController::class, 'destroyPost']);
+    Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class);
+    Route::post('/banners/reorder', \App\Http\Controllers\Admin\BannerController::class . '@reorder');
     Route::get('/server-info', function () {
         return view('admin.server-info', [
             'phpSettings' => [
