@@ -6,7 +6,7 @@
     <title>알림 발송</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1a2a44; }
-        .wrap { max-width: 640px; margin: 0 auto; padding: 24px; }
+        .wrap { margin: 0; padding: 24px 28px; }
         .card { background: #fff; border: 1px solid #dce4ef; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
         label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
         select, input[type=text], textarea {

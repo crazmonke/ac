@@ -13,6 +13,17 @@ class PermissionService
     private const VERIFIED_ROLES = ['resident', 'household_rep', 'owner_verified', 'tenant_verified', 'admin'];
     private const LEGACY_VERIFIED_BOARD_ROLES = ['resident', 'household_rep', 'owner_verified', 'tenant_verified'];
 
+    public function isGlobalAdmin(User $user): bool
+    {
+        return UserRole::query()
+            ->where('user_id', $user->id)
+            ->where('role', 'admin')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->exists();
+    }
+
     public function hasBoardPermission(?User $user, Board $board, string $permission): bool
     {
         $requiredRole = match ($permission) {
@@ -38,6 +49,10 @@ class PermissionService
 
         if (! $user) {
             return false;
+        }
+
+        if ($this->isGlobalAdmin($user)) {
+            return true;
         }
 
         if ($requiredRole === 'member') {

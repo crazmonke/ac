@@ -6,7 +6,7 @@
     <title>서버 정보 — 관리자</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1a2a44; }
-        .wrap { max-width: 860px; margin: 0 auto; padding: 24px; }
+        .wrap { margin: 0; padding: 24px 28px; }
         .card { background: #fff; border: 1px solid #dce4ef; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
         h1 { margin-top: 0; }
         h2 { margin: 0 0 12px; font-size: 1rem; color: #3a5070; }

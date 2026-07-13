@@ -6,7 +6,7 @@
     <title>관리자 대시보드</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1a2a44; }
-        .wrap { max-width: 1000px; margin: 0 auto; padding: 24px; }
+        .wrap { margin: 0; padding: 24px 28px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
         .card { background: #fff; border: 1px solid #dce4ef; border-radius: 12px; padding: 16px; }
         a { color: #0f6f67; text-decoration: none; font-weight: 600; }

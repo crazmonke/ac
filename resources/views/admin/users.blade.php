@@ -6,7 +6,7 @@
     <title>회원 관리</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1a2a44; }
-        .wrap { max-width: 1380px; margin: 0 auto; padding: 24px; }
+        .wrap { margin: 0; padding: 24px 28px; }
         .panel { background: #fff; border: 1px solid #dce4ef; border-radius: 12px; padding: 14px; margin-top: 12px; }
         .meta { color: #607086; font-size: 0.85rem; }
         .toolbar { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
@@ -27,6 +27,10 @@
         .danger { background: #fdecec; color: #9e1d1d; }
         .actions { display: grid; gap: 6px; }
         .inline { display: inline; }
+        .sort-link { color: inherit; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+        .sort-link:hover { color: #2e4fb8; }
+        .sort-link.active { color: #2e4fb8; }
+        .sort-arrow { font-size: 0.68rem; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -47,21 +51,58 @@
         <div class="meta">회원가입 계정 목록과 운영 제어(인증/접근/탈퇴/프로필잠금)를 관리합니다.</div>
         <form method="get" action="/admin/users">
             <input type="text" name="q" value="{{ $q }}" placeholder="이름/이메일/공동주택/지역 검색">
+            <input type="hidden" name="sort" value="{{ $sort }}">
+            <input type="hidden" name="dir" value="{{ $dir }}">
             <button class="btn btn-primary" type="submit">검색</button>
         </form>
     </section>
+
+    @php
+        function sortUrl(string $col, string $currentSort, string $currentDir, string $q): string {
+            $newDir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
+            return '/admin/users?' . http_build_query(array_filter(['sort' => $col, 'dir' => $newDir, 'q' => $q]));
+        }
+        function sortArrow(string $col, string $currentSort, string $currentDir): string {
+            if ($currentSort !== $col) return '↕';
+            return $currentDir === 'asc' ? '↑' : '↓';
+        }
+    @endphp
 
     <section class="panel table-wrap">
         <table>
             <thead>
             <tr>
-                <th>ID</th>
+                <th>
+                    <a href="{{ sortUrl('id', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'id' ? 'active' : '' }}">
+                        ID <span class="sort-arrow">{{ sortArrow('id', $sort, $dir) }}</span>
+                    </a>
+                </th>
                 <th>기본 정보</th>
-                <th>작성글</th>
-                <th>댓글</th>
-                <th>최근 로그인</th>
-                <th>가입일</th>
-                <th>인증여부</th>
+                <th>
+                    <a href="{{ sortUrl('posts_count', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'posts_count' ? 'active' : '' }}">
+                        작성글 <span class="sort-arrow">{{ sortArrow('posts_count', $sort, $dir) }}</span>
+                    </a>
+                </th>
+                <th>
+                    <a href="{{ sortUrl('comments_count', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'comments_count' ? 'active' : '' }}">
+                        댓글 <span class="sort-arrow">{{ sortArrow('comments_count', $sort, $dir) }}</span>
+                    </a>
+                </th>
+                <th>
+                    <a href="{{ sortUrl('last_login_at', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'last_login_at' ? 'active' : '' }}">
+                        최근 로그인 <span class="sort-arrow">{{ sortArrow('last_login_at', $sort, $dir) }}</span>
+                    </a>
+                </th>
+                <th>
+                    <a href="{{ sortUrl('created_at', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'created_at' ? 'active' : '' }}">
+                        가입일 <span class="sort-arrow">{{ sortArrow('created_at', $sort, $dir) }}</span>
+                    </a>
+                </th>
+                <th>
+                    <a href="{{ sortUrl('verified', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'verified' ? 'active' : '' }}">
+                        인증여부 <span class="sort-arrow">{{ sortArrow('verified', $sort, $dir) }}</span>
+                    </a>
+                </th>
                 <th>지역</th>
                 <th>공동주택명</th>
                 <th>접근허용</th>

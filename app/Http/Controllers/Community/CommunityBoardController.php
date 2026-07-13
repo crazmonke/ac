@@ -927,6 +927,10 @@ class CommunityBoardController extends Controller
             return true;
         }
 
+        if ($this->permissionService->isGlobalAdmin($user)) {
+            return true;
+        }
+
         return $this->permissionService->hasAdminRole($user, $apartmentId);
     }
 

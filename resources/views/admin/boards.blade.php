@@ -6,7 +6,7 @@
     <title>게시판 관리</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1a2a44; }
-        .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .wrap { margin: 0; padding: 24px 28px; }
         .panel { background: #fff; border: 1px solid #dce4ef; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
         .grid { display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); gap: 8px; }
         label { font-size: 12px; color: #5a6c83; }

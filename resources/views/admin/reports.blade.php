@@ -6,7 +6,7 @@
     <title>신고 관리</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1a2a44; }
-        .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .wrap { margin: 0; padding: 24px 28px; }
         table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dce4ef; border-radius: 12px; overflow: hidden; }
         th, td { padding: 8px; border-bottom: 1px solid #edf1f7; text-align: left; vertical-align: top; }
         a { color: #0f6f67; text-decoration: none; font-weight: 600; }

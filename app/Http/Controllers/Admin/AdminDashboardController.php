@@ -7,6 +7,7 @@ use App\Models\Apartment;
 use App\Models\ApartmentMatchReview;
 use App\Models\Board;
 use App\Models\BoardCategory;
+use App\Models\Post;
 use App\Models\ResidenceComplex;
 use App\Models\ResidenceMergeCandidate;
 use App\Models\ResidentVerificationRequest;
@@ -281,8 +282,15 @@ class AdminDashboardController extends Controller
     public function users(Request $request)
     {
         $keyword = trim((string) $request->query('q', ''));
+        $sort = $request->query('sort', 'id');
+        $dir = $request->query('dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
-        $users = User::query()
+        $allowedSorts = ['id', 'posts_count', 'comments_count', 'last_login_at', 'created_at', 'verified'];
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'id';
+        }
+
+        $query = User::query()
             ->with(['preferredApartment', 'preferredResidenceComplex'])
             ->withCount(['posts', 'comments'])
             ->withExists([
@@ -303,10 +311,19 @@ class AdminDashboardController extends Controller
                         ->orWhere('home_apartment_name', 'like', '%'.$keyword.'%')
                         ->orWhere('home_sigungu', 'like', '%'.$keyword.'%');
                 });
-            })
-            ->latest()
-            ->paginate(30)
-            ->withQueryString();
+            });
+
+        if ($sort === 'verified') {
+            $query->orderByRaw('(has_verified_role OR has_verified_residence) ' . $dir);
+        } elseif ($sort === 'posts_count') {
+            $query->orderBy('posts_count', $dir);
+        } elseif ($sort === 'comments_count') {
+            $query->orderBy('comments_count', $dir);
+        } else {
+            $query->orderBy($sort, $dir);
+        }
+
+        $users = $query->paginate(30)->withQueryString();
 
         $users->getCollection()->transform(function (User $member) {
             $regionLabel = trim(implode(' ', array_filter([
@@ -338,12 +355,80 @@ class AdminDashboardController extends Controller
         return view('admin.users', [
             'users' => $users,
             'q' => $keyword,
+            'sort' => $sort,
+            'dir' => $dir,
         ]);
     }
 
     public function notifications()
     {
         return view('admin.notifications');
+    }
+
+    public function posts(Request $request)
+    {
+        $keyword = trim((string) $request->query('q', ''));
+        $boardId = $request->query('board_id');
+        $visibility = $request->query('visibility', '');
+
+        $posts = Post::query()
+            ->with(['user', 'board'])
+            ->when($keyword !== '', function ($query) use ($keyword) {
+                $query->where(function ($sub) use ($keyword) {
+                    $sub->where('title', 'like', '%'.$keyword.'%')
+                        ->orWhere('body', 'like', '%'.$keyword.'%');
+                });
+            })
+            ->when($boardId, fn ($q) => $q->where('board_id', (int) $boardId))
+            ->when($visibility !== '', fn ($q) => $q->where('visibility', $visibility))
+            ->latest()
+            ->paginate(40)
+            ->withQueryString();
+
+        $boards = Board::query()->orderBy('name')->get();
+
+        return view('admin.posts', [
+            'posts' => $posts,
+            'boards' => $boards,
+            'q' => $keyword,
+            'boardId' => $boardId,
+            'visibilityFilter' => $visibility,
+        ]);
+    }
+
+    public function bulkPostAction(Request $request)
+    {
+        $data = $request->validate([
+            'action' => ['required', 'in:delete,hide,show'],
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $count = count($data['ids']);
+
+        if ($data['action'] === 'delete') {
+            Post::query()->whereIn('id', $data['ids'])->each(fn ($p) => $p->delete());
+        } elseif ($data['action'] === 'hide') {
+            Post::query()->whereIn('id', $data['ids'])->update(['visibility' => 'deleted']);
+        } elseif ($data['action'] === 'show') {
+            Post::query()->whereIn('id', $data['ids'])->update(['visibility' => 'resident_only']);
+        }
+
+        $label = match ($data['action']) {
+            'delete' => '삭제',
+            'hide' => '숨김',
+            'show' => '표시 복원',
+        };
+
+        return redirect('/admin/posts')->with('status', "{$count}개 게시글을 {$label} 처리했습니다.");
+    }
+
+    public function destroyPost(int $id)
+    {
+        $post = Post::query()->findOrFail($id);
+        $post->delete();
+
+        return back()->with('status', '게시글이 삭제되었습니다.');
     }
 
     public function sendNotification(Request $request)
