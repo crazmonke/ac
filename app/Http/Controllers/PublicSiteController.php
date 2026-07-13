@@ -96,12 +96,12 @@ class PublicSiteController extends Controller
                 : '동네 영역 게시글과 비인증 회원도 읽을 수 있는 게시글을 최신순으로 보여드립니다.');
 
         $banners = Banner::active()->ordered()->get()->map(function ($banner) {
-            // 업로드된 파일이 있으면 그것을 우선 사용
+            // 업로드된 파일이 있으면 그것을 우선 사용 (Cafe24 호환성: public/uploads 경로 사용)
             if ($banner->type === 'image' && $banner->image_path) {
-                $banner->image_url = asset('storage/' . $banner->image_path);
+                $banner->image_url = asset($banner->image_path);
             }
             if ($banner->type === 'video' && $banner->video_path) {
-                $banner->video_url = asset('storage/' . $banner->video_path);
+                $banner->video_url = asset($banner->video_path);
             }
             return $banner;
         });

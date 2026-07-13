@@ -14,7 +14,9 @@ class BannerController extends Controller
         if ($request->hasFile($fileFieldName)) {
             $file = $request->file($fileFieldName);
             if ($file->isValid()) {
-                $path = $file->store('banners', 'public');
+                // Cafe24 호환성: public/uploads에 직접 저장
+                $uploadDir = 'uploads/banners';
+                $path = $file->store($uploadDir, 'public');
                 return $path;
             }
         }
