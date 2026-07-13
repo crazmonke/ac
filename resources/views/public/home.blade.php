@@ -84,6 +84,8 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            text-decoration: none;
+            color: inherit;
         }
         .banner-slide img,
         .banner-slide video {
@@ -655,29 +657,30 @@
         <div class="flicking-viewport">
             <div class="flicking-camera">
                 @foreach($banners as $banner)
-                    <div class="banner-slide" data-banner-id="{{ $banner->id }}">
+                    @if($banner->button_url)
+                        <a href="{{ $banner->button_url }}" class="banner-slide" data-banner-id="{{ $banner->id }}">
+                    @else
+                        <div class="banner-slide" data-banner-id="{{ $banner->id }}">
+                    @endif
                         @if($banner->type === 'image' && ($banner->image_url || $banner->image_path))
                             <img src="{{ $banner->image_url ?: asset($banner->image_path) }}" alt="{{ $banner->title }}" loading="lazy">
                         @elseif($banner->type === 'video' && ($banner->video_url || $banner->video_path))
                             <video src="{{ $banner->video_url ?: asset($banner->video_path) }}" muted autoplay loop playsinline></video>
                         @endif
-                            @if($banner->button_url)
-                                <a href="{{ $banner->button_url }}" class="banner-content">
-                                    <h2>{{ $banner->title }}</h2>
-                                    @if($banner->description)
-                                        <p>{{ $banner->description }}</p>
-                                    @endif
-                                </a>
-                            @else
-                                <div class="banner-content">
-                                    <h2>{{ $banner->title }}</h2>
-                                    @if($banner->description)
-                                        <p>{{ $banner->description }}</p>
-                                    @endif
-                                </div>
-                            @endif
+                        @if($banner->type === 'text')
+                            <div class="banner-content">
+                                <h2>{{ $banner->title }}</h2>
+                                @if($banner->description)
+                                    <p>{{ $banner->description }}</p>
+                                @endif
+                            </div>
+                        @endif
+                    @if($banner->button_url)
+                        </a>
+                    @else
                         </div>
-                    @endforeach
+                    @endif
+                @endforeach
                 </div>
             </div>
             @if($banners->count() > 1)
