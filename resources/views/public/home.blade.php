@@ -71,6 +71,7 @@
         .flicking-viewport {
             width: 100%;
             height: 100%;
+            min-height: 321px;
         }
         .flicking-camera {
             display: flex;
