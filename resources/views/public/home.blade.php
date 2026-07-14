@@ -66,7 +66,7 @@
             max-height: 500px;
             width: 100vw;
             margin-left: calc(-50vw + 50%);
-            margin-top: -20px;
+            margin-top: -9px;
         }
         .flicking-viewport {
             width: 100%;
@@ -92,7 +92,7 @@
         .banner-slide video {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: fill;
             position: absolute;
             inset: 0;
         }
