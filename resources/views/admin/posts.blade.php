@@ -118,11 +118,7 @@
                         <td>{{ $post->comment_count ?? 0 }}</td>
                         <td style="white-space:nowrap;">{{ $post->created_at?->format('Y-m-d H:i') ?? '-' }}</td>
                         <td style="white-space:nowrap;">
-                            <form method="post" action="/admin/posts/{{ $post->id }}" class="inline" onsubmit="return confirm('이 게시글을 삭제할까요?');">
-                                @csrf
-                                @method('delete')
-                                <button class="btn btn-danger btn-sm" type="submit">삭제</button>
-                            </form>
+                            <button class="btn btn-danger btn-sm" type="button" onclick="deleteSingle({{ $post->id }})">삭제</button>
                         </td>
                     </tr>
                 @empty
@@ -131,6 +127,12 @@
                 </tbody>
             </table>
         </section>
+    </form>
+
+    {{-- 개별 삭제용 폼 (bulkForm 중첩 방지) --}}
+    <form id="singleDeleteForm" method="post" style="display:none;">
+        @csrf
+        @method('delete')
     </form>
 
     @include('partials.pagination', ['paginator' => $posts])
@@ -164,6 +166,13 @@
             updateBulkBar();
         });
     });
+
+    window.deleteSingle = function (id) {
+        if (!confirm('이 게시글을 삭제할까요?')) return;
+        const form = document.getElementById('singleDeleteForm');
+        form.action = '/admin/posts/' + id;
+        form.submit();
+    };
 
     window.uncheckAll = function () {
         document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
