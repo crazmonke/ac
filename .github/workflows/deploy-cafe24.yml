@@ -227,6 +227,20 @@ jobs:
             PHP_BIN="php"
           fi
 
+          # 메모리 제한 증가 위한 php.ini 설정
+          PHP_INI_PATH=$($PHP_BIN -r "echo php_ini_loaded_file();" 2>/dev/null || echo "")
+          if [ -f "$PHP_INI_PATH" ]; then
+            echo "Current PHP memory_limit in $PHP_INI_PATH:"
+            grep "memory_limit" "$PHP_INI_PATH" || echo "memory_limit not found in config"
+          fi
+
+          # Cafe24 호환: .user.ini 파일로 PHP 설정 조정
+          echo "memory_limit = 512M" > .user.ini
+          echo "max_execution_time = 300" >> .user.ini
+          echo "post_max_size = 100M" >> .user.ini
+          echo "upload_max_filesize = 100M" >> .user.ini
+          echo "PHP 설정을 .user.ini로 업데이트 완료"
+
           if [ -f artisan ]; then
             echo "=== Running database migrations ==="
             "$PHP_BIN" artisan migrate --force || exit 1

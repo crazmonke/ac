@@ -511,7 +511,12 @@ class AdminDashboardController extends Controller
         return view('admin.boards', [
             'boards' => Board::query()->with('category')->orderBy('id', 'desc')->limit(100)->get(),
             'categories' => BoardCategory::query()->orderBy('name')->get(),
-            'apartments' => Apartment::query()->orderBy('name')->get(),
+            // 메모리 최적화: 필요한 컬럼만 선택하고 페이지네이션 적용
+            'apartments' => Apartment::query()
+                ->select(['id', 'name'])
+                ->orderBy('name')
+                ->limit(5000)
+                ->get(),
             'roleLabels' => config('community.board_permission_roles', []),
             'boardTypes' => config('community.board_types', []),
         ]);
