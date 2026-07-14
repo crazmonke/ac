@@ -62,11 +62,11 @@
             overflow: hidden;
             background: #f0f0f0;
             aspect-ratio: 16 / 9;
-            min-height: 250px;
+            min-height: 321px;
             max-height: 500px;
             width: 100vw;
             margin-left: calc(-50vw + 50%);
-            margin-top: -9px;
+            margin-top: 0px;
         }
         .flicking-viewport {
             width: 100%;
