@@ -593,7 +593,7 @@ class AdminDashboardController extends Controller
 
     public function destroyBoard(int $id)
     {
-        Board::query()->findOrFail($id)->delete();
+        Board::query()->findOrFail($id)->forceDelete();
 
         return redirect('/admin/boards')->with('status', '게시판이 삭제되었습니다.');
     }
