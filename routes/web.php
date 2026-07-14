@@ -38,6 +38,15 @@ Route::get('/uploads/{path}', function (string $path) {
 Route::get('/', [PublicSiteController::class, 'home']);
 Route::get('/boards/{slug}', [PublicSiteController::class, 'board']);
 Route::get('/posts/{id}', [PublicSiteController::class, 'post']);
+
+Route::get('/debug-boards-x9z2', function () {
+    try {
+        $boards = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(1)->get();
+        return response()->json(['db' => 'ok', 'count' => $boards->count(), 'php' => PHP_VERSION]);
+    } catch (\Throwable $e) {
+        return response()->json(['db' => 'error', 'msg' => $e->getMessage(), 'php' => PHP_VERSION]);
+    }
+});
 Route::view('/service/signup-guide', 'placeholder', [
     'title' => '나의 공동주택 찾기 안내',
     'description' => '로그인 후 단지 인증을 완료하면 주민 전용 글을 열람할 수 있습니다.',
@@ -137,14 +146,5 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             'ffmpegPath'      => trim((string) shell_exec('which ffmpeg 2>/dev/null')),
             'ffmpegVersion'   => trim((string) shell_exec('ffmpeg -version 2>&1 | head -1')) ?: '확인 불가',
         ]);
-    });
-
-    Route::get('/debug-boards-error', function () {
-        try {
-            $result = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(1)->get();
-            return response()->json(['status' => 'db_ok', 'count' => $result->count(), 'php' => PHP_VERSION]);
-        } catch (\Throwable $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'php' => PHP_VERSION]);
-        }
     });
 });
