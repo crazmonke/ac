@@ -398,7 +398,7 @@
         <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="{{ $scopeTabUrls['region'] }}">동네</a>
         <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="{{ $scopeTabUrls['apartment'] }}">공동주택</a>
     </div>
-
+    @if($topicFacets->isNotEmpty())
     <div class="scope-tabs-topic">
         <a class="scope-tab {{ $topic === '' ? 'active' : '' }}" href="{{ $topicTabUrls['all'] }}">전체</a>
         <div class="topic-scroll" data-topic-scroll>
@@ -407,6 +407,7 @@
             @endforeach
         </div>
     </div>
+    @endif
 
     @if($boardsFromCommunityCategory->isNotEmpty())
         <div class="board-tabs-container">
