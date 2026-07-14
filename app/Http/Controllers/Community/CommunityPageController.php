@@ -72,7 +72,10 @@ class CommunityPageController extends Controller
             $postsQuery = Post::query()
                 ->with(['board', 'apartment', 'residenceComplex', 'topic', 'files', 'user', 'poll.options'])
                 ->where('visibility', '!=', 'deleted')
-                ->whereHas('board', fn ($query) => $query->where('is_active', true))
+                ->whereHas('board', function ($query) {
+                    $query->where('is_active', true)
+                        ->where('slug', '!=', 'policy');
+                })
                 ->latest();
 
             if ($hasPostLikesTable) {
