@@ -40,6 +40,9 @@ Route::get('/boards/{slug}', [PublicSiteController::class, 'board']);
 Route::get('/posts/{id}', [PublicSiteController::class, 'post']);
 
 Route::get('/debug-boards-x9z2', function () {
+    return response()->json(['alive' => true, 'php' => PHP_VERSION]);
+});
+Route::get('/debug-boards-view', function () {
     try {
         $boards    = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(100)->get();
         $cats      = \App\Models\BoardCategory::query()->orderBy('name')->get();
@@ -63,6 +66,7 @@ Route::get('/debug-boards-x9z2', function () {
             'render' => 'error',
             'msg'    => $e->getMessage(),
             'file'   => basename($e->getFile()) . ':' . $e->getLine(),
+            'trace'  => collect(explode("\n", $e->getTraceAsString()))->take(8)->implode("\n"),
             'php'    => PHP_VERSION,
         ]);
     }
