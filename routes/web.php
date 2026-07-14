@@ -41,10 +41,30 @@ Route::get('/posts/{id}', [PublicSiteController::class, 'post']);
 
 Route::get('/debug-boards-x9z2', function () {
     try {
-        $boards = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(1)->get();
-        return response()->json(['db' => 'ok', 'count' => $boards->count(), 'php' => PHP_VERSION]);
+        $boards    = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(100)->get();
+        $cats      = \App\Models\BoardCategory::query()->orderBy('name')->get();
+        $apts      = \App\Models\Apartment::query()->orderBy('name')->get();
+        $roles     = config('community.board_permission_roles', []);
+        $types     = config('community.board_types', []);
+
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+        $html = view('admin.boards', [
+            'boards'     => $boards,
+            'categories' => $cats,
+            'apartments' => $apts,
+            'roleLabels' => $roles,
+            'boardTypes' => $types,
+        ])->render();
+
+        return response()->json(['render' => 'ok', 'length' => strlen($html), 'php' => PHP_VERSION]);
     } catch (\Throwable $e) {
-        return response()->json(['db' => 'error', 'msg' => $e->getMessage(), 'php' => PHP_VERSION]);
+        return response()->json([
+            'render' => 'error',
+            'msg'    => $e->getMessage(),
+            'file'   => basename($e->getFile()) . ':' . $e->getLine(),
+            'php'    => PHP_VERSION,
+        ]);
     }
 });
 Route::view('/service/signup-guide', 'placeholder', [
