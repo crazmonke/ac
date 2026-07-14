@@ -43,15 +43,29 @@ Route::get('/debug-boards-x9z2', function () {
     return response()->json(['alive' => true, 'php' => PHP_VERSION]);
 });
 Route::get('/debug-boards-view', function () {
+    $step = 0;
     try {
-        $boards    = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(100)->get();
-        $cats      = \App\Models\BoardCategory::query()->orderBy('name')->get();
-        $apts      = \App\Models\Apartment::query()->orderBy('name')->get();
-        $roles     = config('community.board_permission_roles', []);
-        $types     = config('community.board_types', []);
+        $step = 1;
+        $memBefore = memory_get_usage(true);
+        $memLimit  = ini_get('memory_limit');
 
+        $step = 2;
+        $viewPath   = resource_path('views/admin/boards.blade.php');
+        $cachePath  = app('view')->getFinder()->find('admin.boards');
+        $storageDir = storage_path('framework/views');
+        $storagePerm = is_writable($storageDir);
+
+        $step = 3;
+        $boards = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(5)->get();
+        $cats   = \App\Models\BoardCategory::query()->orderBy('name')->get();
+        $apts   = \App\Models\Apartment::query()->orderBy('name')->get();
+        $roles  = config('community.board_permission_roles', []);
+        $types  = config('community.board_types', []);
+
+        $step = 4;
         view()->share('errors', new \Illuminate\Support\ViewErrorBag);
 
+        $step = 5;
         $html = view('admin.boards', [
             'boards'     => $boards,
             'categories' => $cats,
@@ -60,13 +74,22 @@ Route::get('/debug-boards-view', function () {
             'boardTypes' => $types,
         ])->render();
 
-        return response()->json(['render' => 'ok', 'length' => strlen($html), 'php' => PHP_VERSION]);
+        $step = 6;
+        return response()->json([
+            'render'       => 'ok',
+            'length'       => strlen($html),
+            'memory_limit' => $memLimit,
+            'memory_used'  => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . 'MB',
+            'storage_writable' => $storagePerm,
+            'php'          => PHP_VERSION,
+        ]);
     } catch (\Throwable $e) {
         return response()->json([
             'render' => 'error',
+            'step'   => $step,
             'msg'    => $e->getMessage(),
             'file'   => basename($e->getFile()) . ':' . $e->getLine(),
-            'trace'  => collect(explode("\n", $e->getTraceAsString()))->take(8)->implode("\n"),
+            'trace'  => collect(explode("\n", $e->getTraceAsString()))->take(10)->implode(' | '),
             'php'    => PHP_VERSION,
         ]);
     }
