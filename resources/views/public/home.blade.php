@@ -815,7 +815,7 @@
                         </li>
                     @endif
                 @empty
-                    <li class="meta">현재 노출 가능한 게시글이 없습니다.</li>
+                    <li class="meta" style="white-space: pre-wrap; line-height: 1.6; color: #516681; font-weight: 500;">{!! nl2br(e($emptyFeedMessage)) !!}</li>
                 @endforelse
             </ul>
             <div class="feed-loader{{ $feedPosts->hasMorePages() ? '' : ' done' }}" id="home-feed-loader" data-next-url="{{ $feedPosts->nextPageUrl() }}">
