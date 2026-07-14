@@ -55,8 +55,8 @@
             width: 56px;
             height: 56px;
             border-radius: 999px;
-            background: #ffffff;
-            color: #0e1726;
+            color: #fff;
+            background: linear-gradient(145deg, #2e4fb8, #0f6f67);
             box-shadow: 0 10px 20px rgba(15, 23, 38, 0.2);
             text-decoration: none;
             align-items: center;
@@ -389,7 +389,7 @@
         @elseif(auth()->check())
             <div class="empty-box" style="margin:0; padding:8px 10px;">글쓰기는 인증회원만 가능합니다. 단지 인증을 완료해 주세요.</div>
         @else
-            <a class="scope-tab" href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">로그인 후 글쓰기</a>
+            <a class="scope-tab" href="/login?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">로그인 후 글쓰기</a>
         @endif
     </div>
 

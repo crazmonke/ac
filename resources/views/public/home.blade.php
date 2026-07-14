@@ -588,8 +588,8 @@
             width: 56px;
             height: 56px;
             border-radius: 999px;
-            background: #ffffff;
-            color: #0e1726;
+            background: linear-gradient(145deg, #2e4fb8, #0f6f67);
+            color: #fff;
             box-shadow: 0 10px 20px rgba(15, 23, 38, 0.2);
             text-decoration: none;
             align-items: center;
