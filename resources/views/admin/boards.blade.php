@@ -38,7 +38,7 @@
         <div class="flash">{{ session('status') }}</div>
     @endif
 
-    @if($errors->any())
+    @if(isset($errors) && $errors->any())
         <div class="error-box">
             <ul style="margin:0; padding-left:18px;">
                 @foreach($errors->all() as $error)

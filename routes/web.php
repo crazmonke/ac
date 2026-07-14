@@ -138,4 +138,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             'ffmpegVersion'   => trim((string) shell_exec('ffmpeg -version 2>&1 | head -1')) ?: '확인 불가',
         ]);
     });
+
+    Route::get('/debug-boards-error', function () {
+        try {
+            $result = \App\Models\Board::query()->with('category')->orderBy('id', 'desc')->limit(1)->get();
+            return response()->json(['status' => 'db_ok', 'count' => $result->count(), 'php' => PHP_VERSION]);
+        } catch (\Throwable $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'php' => PHP_VERSION]);
+        }
+    });
 });
