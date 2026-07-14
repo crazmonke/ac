@@ -318,6 +318,25 @@ class CommunityPageController extends Controller
             $boardTabUrls[$board->slug] = $buildUrl(['board' => $board->slug]);
         }
 
+        // 게시글 없을 때 표시할 랜덤 메시지
+        $emptyFeedMessages = [
+            '첫 게시글의 주인공이 되어보세요.',
+            '우리 동네 소식을 가장 먼저 알려주세요.',
+            '질문 하나, 정보 하나가 이웃에게 큰 도움이 됩니다.',
+            '오늘의 첫 이야기를 남겨보세요.',
+            '이웃들이 기다리고 있는 정보를 공유해 주세요.',
+            '우리 동네의 첫 소식을 전해볼까요?',
+            "오늘은 비어 있지만,\n내일은 이웃들의 이야기로 가득 찰 거예요.",
+            '첫 번째 이야기가 새로운 인연을 만듭니다.',
+            '작은 글 하나가 따뜻한 이웃을 만나는 시작입니다.',
+            "모두가 기다리는 건 특별한 글이 아니라,\n당신의 첫 이야기입니다.",
+            '우리 동네 이야기는 주민이 만들어갑니다.',
+            '층간소음보다 따뜻한 대화가 먼저 시작되길 바랍니다.',
+            "공지부터 맛집, 생활 꿀팁까지.\n우리 동네 이야기를 공유해 보세요.",
+            "같은 건물, 같은 동네.\n이제는 이야기도 함께 나눠보세요.",
+            '우리 단지의 정보와 일상을 함께 만들어가요.',
+        ];
+
         return view('community.index', [
             'apartmentId' => $apartmentId,
             'apartmentName' => $apartmentName,
@@ -338,6 +357,7 @@ class CommunityPageController extends Controller
             'scopeTabUrls' => $scopeTabUrls,
             'topicTabUrls' => $topicTabUrls,
             'boardTabUrls' => $boardTabUrls,
+            'emptyFeedMessage' => $emptyFeedMessages[array_rand($emptyFeedMessages)],
         ]);
     }
 

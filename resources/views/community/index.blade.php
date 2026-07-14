@@ -535,7 +535,7 @@
                             <a href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">나의 공동주택 찾기 및 인증 진행하기</a>
                         </li>
                     @else
-                        <li class="meta">노출할 게시글이 없습니다.</li>
+                        <li class="meta" style="white-space: pre-wrap; line-height: 1.6; color: #516681; font-weight: 500; padding: 10px 0;">{!! nl2br(e($emptyFeedMessage)) !!}</li>
                     @endif
                 @endforelse
             </ul>
