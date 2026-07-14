@@ -93,7 +93,7 @@
         .banner-slide video {
             width: 100%;
             height: 100%;
-            object-fit: fill;
+            object-fit: contain;
             position: absolute;
             inset: 0;
         }
