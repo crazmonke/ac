@@ -64,9 +64,37 @@ class PublicSiteController extends Controller
             $candidates = $query->get();
         }
 
-        $feedPosts = $candidates
-            ->filter(fn (Post $post) => $this->shouldShowOnHomeFeed($post, $user, $apartment))
+        // public-info 카테고리 게시물을 별도로 필터링
+        $publicInfoPosts = $candidates
+            ->filter(function (Post $post) use ($user, $apartment) {
+                // policy 슬러그는 제외
+                if ((string) ($post->board?->slug ?? '') === 'policy') {
+                    return false;
+                }
+                
+                // public-info 카테고리만 포함
+                if ((string) ($post->board?->category?->slug ?? '') !== 'public-info') {
+                    return false;
+                }
+
+                return $this->shouldShowOnHomeFeed($post, $user, $apartment);
+            })
             ->values();
+
+        // 나머지 게시물 필터링
+        $otherPosts = $candidates
+            ->filter(function (Post $post) use ($user, $apartment) {
+                // public-info는 제외 (이미 위에서 처리함)
+                if ((string) ($post->board?->category?->slug ?? '') === 'public-info') {
+                    return false;
+                }
+
+                return $this->shouldShowOnHomeFeed($post, $user, $apartment);
+            })
+            ->values();
+
+        // public-info를 먼저, 나머지를 나중에 배치
+        $feedPosts = $publicInfoPosts->concat($otherPosts)->values();
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = 20;
@@ -403,6 +431,11 @@ class PublicSiteController extends Controller
 
     private function shouldShowOnHomeFeed(Post $post, ?User $user, Apartment $fallbackApartment): bool
     {
+        // policy 슬러그 보드는 홈 피드에서 제외
+        if ((string) ($post->board?->slug ?? '') === 'policy') {
+            return false;
+        }
+
         if (! $this->permissionService->canReadPostDetail($user, $post)) {
             return false;
         }

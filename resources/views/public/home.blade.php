@@ -829,10 +829,10 @@
 
     <footer class="footer">
         <div class="footer-links">
-            <a href="/privacy">개인정보</a>
-            <a href="/terms">이용약관</a>
+            <a href="/community/posts/13">개인정보</a>
+            <a href="/community/posts/14">이용약관</a>
             <a href="/register">나의 공동주택 찾기</a>
-            <a href="/service/signup-guide">가입안내</a>
+            <a href="/community/posts/15">가입안내</a>
             <a href="/reports/new?apartment_id={{ $apartment->id }}">신고접수</a>
         </div>
         <div class="footer-copy">© {{ now()->year }} 아파인드 (Apaind)</div>
