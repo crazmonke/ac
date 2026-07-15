@@ -36,6 +36,7 @@ class User extends Authenticatable
         'withdrawn_at',
         'profile_locked',
         'password',
+        'point_balance',
     ];
 
     /**
@@ -62,6 +63,7 @@ class User extends Authenticatable
             'withdrawn_at' => 'datetime',
             'profile_locked' => 'boolean',
             'password' => 'hashed',
+            'point_balance' => 'integer',
         ];
     }
 

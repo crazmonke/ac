@@ -286,6 +286,18 @@
     </section>
 
     <section class="card">
+        <h2>포인트</h2>
+        <p>게시글·댓글 작성 시 포인트가 적립됩니다.</p>
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <div style="background:#eef5ff; border:1px solid #c7d9fb; border-radius:12px; padding:14px 18px;">
+                <div class="meta" style="font-size:0.78rem;">현재 포인트 잔액</div>
+                <div style="font-size:1.5rem; font-weight:800; color:#1d3fa6;">{{ number_format($user->point_balance) }} P</div>
+            </div>
+            <a class="btn" href="/points" style="background:#2e4fb8; color:#fff;">포인트 이력 보기</a>
+        </div>
+    </section>
+
+    <section class="card">
         <h2>계정 탈퇴</h2>
         <p>탈퇴 요청 시 계정 접근이 비활성화되며 즉시 로그아웃됩니다.</p>
         <form method="post" action="/settings/withdraw-request" onsubmit="return confirm('탈퇴 요청을 진행할까요?');">

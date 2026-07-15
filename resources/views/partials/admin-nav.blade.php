@@ -87,6 +87,7 @@
         <a href="/admin/banners">배너 관리</a>
         <a href="/admin/reports">신고 관리</a>
         <a href="/admin/notifications">알림 발송</a>
+        <a href="/admin/points">포인트 관리</a>
         <a class="user-mode" href="/?apartment_id={{ $apartmentId }}">유저모드</a>
         <a class="cta" href="/community?apartment_id={{ $apartmentId }}">커뮤니티 확인</a>
         <form method="post" action="/logout" class="inline-form">

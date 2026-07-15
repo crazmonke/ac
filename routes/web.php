@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminPointController;
 use App\Http\Controllers\Api\ApartmentSearchController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Auth\AccountSettingsController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\ReportWebController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
 use App\Http\Controllers\PublicSiteController;
+use App\Http\Controllers\UserPointController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/uploads/{path}', function (string $path) {
@@ -161,6 +163,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/reports/new', [ReportWebController::class, 'create']);
     Route::post('/reports', [ReportWebController::class, 'store']);
+
+    Route::get('/points', [UserPointController::class, 'index']);
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
@@ -204,4 +208,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             'ffmpegVersion'   => trim((string) shell_exec('ffmpeg -version 2>&1 | head -1')) ?: '확인 불가',
         ]);
     });
+
+    Route::get('/points', [AdminPointController::class, 'index']);
+    Route::get('/points/policy', [AdminPointController::class, 'policy']);
+    Route::put('/points/policy', [AdminPointController::class, 'updatePolicy']);
+    Route::get('/points/{userId}', [AdminPointController::class, 'userDetail']);
+    Route::post('/points/{userId}/grant', [AdminPointController::class, 'grant']);
+    Route::post('/points/{userId}/deduct', [AdminPointController::class, 'deduct']);
 });
