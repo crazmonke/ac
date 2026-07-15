@@ -224,12 +224,12 @@
             @method('put')
             <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
 
-            <label>
+            <label style="grid-column: 1 / -1;">
                 현재 비밀번호
                 <input type="password" name="current_password" required autocomplete="current-password">
             </label>
 
-            <label>
+            <label style="grid-column: 1 / -1;">
                 새 비밀번호
                 <input id="settingsPwInput" type="password" name="password" minlength="8" required autocomplete="new-password">
                 <ul id="settingsPwHint" style="margin:6px 0 0; padding:0; list-style:none; font-size:0.82rem; color:#64748b;">
