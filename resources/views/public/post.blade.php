@@ -65,7 +65,7 @@
 
     <section class="panel">
         <h1 style="margin:0 0 8px;">{{ $post->title }}</h1>
-        <div class="meta">{{ $post->apartment->name }} · {{ $post->board->name }} · {{ $post->created_at }}</div>
+        <div class="meta">{{ $post->board->name }} · {{ $post->created_at }}</div>
 
         @if($canRead)
             <div class="body">{!! $post->body !!}</div>
