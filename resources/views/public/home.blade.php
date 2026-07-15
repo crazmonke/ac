@@ -831,8 +831,10 @@
         <div class="footer-links">
             <a href="/posts/13">개인정보</a>
             <a href="/posts/14">이용약관</a>
-            <a href="/register">나의 공동주택 찾기</a>
-            <a href="/posts/15">가입안내</a>
+            @if(!$isVerifiedUser)
+                <a href="/register">나의 공동주택 찾기</a>
+                <a href="/posts/15">가입안내</a>
+            @endif
             <a href="/reports/new?apartment_id={{ $apartment->id }}">신고접수</a>
         </div>
         <div class="footer-copy">© {{ now()->year }} 아파인드 (Apaind)</div>
