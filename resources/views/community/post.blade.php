@@ -70,8 +70,8 @@
         .author-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .author { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .avatar {
-            width: 38px;
-            height: 38px;
+            width: 25px;
+            height: 25px;
             border-radius: 50%;
             background: linear-gradient(145deg, #dce6ff, #eef2ff);
             border: 1px solid var(--line);

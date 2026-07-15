@@ -90,9 +90,9 @@
         .post-item:first-child { border-top: 0; padding-top: 2px; }
         .post-row { display: flex; align-items: flex-start; gap: 10px; }
         .author-avatar {
-            flex: 0 0 36px;
-            width: 36px;
-            height: 36px;
+            flex: 0 0 25px;
+            width: 25px;
+            height: 25px;
             border-radius: 50%;
             background: linear-gradient(145deg, #182230, #3b4a62);
             color: #fff;
