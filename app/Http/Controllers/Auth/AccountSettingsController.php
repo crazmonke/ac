@@ -141,7 +141,10 @@ class AccountSettingsController extends Controller
 
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[\W_]).+$/', 'confirmed'],
+        ], [
+            'password.min' => '비밀번호는 최소 8자 이상이어야 합니다.',
+            'password.regex' => '비밀번호는 영문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
         ]);
 
         $user->update([

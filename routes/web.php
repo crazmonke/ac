@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\ApartmentSearchController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Auth\AccountSettingsController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\ReportWebController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
@@ -108,12 +109,21 @@ Route::view('/apartments', 'placeholder', [
 Route::get('/apartments/search', [ApartmentSearchController::class, 'index']);
 Route::get('/apartments/regions', [ApartmentSearchController::class, 'regions']);
 Route::get('/apartments/by-region', [ApartmentSearchController::class, 'byRegion']);
+Route::get('/auth/check-email', [WebAuthController::class, 'checkEmail']);
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [WebAuthController::class, 'login'])->name('login.attempt');
     Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [WebAuthController::class, 'register'])->name('register.attempt');
+
+    Route::get('/find-email', [WebAuthController::class, 'showFindEmail'])->name('find-email');
+    Route::post('/find-email', [WebAuthController::class, 'findEmail'])->name('find-email.attempt');
+
+    Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPassword'])->name('forgot-password');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('forgot-password.send');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetPassword'])->name('reset-password');
+    Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('reset-password.update');
 });
 
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->middleware('auth');

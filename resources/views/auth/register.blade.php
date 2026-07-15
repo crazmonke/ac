@@ -40,7 +40,13 @@
         .apt-option mark { background: #fef08a; border-radius: 2px; }
         .apt-combobox-wrap { display: none; margin-top: 8px; }
         .apt-combobox-wrap.visible { display: block; }
-        .apt-loading { font-size: 0.85rem; color: #64748b; margin-top: 6px; padding: 2px 0; }
+        .pw-hint { margin-top: 6px; font-size: 0.82rem; color: #64748b; }
+        .pw-hint li { margin: 2px 0; }
+        .pw-hint li.ok { color: #136a45; }
+        .pw-hint li.fail { color: #b42318; }
+        .email-status { margin-top: 5px; font-size: 0.82rem; font-weight: 600; }
+        .email-status.ok { color: #136a45; }
+        .email-status.err { color: #b42318; }
     </style>
 </head>
 <body>
@@ -56,7 +62,8 @@
         </label>
 
         <label>이메일
-            <input type="email" name="email" value="{{ old('email') }}" required>
+            <input id="emailInput" type="email" name="email" value="{{ old('email') }}" required autocomplete="email">
+            <div id="emailStatus" class="email-status" style="display:none;"></div>
         </label>
 
         <label>공동주택 선택</label>
@@ -96,11 +103,18 @@
         </label>
 
         <label>비밀번호
-            <input type="password" name="password" required>
+            <input id="pwInput" type="password" name="password" required autocomplete="new-password">
+            <ul id="pwHint" class="pw-hint">
+                <li id="ph-len">8자 이상</li>
+                <li id="ph-letter">영문자 포함</li>
+                <li id="ph-number">숫자 포함</li>
+                <li id="ph-symbol">특수문자 포함 (예: !@#$%^&*)</li>
+            </ul>
         </label>
 
         <label>비밀번호 확인
-            <input type="password" name="password_confirmation" required>
+            <input id="pwConfirmInput" type="password" name="password_confirmation" required autocomplete="new-password">
+            <div id="pwMatchHint" class="email-status" style="display:none;"></div>
         </label>
 
         @if ($errors->any())
@@ -373,7 +387,79 @@
         });
     }
 
-    // ── init ──────────────────────────────────────────────────────────────────
+    // ── email duplicate check ──────────────────────────────────────────────────
+
+    const emailInput  = document.getElementById('emailInput');
+    const emailStatus = document.getElementById('emailStatus');
+    let emailCheckTimer = null;
+
+    if (emailInput && emailStatus) {
+        emailInput.addEventListener('input', () => {
+            emailStatus.style.display = 'none';
+            clearTimeout(emailCheckTimer);
+            emailCheckTimer = setTimeout(() => checkEmail(), 600);
+        });
+        emailInput.addEventListener('blur', () => {
+            clearTimeout(emailCheckTimer);
+            checkEmail();
+        });
+    }
+
+    async function checkEmail() {
+        const email = emailInput ? emailInput.value.trim() : '';
+        if (!email || !email.includes('@')) { emailStatus.style.display = 'none'; return; }
+        try {
+            const res = await fetch('/auth/check-email?email=' + encodeURIComponent(email), { headers: { Accept: 'application/json' } });
+            const json = await res.json();
+            emailStatus.textContent = json.message;
+            emailStatus.className = 'email-status ' + (json.available ? 'ok' : 'err');
+            emailStatus.style.display = 'block';
+        } catch (_) { emailStatus.style.display = 'none'; }
+    }
+
+    // ── password strength indicator ────────────────────────────────────────────
+
+    const pwInput        = document.getElementById('pwInput');
+    const pwConfirmInput = document.getElementById('pwConfirmInput');
+    const pwMatchHint    = document.getElementById('pwMatchHint');
+    const phLen          = document.getElementById('ph-len');
+    const phLetter       = document.getElementById('ph-letter');
+    const phNumber       = document.getElementById('ph-number');
+    const phSymbol       = document.getElementById('ph-symbol');
+
+    function updatePwHint() {
+        if (!pwInput) return;
+        const v = pwInput.value;
+        const checks = [
+            [phLen,    v.length >= 8],
+            [phLetter, /[a-zA-Z]/.test(v)],
+            [phNumber, /\d/.test(v)],
+            [phSymbol, /[\W_]/.test(v)],
+        ];
+        checks.forEach(([el, ok]) => {
+            if (!el) return;
+            el.className = v.length === 0 ? '' : (ok ? 'ok' : 'fail');
+        });
+    }
+
+    function updatePwMatch() {
+        if (!pwInput || !pwConfirmInput || !pwMatchHint) return;
+        const v1 = pwInput.value, v2 = pwConfirmInput.value;
+        if (!v2) { pwMatchHint.style.display = 'none'; return; }
+        if (v1 === v2) {
+            pwMatchHint.textContent = '비밀번호가 일치합니다.';
+            pwMatchHint.className = 'email-status ok';
+        } else {
+            pwMatchHint.textContent = '비밀번호가 일치하지 않습니다.';
+            pwMatchHint.className = 'email-status err';
+        }
+        pwMatchHint.style.display = 'block';
+    }
+
+    if (pwInput) pwInput.addEventListener('input', () => { updatePwHint(); updatePwMatch(); });
+    if (pwConfirmInput) pwConfirmInput.addEventListener('input', updatePwMatch);
+    updatePwHint();
+
     loadSido();
 })();
 </script>

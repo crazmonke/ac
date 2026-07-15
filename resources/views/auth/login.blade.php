@@ -14,6 +14,7 @@
         .btn { margin-top: 16px; width: 100%; border: 0; background: #0b7a75; color: #fff; padding: 11px; border-radius: 8px; cursor: pointer; font-weight: 700; }
         .err { margin-top: 10px; color: #b42318; font-size: 0.9rem; }
         .meta { margin-top: 14px; font-size: 0.86rem; color: #53657a; }
+        a { color: #0f6f67; text-decoration: none; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -44,6 +45,9 @@
 
         <div class="meta">
             계정이 없다면 <a href="/register">나의 공동주택 찾기</a> 후 이용해 주세요.
+        </div>
+        <div class="meta">
+            <a href="/find-email">이메일 찾기</a> &middot; <a href="/forgot-password">비밀번호 찾기</a>
         </div>
     </form>
 </div>

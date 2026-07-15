@@ -23,6 +23,58 @@ class WebAuthController extends Controller
         ]);
     }
 
+    public function checkEmail(Request $request)
+    {
+        $email = $request->query('email', '');
+        if (! $email) {
+            return response()->json(['available' => false, 'message' => '이메일을 입력해 주세요.']);
+        }
+
+        $exists = User::query()->where('email', $email)->whereNull('withdrawn_at')->exists();
+
+        if ($exists) {
+            return response()->json(['available' => false, 'message' => '이미 가입된 이메일입니다.']);
+        }
+
+        return response()->json(['available' => true, 'message' => '사용 가능한 이메일입니다.']);
+    }
+
+    public function showFindEmail()
+    {
+        return view('auth.find-email');
+    }
+
+    public function findEmail(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'apartment_id' => ['required', 'integer', 'exists:apartments,id'],
+        ]);
+
+        $users = User::query()
+            ->where('name', $data['name'])
+            ->where('preferred_apartment_id', (int) $data['apartment_id'])
+            ->whereNull('withdrawn_at')
+            ->get();
+
+        $emails = $users->map(fn ($u) => $this->maskEmail($u->email))->values()->toArray();
+
+        return back()->with([
+            'find_result' => true,
+            'emails' => $emails,
+            'searched_name' => $data['name'],
+        ]);
+    }
+
+    private function maskEmail(string $email): string
+    {
+        [$local, $domain] = explode('@', $email, 2);
+        $visible = min(2, strlen($local));
+        $masked = substr($local, 0, $visible) . str_repeat('*', max(strlen($local) - $visible, 0));
+
+        return $masked . '@' . $domain;
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -89,7 +141,11 @@ class WebAuthController extends Controller
             'residence_ho' => ['nullable', 'string', 'max:40'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[\W_]).+$/', 'confirmed'],
+        ], [
+            'email.unique' => '이미 가입된 이메일입니다.',
+            'password.min' => '비밀번호는 최소 8자 이상이어야 합니다.',
+            'password.regex' => '비밀번호는 영문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
         ]);
 
         $apartmentQuery = $data['apartment_query']

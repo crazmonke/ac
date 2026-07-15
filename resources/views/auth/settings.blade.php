@@ -136,6 +136,9 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
+        #settingsPwHint li { margin: 2px 0; }
+        #settingsPwHint li.ok { color: #136a45; }
+        #settingsPwHint li.fail { color: #b42318; }
     </style>
 </head>
 <body>
@@ -214,7 +217,8 @@
 
     <section class="card">
         <h2>비밀번호 변경</h2>
-        <p>현재 비밀번호를 확인한 뒤 새로운 비밀번호로 변경합니다.</p>
+        <p>현재 비밀번호를 확인한 뒤 새로운 비밀번호로 변경합니다.<br>
+        <span style="font-size:0.85rem; color:#62728a;">비밀번호는 영문자·숫자·특수문자(예: !@#$)를 각각 1개 이상 포함하여 8자 이상으로 설정해 주세요.</span></p>
         <form method="post" action="/settings/password" class="form-grid two">
             @csrf
             @method('put')
@@ -222,17 +226,24 @@
 
             <label>
                 현재 비밀번호
-                <input type="password" name="current_password" required>
+                <input type="password" name="current_password" required autocomplete="current-password">
             </label>
 
             <label>
                 새 비밀번호
-                <input type="password" name="password" minlength="8" required>
+                <input id="settingsPwInput" type="password" name="password" minlength="8" required autocomplete="new-password">
+                <ul id="settingsPwHint" style="margin:6px 0 0; padding:0; list-style:none; font-size:0.82rem; color:#64748b;">
+                    <li id="sph-len">8자 이상</li>
+                    <li id="sph-letter">영문자 포함</li>
+                    <li id="sph-number">숫자 포함</li>
+                    <li id="sph-symbol">특수문자 포함</li>
+                </ul>
             </label>
 
             <label style="grid-column: 1 / -1;">
                 새 비밀번호 확인
-                <input type="password" name="password_confirmation" minlength="8" required>
+                <input id="settingsPwConfirm" type="password" name="password_confirmation" minlength="8" required autocomplete="new-password">
+                <div id="settingsPwMatch" style="display:none; margin-top:5px; font-size:0.82rem; font-weight:600;"></div>
             </label>
 
             <div class="row" style="grid-column: 1 / -1;">
@@ -438,7 +449,36 @@
         }
     });
 
-    if (residentVerificationForm) {
+    // password hint for settings
+    (function () {
+        const pw      = document.getElementById('settingsPwInput');
+        const confirm = document.getElementById('settingsPwConfirm');
+        const match   = document.getElementById('settingsPwMatch');
+        const els = {
+            len:    document.getElementById('sph-len'),
+            letter: document.getElementById('sph-letter'),
+            number: document.getElementById('sph-number'),
+            symbol: document.getElementById('sph-symbol'),
+        };
+
+        function hint() {
+            if (!pw) return;
+            const v = pw.value;
+            [[els.len, v.length >= 8], [els.letter, /[a-zA-Z]/.test(v)], [els.number, /\d/.test(v)], [els.symbol, /[\W_]/.test(v)]].forEach(([el, ok]) => {
+                if (!el) return;
+                el.className = v.length === 0 ? '' : (ok ? 'ok' : 'fail');
+            });
+        }
+        function matchHint() {
+            if (!pw || !confirm || !match) return;
+            if (!confirm.value) { match.style.display = 'none'; return; }
+            const same = pw.value === confirm.value;
+            match.textContent = same ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.';
+            match.style.cssText = 'display:block; margin-top:5px; font-size:0.82rem; font-weight:600; color:' + (same ? '#136a45' : '#b42318') + ';';
+        }
+        if (pw) { pw.addEventListener('input', () => { hint(); matchHint(); }); }
+        if (confirm) { confirm.addEventListener('input', matchHint); }
+    })();
         residentVerificationForm.addEventListener('submit', async (event) => {
             if (verificationLatitude.value && verificationLongitude.value) {
                 return;
