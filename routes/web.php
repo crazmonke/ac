@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Auth\WebAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminPointController;
@@ -165,6 +166,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/reports', [ReportWebController::class, 'store']);
 
     Route::get('/points', [UserPointController::class, 'index']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
