@@ -6,15 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
-use App\Services\FcmMessagingService;
 use App\Services\PermissionService;
+use App\Services\UserNotificationService;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
     public function __construct(
         private readonly PermissionService $permissionService,
-        private readonly FcmMessagingService $fcmMessagingService,
+        private readonly UserNotificationService $userNotificationService,
     ) {
     }
 
@@ -57,12 +57,22 @@ class CommentController extends Controller
         $post->increment('comment_count');
 
         if ($post->user_id && $post->user_id !== $request->user()->id) {
-            $this->fcmMessagingService->sendCommentToUser((int) $post->user_id, (int) $post->id, (int) $post->apartment_id, [
-                'comment_id' => (string) $comment->id,
-                'board_id' => (string) $post->board_id,
-                'board_slug' => (string) ($post->board?->slug ?? ''),
-                'title' => $post->title,
-            ]);
+            $this->userNotificationService->notifyUser(
+                (int) $post->user_id,
+                'comment',
+                '내 게시글에 댓글이 달렸습니다',
+                mb_strimwidth(strip_tags($comment->body), 0, 60, '…'),
+                '/community/posts/' . $post->id,
+                'comment',
+                (int) $comment->id,
+                [
+                    'comment_id' => (string) $comment->id,
+                    'post_id' => (string) $post->id,
+                    'board_id' => (string) $post->board_id,
+                    'board_slug' => (string) ($post->board?->slug ?? ''),
+                    'title' => (string) $post->title,
+                ]
+            );
         }
 
         return response()->json(['data' => $comment], 201);

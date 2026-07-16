@@ -15,13 +15,17 @@ use App\Models\PostFile;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\PermissionService;
+use App\Services\UserNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CommunityBoardController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissionService)
+    public function __construct(
+        private readonly PermissionService $permissionService,
+        private readonly UserNotificationService $userNotificationService,
+    )
     {
     }
 
@@ -512,7 +516,7 @@ class CommunityBoardController extends Controller
             $parentId = (int) $parent->id;
         }
 
-        Comment::query()->create([
+        $comment = Comment::query()->create([
             'post_id' => $post->id,
             'parent_id' => $parentId,
             'user_id' => $user->id,
@@ -521,6 +525,27 @@ class CommunityBoardController extends Controller
         ]);
 
         $post->increment('comment_count');
+
+        if ($post->user_id && (int) $post->user_id !== (int) $user->id) {
+            $body = mb_strimwidth(strip_tags($comment->body), 0, 60, '…');
+
+            $this->userNotificationService->notifyUser(
+                (int) $post->user_id,
+                'comment',
+                '내 게시글에 댓글이 달렸습니다',
+                $body,
+                '/community/posts/' . $post->id,
+                'comment',
+                (int) $comment->id,
+                [
+                    'comment_id' => (string) $comment->id,
+                    'post_id' => (string) $post->id,
+                    'board_id' => (string) $post->board_id,
+                    'board_slug' => (string) ($post->board?->slug ?? ''),
+                    'title' => (string) $post->title,
+                ]
+            );
+        }
 
         return back()->with('status', '댓글이 등록되었습니다.');
     }
@@ -533,10 +558,26 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
-        PostLike::query()->firstOrCreate([
+        $like = PostLike::query()->firstOrCreate([
             'post_id' => $post->id,
             'user_id' => $request->user()->id,
         ]);
+
+        if ($like->wasRecentlyCreated && $post->user_id && (int) $post->user_id !== (int) $request->user()->id) {
+            $this->userNotificationService->notifyUser(
+                (int) $post->user_id,
+                'like',
+                '게시글에 좋아요가 달렸습니다',
+                (string) ($post->title ?? ''),
+                '/community/posts/' . $post->id,
+                'post_like',
+                (int) $like->id,
+                [
+                    'post_id' => (string) $post->id,
+                    'title' => (string) $post->title,
+                ]
+            );
+        }
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([

@@ -17,6 +17,7 @@ use App\Models\UserResidence;
 use App\Models\UserRole;
 use App\Services\ApartmentSelectionService;
 use App\Services\FcmMessagingService;
+use App\Services\UserNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ class AdminDashboardController extends Controller
     public function __construct(
         private readonly ApartmentSelectionService $apartmentSelectionService,
         private readonly FcmMessagingService $fcmMessagingService,
+        private readonly UserNotificationService $userNotificationService,
     ) {
     }
 
@@ -440,6 +442,15 @@ class AdminDashboardController extends Controller
         ]);
 
         $this->fcmMessagingService->sendTopicNotification($data['topic'], $data['title'], $data['body']);
+        $this->userNotificationService->storeForActiveTokenUsers(
+            'broadcast',
+            $data['title'],
+            $data['body'],
+            '/notifications',
+            'broadcast_message',
+            null,
+            ['topic' => $data['topic']]
+        );
 
         return redirect('/admin/notifications')->with('status', '알림이 발송되었습니다.');
     }

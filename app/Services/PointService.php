@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 class PointService
 {
+    public function __construct(
+        private readonly UserNotificationService $userNotificationService,
+    ) {
+    }
+
     public function awardForPost(Post $post): void
     {
         if (! $post->user_id) {
@@ -124,12 +129,14 @@ class PointService
 
     public function adminGrant(User $user, int $amount, string $note): void
     {
-        $this->record($user, abs($amount), 'earn', 'admin', null, $note ?: '관리자 포인트 지급', null, null);
+        $tx = $this->record($user, abs($amount), 'earn', 'admin', null, $note ?: '관리자 포인트 지급', null, null);
+        $this->notifyAdminPointChange($user, $tx);
     }
 
     public function adminDeduct(User $user, int $amount, string $note): void
     {
-        $this->record($user, -abs($amount), 'deduct', 'admin', null, $note ?: '관리자 포인트 차감', null, null);
+        $tx = $this->record($user, -abs($amount), 'deduct', 'admin', null, $note ?: '관리자 포인트 차감', null, null);
+        $this->notifyAdminPointChange($user, $tx);
     }
 
     private function getDailyEarned(User $user): int
@@ -151,8 +158,8 @@ class PointService
         ?string $note,
         ?int $sourcePostId,
         ?PointPolicy $policy
-    ): void {
-        DB::transaction(function () use ($user, $amount, $type, $source, $sourceId, $note, $sourcePostId, $policy) {
+    ): PointTransaction {
+        return DB::transaction(function () use ($user, $amount, $type, $source, $sourceId, $note, $sourcePostId, $policy) {
             $lockedUser  = User::query()->where('id', $user->id)->lockForUpdate()->first();
             $newBalance  = max(0, (int) $lockedUser->point_balance + $amount);
 
@@ -161,7 +168,7 @@ class PointService
                 $expiresAt = now()->addMonths($policy->expiry_months);
             }
 
-            PointTransaction::query()->create([
+            $transaction = PointTransaction::query()->create([
                 'user_id'       => $user->id,
                 'type'          => $type,
                 'source'        => $source,
@@ -174,6 +181,32 @@ class PointService
             ]);
 
             $lockedUser->update(['point_balance' => $newBalance]);
+
+            return $transaction;
         });
+    }
+
+    private function notifyAdminPointChange(User $user, PointTransaction $transaction): void
+    {
+        if ($transaction->source !== 'admin') {
+            return;
+        }
+
+        $sign = $transaction->amount >= 0 ? '+' : '';
+        $body = trim(($transaction->note ?: '') . (($transaction->note ? ' ' : '') . "({$sign}{$transaction->amount}P)"));
+
+        $this->userNotificationService->notifyUser(
+            (int) $user->id,
+            'point',
+            $transaction->amount >= 0 ? '포인트가 지급되었습니다' : '포인트가 차감되었습니다',
+            $body,
+            '/points',
+            'point_transaction',
+            (int) $transaction->id,
+            [
+                'amount' => (string) $transaction->amount,
+                'source' => (string) $transaction->source,
+            ]
+        );
     }
 }
