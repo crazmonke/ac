@@ -88,7 +88,7 @@ jobs:
       - name: Remote deploy and artisan tasks
         run: |
           set -euo pipefail
-          FIREBASE_PRIVATE_KEY_ESCAPED="$(printf '%s' "${{ secrets.FIREBASE_PRIVATE_KEY }}" | tr -d '\r' | sed ':a;N;$!ba;s/\n/\\n/g')"
+          FIREBASE_PRIVATE_KEY_ESCAPED="$(printf '%s' "${{ secrets.FIREBASE_PRIVATE_KEY }}" | perl -0777 -pe 's/\r//g; s/\n/\\n/g')"
           ssh -4 -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
             "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
             DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}' \
