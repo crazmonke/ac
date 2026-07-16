@@ -112,10 +112,7 @@ jobs:
             'bash -s' <<'REMOTE'
           set -e
 
-            FIREBASE_PRIVATE_KEY_RAW="$(cat <<'FIREBASE_PRIVATE_KEY_EOF'
-            ${{ secrets.FIREBASE_PRIVATE_KEY }}
-            FIREBASE_PRIVATE_KEY_EOF
-          )"
+            FIREBASE_PRIVATE_KEY_RAW='${{ secrets.FIREBASE_PRIVATE_KEY }}'
 
           if [ -n "$DEPLOY_PATH" ] && [ -d "$DEPLOY_PATH" ]; then
             cd "$DEPLOY_PATH"
