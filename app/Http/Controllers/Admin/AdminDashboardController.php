@@ -444,6 +444,37 @@ class AdminDashboardController extends Controller
         return redirect('/admin/notifications')->with('status', '알림이 발송되었습니다.');
     }
 
+    public function fcmDiagnostic()
+    {
+        $token = \App\Models\FcmToken::query()->orderByDesc('id')->value('token');
+        $result = ['token_in_db' => $token ? substr($token, 0, 20).'...' : 'none'];
+
+        try {
+            $projectId = config('services.firebase.project_id');
+            $clientEmail = config('services.firebase.client_email');
+            $privateKey = config('services.firebase.private_key');
+
+            $result['project_id'] = $projectId ?: 'MISSING';
+            $result['client_email'] = $clientEmail ?: 'MISSING';
+            $result['private_key_set'] = !empty($privateKey);
+            $result['openssl_available'] = extension_loaded('openssl');
+
+            if ($token) {
+                $this->fcmMessagingService->sendToToken(
+                    $token,
+                    '[FCM 진단] 테스트',
+                    '백엔드에서 직접 발송한 테스트 메시지입니다.',
+                    []
+                );
+                $result['send_called'] = true;
+            }
+        } catch (\Throwable $e) {
+            $result['exception'] = $e->getMessage();
+        }
+
+        return response()->json($result);
+    }
+
     private function extractRegionFromResidenceAddress(string $roadAddress, string $jibunAddress = ''): array
     {
         $address = trim($roadAddress !== '' ? $roadAddress : $jibunAddress);

@@ -107,6 +107,9 @@ jobs:
             ADSENSE_HOME_FEED_SLOT='${{ secrets.ADSENSE_HOME_FEED_SLOT }}' \
             ADSENSE_HOME_FEED_LAYOUT_KEY='${{ secrets.ADSENSE_HOME_FEED_LAYOUT_KEY }}' \
             ADSENSE_HOME_FEED_INTERVAL='${{ secrets.ADSENSE_HOME_FEED_INTERVAL }}' \
+            FIREBASE_PROJECT_ID='${{ secrets.FIREBASE_PROJECT_ID }}' \
+            FIREBASE_CLIENT_EMAIL='${{ secrets.FIREBASE_CLIENT_EMAIL }}' \
+            FIREBASE_PRIVATE_KEY='${{ secrets.FIREBASE_PRIVATE_KEY }}' \
             'bash -s' <<'REMOTE'
           set -e
 
@@ -211,6 +214,18 @@ jobs:
 
           if [ -n "$RESOLVED_ADSENSE_HOME_FEED_INTERVAL" ]; then
             echo "ADSENSE_HOME_FEED_INTERVAL=$RESOLVED_ADSENSE_HOME_FEED_INTERVAL" >> .env
+          fi
+
+          if [ -n "$FIREBASE_PROJECT_ID" ]; then
+            echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env
+          fi
+
+          if [ -n "$FIREBASE_CLIENT_EMAIL" ]; then
+            echo "FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL" >> .env
+          fi
+
+          if [ -n "$FIREBASE_PRIVATE_KEY" ]; then
+            echo "FIREBASE_PRIVATE_KEY=\"$FIREBASE_PRIVATE_KEY\"" >> .env
           fi
 
           # Cafe24 serves ~/www as docroot, so publish public assets there.

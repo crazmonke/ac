@@ -197,6 +197,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/banners/upload-temp', [\App\Http\Controllers\Admin\BannerController::class, 'uploadTemp']);
     Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class);
     Route::post('/banners/reorder', \App\Http\Controllers\Admin\BannerController::class . '@reorder');
+    Route::get('/fcm-diagnostic', [AdminDashboardController::class, 'fcmDiagnostic']);
     Route::get('/server-info', function () {
         return view('admin.server-info', [
             'phpSettings' => [
