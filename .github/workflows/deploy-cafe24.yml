@@ -88,7 +88,6 @@ jobs:
       - name: Remote deploy and artisan tasks
         run: |
           set -euo pipefail
-          FIREBASE_PRIVATE_KEY_ESCAPED="$(printf '%s' "${{ secrets.FIREBASE_PRIVATE_KEY }}" | perl -0777 -pe 's/\r//g; s/\n/\\n/g')"
           ssh -4 -i ~/.ssh/cafe24_key -p "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
             "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
             DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}' \
@@ -110,9 +109,13 @@ jobs:
             ADSENSE_HOME_FEED_INTERVAL='${{ secrets.ADSENSE_HOME_FEED_INTERVAL }}' \
             FIREBASE_PROJECT_ID='${{ secrets.FIREBASE_PROJECT_ID }}' \
             FIREBASE_CLIENT_EMAIL='${{ secrets.FIREBASE_CLIENT_EMAIL }}' \
-            FIREBASE_PRIVATE_KEY_ESCAPED="$FIREBASE_PRIVATE_KEY_ESCAPED" \
             'bash -s' <<'REMOTE'
           set -e
+
+          FIREBASE_PRIVATE_KEY_RAW="$(cat <<'FIREBASE_PRIVATE_KEY_EOF'
+${{ secrets.FIREBASE_PRIVATE_KEY }}
+FIREBASE_PRIVATE_KEY_EOF
+          )"
 
           if [ -n "$DEPLOY_PATH" ] && [ -d "$DEPLOY_PATH" ]; then
             cd "$DEPLOY_PATH"
@@ -225,7 +228,9 @@ jobs:
             echo "FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL" >> .env
           fi
 
-          if [ -n "$FIREBASE_PRIVATE_KEY_ESCAPED" ]; then
+          FIREBASE_PRIVATE_KEY_HAS_VALUE="$(printf '%s' "$FIREBASE_PRIVATE_KEY_RAW" | tr -d '\r\n')"
+          if [ -n "$FIREBASE_PRIVATE_KEY_HAS_VALUE" ]; then
+            FIREBASE_PRIVATE_KEY_ESCAPED="$(printf '%s' "$FIREBASE_PRIVATE_KEY_RAW" | tr -d '\r' | awk 'BEGIN { ORS="" } { printf "%s\\n", $0 }' | sed 's/\\n$//')"
             echo "FIREBASE_PRIVATE_KEY=\"$FIREBASE_PRIVATE_KEY_ESCAPED\"" >> .env
           fi
 
