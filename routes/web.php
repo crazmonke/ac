@@ -99,7 +99,7 @@ Route::get('/debug-boards-view', function () {
     }
 });
 Route::view('/service/signup-guide', 'placeholder', [
-    'title' => '나의 공동주택 찾기 안내',
+    'title' => '회원가입 안내',
     'description' => '로그인 후 단지 인증을 완료하면 주민 전용 글을 열람할 수 있습니다.',
 ]);
 Route::get('/terms', [PublicSiteController::class, 'terms']);

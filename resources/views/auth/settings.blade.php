@@ -163,13 +163,13 @@
 
     <section class="card">
         <h2>프로필 정보</h2>
-        <p>프로필 잠금이 해제된 경우에만 이름/이메일/공동주택를 수정할 수 있습니다.</p>
+        <p>프로필 잠금이 해제된 경우에만 닉네임/이메일/공동주택를 수정할 수 있습니다.</p>
         <form method="post" action="/settings/profile" class="form-grid two">
             @csrf
             @method('put')
 
             <label>
-                이름
+                닉네임
                 <input name="name" value="{{ old('name', $user->name) }}" maxlength="120" required @readonly($isProfileLocked)>
             </label>
 

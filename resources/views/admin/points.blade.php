@@ -42,7 +42,7 @@
     <section class="panel toolbar">
         <div class="meta">회원별 포인트 잔액을 확인하고 개별 이력 및 지급/차감을 관리합니다.</div>
         <form method="get" action="/admin/points">
-            <input type="text" name="q" value="{{ $q }}" placeholder="이름/이메일 검색">
+            <input type="text" name="q" value="{{ $q }}" placeholder="닉네임/이메일 검색">
             <input type="hidden" name="sort" value="{{ $sort }}">
             <input type="hidden" name="dir" value="{{ $dir }}">
             <button class="btn btn-primary" type="submit">검색</button>
@@ -55,7 +55,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>이름</th>
+                        <th>닉네임</th>
                         <th>이메일</th>
                         <th>
                             <a class="sort-link" href="/admin/points?q={{ urlencode($q) }}&sort=point_balance&dir={{ $sort==='point_balance' && $dir==='desc' ? 'asc' : 'desc' }}">

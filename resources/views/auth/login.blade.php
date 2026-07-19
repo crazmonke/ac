@@ -44,7 +44,7 @@
         <button class="btn" type="submit">로그인</button>
 
         <div class="meta">
-            계정이 없다면 <a href="/register">나의 공동주택 찾기</a> 후 이용해 주세요.
+            계정이 없다면 <a href="/register">회원 가입</a> 후 이용해 주세요.
         </div>
         <div class="meta">
             <a href="/find-email">이메일 찾기</a> &middot; <a href="/forgot-password">비밀번호 찾기</a>

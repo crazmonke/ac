@@ -48,11 +48,11 @@
         }
         .appbar .back-chip {
             gap: 4px;
-            background: #e9eef5;
+            background: #ffffff;
             border-color: #cfd8e6;
             color: #22344d;
             font-weight: 800;
-            padding: 8px 14px;
+            padding: 8px;
             line-height: 1;
         }
         .appbar .title { font-weight: 800; font-size: 0.98rem; }
@@ -433,7 +433,7 @@
 
     <div class="appbar">
         <div class="left">
-            <a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}">← 커뮤니티로</a>
+            <a class="back-chip" href="#" onclick="history.back(); return false;">  < </a>
             <div class="title">{{ $post->board->name }}</div>
         </div>
         <div class="right">
@@ -482,6 +482,11 @@
                     <span data-like-count>{{ $likeCount }}</span>
                 </button>
             </form>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <button class="ghost" type="button" id="shareButton" aria-label="공유">
+                <svg class="bottom-bar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5"/><path d="M15.4 6.5 8.6 10.5"/></svg>
+                <span class="sr-only">공유</span>
+            </button>
         </div>
 
         <?php if ($post->board->board_type === 'poll' && $post->poll): ?>
@@ -737,7 +742,7 @@
         </div>
     </div>
 @endif
-
+<!--
 <div class="fixed-actions">
     <div class="bottom-bar">
         <div class="bottom-bar-inner">
@@ -752,7 +757,7 @@
         </div>
     </div>
 </div>
-
+-->
 <script>
 (() => {
     document.addEventListener('submit', async (event) => {

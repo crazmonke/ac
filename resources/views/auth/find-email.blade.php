@@ -47,7 +47,7 @@
     <form class="card" method="post" action="{{ route('find-email.attempt') }}">
         @csrf
         <h1>이메일 찾기</h1>
-        <p class="desc">가입 시 입력한 이름과 공동주택을 선택하면 가입된 이메일을 알려드립니다.</p>
+        <p class="desc">가입 시 입력한 닉네임과 공동주택을 선택하면 가입된 이메일을 알려드립니다.</p>
 
         @if(session('find_result'))
             @php $emails = session('emails', []); @endphp
@@ -63,8 +63,8 @@
             @endif
         @endif
 
-        <label>이름
-            <input type="text" name="name" value="{{ old('name') }}" required placeholder="가입 시 입력한 이름">
+        <label>닉네임
+            <input type="text" name="name" value="{{ old('name') }}" required placeholder="가입 시 입력한 닉네임">
         </label>
 
         <label>공동주택 선택</label>

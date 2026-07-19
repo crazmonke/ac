@@ -57,7 +57,7 @@
         <input type="hidden" name="redirect" value="{{ old('redirect', $redirect ?? '/') }}">
         <h1>회원가입</h1>
 
-        <label>이름
+        <label>닉네임
             <input type="text" name="name" value="{{ old('name') }}" required>
         </label>
 
@@ -66,7 +66,7 @@
             <div id="emailStatus" class="email-status" style="display:none;"></div>
         </label>
 
-        <label>공동주택 선택</label>
+        <label>공동주택 찾기</label>
         <div class="region-selects">
             <select id="sidoSelect">
                 <option value="">도/특별시/광역시 선택</option>
@@ -92,15 +92,7 @@
         <input id="longitude" type="hidden" name="longitude" value="{{ old('longitude') }}">
         <div id="aptSelectError" class="err" style="display:none;">공동주택을 선택해 주세요.</div>
 
-        <div class="meta">읍/면/동까지 선택 후 공동주택을 골라주세요. 동/호를 입력하면 세대 단위로 가입됩니다. 위치 권한을 허용하면 GPS 검증으로 인증이 우선 처리됩니다.</div>
-
-        <label>동 (선택)
-            <input type="text" name="residence_dong" value="{{ old('residence_dong') }}" placeholder="예: 101">
-        </label>
-
-        <label>호 (선택)
-            <input type="text" name="residence_ho" value="{{ old('residence_ho') }}" placeholder="예: 1203">
-        </label>
+        <div class="meta">읍/면/동까지 선택 후 공동주택을 골라주세요. 위치 권한을 허용하면 GPS 검증으로 인증이 우선 처리됩니다.</div>
 
         <label>비밀번호
             <input id="pwInput" type="password" name="password" required autocomplete="new-password">

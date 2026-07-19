@@ -265,7 +265,11 @@
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 19a7 7 0 0 1 14 0"/></svg>
                 </span>
-                <span class="site-icon-label">계정</span>
+                @if(!$isLoggedIn)
+                    <span class="site-icon-label">로그인</span>
+                @else
+                    <span class="site-icon-label">계정</span>
+                @endif
             </a>
         </nav>
     </div>

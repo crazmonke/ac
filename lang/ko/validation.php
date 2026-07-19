@@ -152,8 +152,8 @@ return [
 
     'custom' => [
         'name' => [
-            'required' => '이름을 입력해 주세요.',
-            'max' => '이름은 :max자 이내로 입력해 주세요.',
+            'required' => '닉네임을 입력해 주세요.',
+            'max' => '닉네임은 :max자 이내로 입력해 주세요.',
         ],
         'email' => [
             'required' => '이메일을 입력해 주세요.',
@@ -177,7 +177,7 @@ return [
     ],
 
     'attributes' => [
-        'name' => '이름',
+        'name' => '닉네임',
         'email' => '이메일',
         'password' => '비밀번호',
         'password_confirmation' => '비밀번호 확인',

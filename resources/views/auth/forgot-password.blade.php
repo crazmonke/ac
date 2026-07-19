@@ -45,7 +45,7 @@
     <form class="card" method="post" action="{{ route('forgot-password.send') }}">
         @csrf
         <h1>비밀번호 찾기</h1>
-        <p class="desc">이름, 공동주택, 이메일을 입력하면 비밀번호 변경 링크를 이메일로 보내드립니다.</p>
+        <p class="desc">닉네임, 공동주택, 이메일을 입력하면 비밀번호 변경 링크를 이메일로 보내드립니다.</p>
 
         <div class="notice">
             ⚠️ <strong>안내 사항</strong><br>
@@ -59,8 +59,8 @@
             <div class="success">{{ session('status') }}</div>
         @endif
 
-        <label>이름
-            <input type="text" name="name" value="{{ old('name') }}" required placeholder="가입 시 입력한 이름">
+        <label>닉네임
+            <input type="text" name="name" value="{{ old('name') }}" required placeholder="가입 시 입력한 닉네임">
         </label>
 
         <label>공동주택 선택</label>

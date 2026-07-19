@@ -531,7 +531,7 @@
                 @empty
                     @if($requiresSignupForScope)
                         <li class="empty-box">
-                            동네/공동주택 범위 게시글은 나의 공동주택 찾기 후 단지 인증을 완료하면 볼 수 있습니다.
+                            동네/공동주택 범위 게시글은 회원가입 후 단지 인증을 완료하면 볼 수 있습니다.
                             <br>
                             <a href="/register?redirect={{ urlencode('/community?scope='.$scope.'&apartment_id='.$apartmentId) }}">나의 공동주택 찾기 및 인증 진행하기</a>
                         </li>
