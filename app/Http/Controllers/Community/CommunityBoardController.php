@@ -135,7 +135,13 @@ class CommunityBoardController extends Controller
             return redirect('/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id);
         }
 
-        $post->increment('view_count');
+        // Session에 해당 포스트가 이미 조회되었는지 확인 (계정당 또는 세션당 1회만 카운트)
+        $viewedPosts = session('viewed_posts', []);
+        if (!in_array($post->id, $viewedPosts, true)) {
+            $post->increment('view_count');
+            $viewedPosts[] = $post->id;
+            session(['viewed_posts' => $viewedPosts]);
+        }
 
         $rootCommentCount = $post->comments->count();
         $replyCount = $post->comments->sum(fn ($comment) => $comment->children->count());

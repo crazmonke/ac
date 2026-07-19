@@ -433,7 +433,7 @@
 
     <div class="appbar">
         <div class="left">
-            <a class="back-chip" href="#" onclick="history.back(); return false;">  < </a>
+            <a class="back-chip" href="#" onclick="navigateBack(event);" data-apartment-id="{{ $apartmentId }}" data-board-slug="{{ $post->board->slug }}" data-scope="{{ $communityScope }}">  < </a>
             <div class="title">{{ $post->board->name }}</div>
         </div>
         <div class="right">
@@ -940,6 +940,32 @@
             }
         });
     }
+
+    // 뒤로가기 버튼 처리
+    window.navigateBack = function(event) {
+        event.preventDefault();
+        
+        // 직전 페이지 URL 확인
+        const referrer = document.referrer;
+        
+        // 직전 페이지가 게시물 수정 페이지인지 확인
+        if (referrer && /\/community\/posts\/\d+\/edit/.test(referrer)) {
+            // 수정 페이지에서 온 경우: 게시판 리스트로 이동
+            const backChip = event.target.closest('.back-chip');
+            const apartmentId = backChip?.getAttribute('data-apartment-id');
+            const boardSlug = backChip?.getAttribute('data-board-slug');
+            const scope = backChip?.getAttribute('data-scope');
+            
+            if (apartmentId && boardSlug && scope) {
+                window.location.href = `/community?scope=${scope}&apartment_id=${apartmentId}&board=${boardSlug}`;
+            } else {
+                history.back();
+            }
+        } else {
+            // 그 외의 경우: 이전 페이지로 이동
+            history.back();
+        }
+    };
 })();
 </script>
 </body>
