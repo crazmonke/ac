@@ -168,6 +168,21 @@ class CommunityBoardController extends Controller
             ->where('user_id', $user->id)
             ->exists();
 
+        // 댓글 좋아요 데이터 (댓글 ID => [like_count, liked_by_me])
+        $commentIds = $post->comments->pluck('id')
+            ->merge($post->comments->flatMap(fn($c) => $c->children->pluck('id')))
+            ->unique()->values();
+        $commentLikeCounts = \App\Models\CommentLike::query()
+            ->whereIn('comment_id', $commentIds)
+            ->selectRaw('comment_id, count(*) as cnt')
+            ->groupBy('comment_id')
+            ->pluck('cnt', 'comment_id');
+        $myCommentLikes = \App\Models\CommentLike::query()
+            ->whereIn('comment_id', $commentIds)
+            ->where('user_id', $user->id)
+            ->pluck('comment_id')
+            ->flip();
+
         return view('community.post', [
             'post' => $post,
             'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
@@ -183,6 +198,8 @@ class CommunityBoardController extends Controller
             'pollTotalVotes' => $pollTotalVotes,
             'likeCount' => $likeCount,
             'likedByMe' => $likedByMe,
+            'commentLikeCounts' => $commentLikeCounts,
+            'myCommentLikes' => $myCommentLikes,
         ]);
     }
 
@@ -620,6 +637,72 @@ class CommunityBoardController extends Controller
         return back();
     }
 
+    public function likeComment(Request $request, int $id)
+    {
+        $comment = Comment::query()->with('post.board')->findOrFail($id);
+        $post = $comment->post;
+
+        if (! $post || ! $this->permissionService->canReadPostDetail($request->user(), $post)) {
+            abort(403);
+        }
+
+        $like = \App\Models\CommentLike::query()->firstOrCreate([
+            'comment_id' => $comment->id,
+            'user_id' => $request->user()->id,
+        ]);
+
+        if ($like->wasRecentlyCreated && $comment->user_id && (int) $comment->user_id !== (int) $request->user()->id) {
+            $this->userNotificationService->notifyUser(
+                (int) $comment->user_id,
+                'like',
+                '댓글에 좋아요가 달렸습니다',
+                (string) mb_substr($comment->body, 0, 50),
+                '/community/posts/' . $post->id,
+                'comment_like',
+                (int) $like->id,
+                [
+                    'post_id' => (string) $post->id,
+                    'comment_id' => (string) $comment->id,
+                ]
+            );
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'liked' => true,
+                'like_count' => (int) \App\Models\CommentLike::query()->where('comment_id', $comment->id)->count(),
+            ]);
+        }
+
+        return back();
+    }
+
+    public function unlikeComment(Request $request, int $id)
+    {
+        $comment = Comment::query()->with('post.board')->findOrFail($id);
+        $post = $comment->post;
+
+        if (! $post || ! $this->permissionService->canReadPostDetail($request->user(), $post)) {
+            abort(403);
+        }
+
+        \App\Models\CommentLike::query()
+            ->where('comment_id', $comment->id)
+            ->where('user_id', $request->user()->id)
+            ->delete();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'liked' => false,
+                'like_count' => (int) \App\Models\CommentLike::query()->where('comment_id', $comment->id)->count(),
+            ]);
+        }
+
+        return back();
+    }
+
     public function updateComment(Request $request, int $id)
     {
         $comment = Comment::query()->with('post.board')->findOrFail($id);
@@ -881,6 +964,69 @@ class CommunityBoardController extends Controller
             'url' => '/uploads/editor-videos/'.$dateSegment.'/'.$storedName,
             'name' => (string) $uploadedFile->getClientOriginalName(),
             'type' => 'video',
+        ]);
+    }
+
+    public function showCommentDetail(Request $request, int $postId, int $commentId)
+    {
+        $post = Post::query()
+            ->with([
+                'board',
+                'apartment',
+                'user',
+                'files',
+            ])
+            ->findOrFail($postId);
+
+        $comment = Comment::query()
+            ->with(['user', 'children.user'])
+            ->findOrFail($commentId);
+
+        $user = $request->user();
+
+        // 포스트 접근 권한 확인
+        if (! $this->permissionService->canReadPostDetail($user, $post)) {
+            return redirect('/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id);
+        }
+
+        // 댓글이 해당 포스트에 속하는지 확인
+        if ($comment->post_id !== $post->id) {
+            abort(404);
+        }
+
+        $likeCount = (int) PostLike::query()->where('post_id', $post->id)->count();
+        $likedByMe = (bool) PostLike::query()
+            ->where('post_id', $post->id)
+            ->where('user_id', $user->id)
+            ->exists();
+
+        // 댓글 + 답글 좋아요 데이터
+        $commentIds = collect([$comment->id])
+            ->merge($comment->children->pluck('id'))
+            ->unique()->values();
+        $commentLikeCounts = \App\Models\CommentLike::query()
+            ->whereIn('comment_id', $commentIds)
+            ->selectRaw('comment_id, count(*) as cnt')
+            ->groupBy('comment_id')
+            ->pluck('cnt', 'comment_id');
+        $myCommentLikes = \App\Models\CommentLike::query()
+            ->whereIn('comment_id', $commentIds)
+            ->where('user_id', $user->id)
+            ->pluck('comment_id')
+            ->flip();
+
+        return view('community.comment-detail', [
+            'post' => $post,
+            'comment' => $comment,
+            'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
+            'canWrite' => $this->canWriteInBoard($user, $post->board),
+            'canComment' => $this->permissionService->hasBoardPermission($user, $post->board, 'comment'),
+            'isApartmentAdmin' => $this->permissionService->hasAdminRole($user, (int) $post->apartment_id),
+            'currentUserId' => $user->id,
+            'likeCount' => $likeCount,
+            'likedByMe' => $likedByMe,
+            'commentLikeCounts' => $commentLikeCounts,
+            'myCommentLikes' => $myCommentLikes,
         ]);
     }
 

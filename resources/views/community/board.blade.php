@@ -210,7 +210,7 @@
                             작성자: {{ $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음') }}
                             · 댓글 {{ $post->comment_count }}
                             · 조회 {{ $post->view_count }}
-                            · {{ $post->created_at }}
+                            · {{ format_relative_time($post->created_at) }}
                         </div>
                         @if($post->topic)
                             <div class="meta" style="margin-top:6px;">태그: <span class="pill">#{{ $post->topic->name }}</span></div>

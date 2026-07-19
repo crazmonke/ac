@@ -144,6 +144,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/withdraw-request', [AccountSettingsController::class, 'requestWithdrawal']);
 
     Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
+    Route::get('/community/posts/{postId}/comments/{commentId}', [CommunityBoardController::class, 'showCommentDetail']);
     Route::post('/community/editor/photos', [CommunityBoardController::class, 'uploadEditorPhoto']);
     Route::post('/community/editor/videos', [CommunityBoardController::class, 'uploadEditorVideo']);
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
@@ -156,6 +157,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
     Route::post('/community/posts/{id}/likes', [CommunityBoardController::class, 'likePost']);
     Route::delete('/community/posts/{id}/likes', [CommunityBoardController::class, 'unlikePost']);
+    Route::post('/community/comments/{id}/likes', [CommunityBoardController::class, 'likeComment']);
+    Route::delete('/community/comments/{id}/likes', [CommunityBoardController::class, 'unlikeComment']);
     Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);
     Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);

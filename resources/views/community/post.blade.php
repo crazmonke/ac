@@ -237,7 +237,8 @@
             fill: currentColor;
             stroke: currentColor;
         }
-        .comment { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; }
+        .comment { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; cursor: pointer; transition: background 0.2s ease; padding: 12px; margin: -12px; }
+        .comment:hover { background: rgba(47, 82, 184, 0.04); border-radius: 10px; }
         .comment:first-child { border-top: 0; }
         .comment-body { min-width: 0; overflow: hidden; }
         .comment-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -257,6 +258,43 @@
             font-size: 0.86rem;
         }
         .comment-tools a { text-decoration: none; }
+        /* Threads 스타일 댓글 액션 버튼 */
+        .comment-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: 0;
+            padding: 0;
+            color: var(--muted);
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 0;
+            line-height: 1;
+        }
+        .action-btn svg {
+            width: 17px;
+            height: 17px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+        .action-btn.hearted { color: #d01e39; }
+        .action-btn.hearted svg { fill: #d01e39; stroke: #d01e39; }
+        .action-count { min-width: 12px; }
+        .action-text { font-size: 0.8rem; color: var(--muted); }
+        .danger-text { color: #b42318; }
         .best-box { background: #f7f9ff; border: 1px solid #dbe5ff; border-radius: 16px; padding: 12px; margin-bottom: 12px; }
         .best-label { display: inline-flex; align-items: center; gap: 6px; color: #2f52b8; font-weight: 800; font-size: 0.88rem; margin-bottom: 8px; }
         .children {
@@ -459,7 +497,7 @@
                     <div class="avatar">{{ $avatarInitial($postAuthorName) }}</div>
                     <div>
                         <div class="author-name">{{ $postAuthorName }}</div>
-                        <div class="meta">{{ $post->created_at }}</div>
+                        <div class="meta">{{ format_relative_time($post->created_at) }}</div>
                     </div>
                 </div>
                 <div class="stats">
@@ -592,52 +630,94 @@
 
         @if(count($bestCommentIds))
             <div class="best-box">
-                <div class="best-label">댓글</div>
                 @foreach($post->comments->whereIn('id', $bestCommentIds) as $bestComment)
-                    <article class="comment" style="padding-top: 8px;">
+                    <article class="comment" style="padding-top: 8px; cursor: pointer;" onclick="navigateToCommentDetail(event, {{ $post->id }}, {{ $bestComment->id }}, '{{ $apartmentId }}');">
                         @php($bestCommentAuthorName = $bestComment->is_anonymous ? '익명' : ($bestComment->user->name ?? '알 수 없음'))
                         <div class="avatar">{{ $avatarInitial($bestCommentAuthorName) }}</div>
                         <div class="comment-body">
                             <div class="comment-head">
                                 <div class="comment-name">{{ $bestCommentAuthorName }}</div>
-                                <div class="meta">답글 {{ $bestComment->children->count() }}개</div>
+                                <div class="meta">{{ format_relative_time($bestComment->created_at) }}</div>
                             </div>
                             <div class="comment-text">{{ $bestComment->body }}</div>
 
-                            @if($bestComment->children->count())
-                                <details style="margin-top:10px;">
-                                    <summary>답글 {{ $bestComment->children->count() }}개 보기</summary>
-                                    <div class="children" style="margin-top:8px;">
-                                        @foreach($bestComment->children as $child)
-                                            <article class="comment" style="grid-template-columns: 32px 1fr; padding-top:8px;">
-                                                @php($bestChildAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
-                                                <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($bestChildAuthorName) }}</div>
-                                                <div class="comment-body">
-                                                    <div class="comment-head">
-                                                        <div class="comment-name">{{ $bestChildAuthorName }}</div>
-                                                        <div class="meta">{{ $child->created_at }}</div>
-                                                    </div>
-                                                    <div class="comment-text">{{ $child->body }}</div>
-                                                </div>
-                                            </article>
-                                        @endforeach
-                                    </div>
-                                </details>
-                            @endif
-
-                            @if($canComment)
-                                <details style="margin-top:10px;">
-                                    <summary>답글쓰기</summary>
-                                    <form method="post" action="/community/posts/{{ $post->id }}/comments" class="reply-box">
-                                        @csrf
-                                        <input type="hidden" name="parent_id" value="{{ $bestComment->id }}">
-                                        <textarea name="body" placeholder="답글을 입력하세요" required></textarea>
-                                        <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명</label>
-                                        <div style="margin-top:8px;">
-                                            <button type="submit">등록</button>
-                                        </div>
+                            <div class="comment-actions" onclick="event.stopPropagation();">
+                                @php($bCommentLiked = isset($myCommentLikes[$bestComment->id]))
+                                @php($bCommentLikeCount = (int)($commentLikeCounts[$bestComment->id] ?? 0))
+                                <form method="post" action="/community/comments/{{ $bestComment->id }}/likes"
+                                      class="c-like-form" data-like-form-comment
+                                      data-liked="{{ $bCommentLiked ? '1' : '0' }}">
+                                    @csrf
+                                    @if($bCommentLiked) @method('DELETE') @endif
+                                    <button type="submit" class="action-btn {{ $bCommentLiked ? 'hearted' : '' }}" aria-label="좋아요">
+                                        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                                        <span class="action-count" data-like-count>{{ $bCommentLikeCount ?: '' }}</span>
+                                    </button>
+                                </form>
+                                @if($canComment)
+                                    <a href="/community/posts/{{ $post->id }}/comments/{{ $bestComment->id }}?apartment_id={{ $apartmentId }}"
+                                       class="action-btn" aria-label="답글쓰기">
+                                        <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
+                                        <span class="action-count">{{ $bestComment->children->count() ?: '' }}</span>
+                                    </a>
+                                @endif
+                                @if($canComment && ($currentUserId === $bestComment->user_id || $isApartmentAdmin))
+                                    <a href="/community/comments/{{ $bestComment->id }}/edit" class="action-btn action-text">수정</a>
+                                    <form method="post" action="/community/comments/{{ $bestComment->id }}" onsubmit="return confirm('댓글을 삭제할까요?')" style="display:inline; margin:0;">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="action-btn action-text danger-text">삭제</button>
                                     </form>
-                                </details>
+                                @endif
+                            </div>
+
+                            @if($bestComment->children->count())
+                                @php($bestChildren = $bestComment->children)
+                                @php($bestVisibleChildren = $bestChildren->take(2))
+                                @php($bestHasMore = $bestChildren->count() > 2)
+                                <div class="children" style="margin-top:8px;">
+                                    @foreach($bestVisibleChildren as $child)
+                                        <article class="comment" style="grid-template-columns: 32px 1fr; padding-top:8px;">
+                                            @php($bestChildAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
+                                            <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($bestChildAuthorName) }}</div>
+                                            <div class="comment-body">
+                                                <div class="comment-head">
+                                                    <div class="comment-name">{{ $bestChildAuthorName }}</div>
+                                                    <div class="meta">{{ format_relative_time($child->created_at) }}</div>
+                                                </div>
+                                                <div class="comment-text">{{ $child->body }}</div>
+                                                <div class="comment-actions">
+                                                    @php($bChildLiked = isset($myCommentLikes[$child->id]))
+                                                    @php($bChildLikeCount = (int)($commentLikeCounts[$child->id] ?? 0))
+                                                    <form method="post" action="/community/comments/{{ $child->id }}/likes"
+                                                          class="c-like-form" data-like-form-comment
+                                                          data-liked="{{ $bChildLiked ? '1' : '0' }}">
+                                                        @csrf
+                                                        @if($bChildLiked) @method('DELETE') @endif
+                                                        <button type="submit" class="action-btn {{ $bChildLiked ? 'hearted' : '' }}" aria-label="좋아요">
+                                                            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                                                            <span class="action-count" data-like-count>{{ $bChildLikeCount ?: '' }}</span>
+                                                        </button>
+                                                    </form>
+                                                    @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
+                                                        <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">수정</a>
+                                                        <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="return confirm('답글을 삭제할까요?')" style="display:inline; margin:0;">
+                                                            @csrf @method('DELETE')
+                                                            <button type="submit" class="action-btn action-text danger-text">삭제</button>
+                                                        </form>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                    @if($bestHasMore)
+                                        <a href="/community/posts/{{ $post->id }}/comments/{{ $bestComment->id }}?apartment_id={{ $apartmentId }}"
+                                           onclick="event.stopPropagation();"
+                                           style="display:inline-flex; align-items:center; gap:4px; margin-top:8px; color:var(--brand); font-size:0.88rem; font-weight:700; text-decoration:none;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13l5 5 5-5"/><path d="M7 7l5 5 5-5"/></svg>
+                                            답글 {{ $bestChildren->count() - 2 }}개 더보기
+                                        </a>
+                                    @endif
+                                </div>
                             @endif
                         </div>
                     </article>
@@ -649,67 +729,93 @@
             @if(in_array($comment->id, $bestCommentIds, true))
                 @continue
             @endif
-            <article class="comment">
+            <article class="comment" onclick="navigateToCommentDetail(event, {{ $post->id }}, {{ $comment->id }}, '{{ $apartmentId }}');">
                 @php($commentAuthorName = $comment->is_anonymous ? '익명' : ($comment->user->name ?? '알 수 없음'))
                 <div class="avatar">{{ $avatarInitial($commentAuthorName) }}</div>
                 <div class="comment-body">
                     <div class="comment-head">
                         <div class="comment-name">{{ $commentAuthorName }}</div>
-                        <div class="meta">{{ $comment->created_at }}</div>
+                        <div class="meta">{{ format_relative_time($comment->created_at) }}</div>
                     </div>
                     <div class="comment-text">{{ $comment->body }}</div>
 
-                    <div class="comment-tools">
+                    <div class="comment-actions" onclick="event.stopPropagation();">
+                        {{-- 좋아요 --}}
+                        @php($commentLiked = isset($myCommentLikes[$comment->id]))
+                        @php($commentLikeCount = (int)($commentLikeCounts[$comment->id] ?? 0))
+                        <form method="post" action="/community/comments/{{ $comment->id }}/likes"
+                              class="c-like-form" data-like-form-comment
+                              data-liked="{{ $commentLiked ? '1' : '0' }}">
+                            @csrf
+                            @if($commentLiked) @method('DELETE') @endif
+                            <button type="submit" class="action-btn {{ $commentLiked ? 'hearted' : '' }}" aria-label="좋아요">
+                                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                                <span class="action-count" data-like-count>{{ $commentLikeCount ?: '' }}</span>
+                            </button>
+                        </form>
+                        {{-- 답글 말풍선 --}}
                         @if($canComment)
-                            <details>
-                                <summary>답글쓰기</summary>
-                                <form method="post" action="/community/posts/{{ $post->id }}/comments" class="reply-box">
-                                    @csrf
-                                    <input type="hidden" name="parent_id" value="{{ $comment->id }}">
-                                    <textarea name="body" placeholder="답글" required></textarea>
-                                    <label><input type="checkbox" name="is_anonymous" value="1" style="width:auto;"> 익명</label>
-                                    <div style="margin-top:8px;">
-                                        <button type="submit">등록</button>
-                                    </div>
-                                </form>
-                            </details>
+                            <a href="/community/posts/{{ $post->id }}/comments/{{ $comment->id }}?apartment_id={{ $apartmentId }}"
+                               class="action-btn" aria-label="답글쓰기">
+                                <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
+                                <span class="action-count">{{ $comment->children->count() ?: '' }}</span>
+                            </a>
                         @endif
-
+                        {{-- 수정/삭제 --}}
                         @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
-                            <a href="/community/comments/{{ $comment->id }}/edit">수정</a>
+                            <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">수정</a>
                             <form method="post" action="/community/comments/{{ $comment->id }}" onsubmit="return confirm('댓글을 삭제할까요?')" style="display:inline; margin:0;">
-                                @csrf
-                                @method('DELETE')
-                                <button class="danger" type="submit">삭제</button>
+                                @csrf @method('DELETE')
+                                <button type="submit" class="action-btn action-text danger-text">삭제</button>
                             </form>
                         @endif
                     </div>
 
                     @if($comment->children->count())
+                        @php($childrenList = $comment->children)
+                        @php($visibleChildren = $childrenList->take(2))
+                        @php($hasMore = $childrenList->count() > 2)
                         <div class="children">
-                            @foreach($comment->children as $child)
+                            @foreach($visibleChildren as $child)
                                 <article class="comment" style="grid-template-columns: 32px 1fr;">
                                     @php($childAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
                                     <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($childAuthorName) }}</div>
                                     <div class="comment-body">
                                         <div class="comment-head">
                                             <div class="comment-name">{{ $childAuthorName }}</div>
-                                            <div class="meta">{{ $child->created_at }}</div>
+                                            <div class="meta">{{ format_relative_time($child->created_at) }}</div>
                                         </div>
                                         <div class="comment-text">{{ $child->body }}</div>
-                                        <div class="comment-tools">
+                                        <div class="comment-actions" onclick="event.stopPropagation();">
+                                            @php($childLiked = isset($myCommentLikes[$child->id]))
+                                            @php($childLikeCount = (int)($commentLikeCounts[$child->id] ?? 0))
+                                            <form method="post" action="/community/comments/{{ $child->id }}/likes"
+                                                  class="c-like-form" data-like-form-comment
+                                                  data-liked="{{ $childLiked ? '1' : '0' }}">
+                                                @csrf
+                                                @if($childLiked) @method('DELETE') @endif
+                                                <button type="submit" class="action-btn {{ $childLiked ? 'hearted' : '' }}" aria-label="좋아요">
+                                                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                                                    <span class="action-count" data-like-count>{{ $childLikeCount ?: '' }}</span>
+                                                </button>
+                                            </form>
                                             @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
-                                                <a href="/community/comments/{{ $child->id }}/edit">수정</a>
-                                                <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="return confirm('답글을 삭제할까요?')" style="display:inline; margin:0;">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button class="danger" type="submit">삭제</button>
+                                                <a href="/community/comments/{{ $child->id }}/edit" onclick="event.stopPropagation();" class="action-btn action-text">수정</a>
+                                                <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="event.stopPropagation(); return confirm('답글을 삭제할까요?')" style="display:inline; margin:0;">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="action-btn action-text danger-text">삭제</button>
                                                 </form>
                                             @endif
                                         </div>
                                     </div>
                                 </article>
                             @endforeach
+                            @if($hasMore)
+                                <a href="/community/posts/{{ $post->id }}/comments/{{ $comment->id }}?apartment_id={{ $apartmentId }}" onclick="event.stopPropagation();" style="display:inline-flex; align-items:center; gap:4px; margin-top:8px; color:var(--brand); font-size:0.88rem; font-weight:700; text-decoration:none;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13l5 5 5-5"/><path d="M7 7l5 5 5-5"/></svg>
+                                    답글 {{ $childrenList->count() - 2 }}개 더보기
+                                </a>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -940,6 +1046,62 @@
             }
         });
     }
+
+    // 댓글 좋아요 AJAX 처리
+    document.addEventListener('submit', async (event) => {
+        const form = event.target.closest('form[data-like-form-comment]');
+        if (!form) return;
+        event.preventDefault();
+        if (form.dataset.loading === '1') return;
+        form.dataset.loading = '1';
+
+        const button = form.querySelector('button[type="submit"]');
+        const methodInput = form.querySelector('input[name="_method"]');
+        const prevLiked = form.dataset.liked === '1';
+        if (button) button.disabled = true;
+
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            const liked = Boolean(data.liked);
+            const count = Number(data.like_count ?? 0);
+            form.dataset.liked = liked ? '1' : '0';
+            if (button) {
+                button.classList.toggle('hearted', liked);
+                const span = button.querySelector('[data-like-count]');
+                if (span) span.textContent = count || '';
+            }
+            if (liked && !methodInput) {
+                const h = document.createElement('input');
+                h.type = 'hidden'; h.name = '_method'; h.value = 'delete';
+                form.appendChild(h);
+            }
+            if (!liked && methodInput) methodInput.remove();
+        } catch {
+            form.dataset.liked = prevLiked ? '1' : '0';
+            alert('좋아요 처리에 실패했습니다.');
+        } finally {
+            if (button) button.disabled = false;
+            form.dataset.loading = '0';
+        }
+    });
+
+    // 댓글 상세 페이지로 이동
+    window.navigateToCommentDetail = function(event, postId, commentId, apartmentId) {
+        // 클릭한 요소가 링크나 버튼이 아닐 때만 이동
+        const target = event.target;
+        if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button') || target.closest('details')) {
+            return;
+        }
+        
+        window.location.href = `/community/posts/${postId}/comments/${commentId}?apartment_id=${apartmentId}`;
+    };
 
     // 뒤로가기 버튼 처리
     window.navigateBack = function(event) {
