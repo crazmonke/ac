@@ -410,10 +410,12 @@
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h3l1.5 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><circle cx="12" cy="13" r="3.2"/></svg>
                                 <span class="sr-only">사진 추가</span>
                             </button>
+                            <!--
                             <button type="button" class="mobile-compose-button js-mobile-video-button" aria-label="영상 추가">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>
                                 <span class="sr-only">영상 추가</span>
                             </button>
+                            -->
                         </div>
                         <span class="mobile-compose-note">모바일에서는 간편 작성 모드로 동작합니다.</span>
                     </div>

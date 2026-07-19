@@ -263,7 +263,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-top: 10px;
+            margin: 10px;
         }
         .action-btn {
             display: inline-flex;
