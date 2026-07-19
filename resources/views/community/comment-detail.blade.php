@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $post->title }}</title>
     <style>
         :root {
@@ -454,9 +455,9 @@
                     @endif
                     @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
                         <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">수정</a>
-                        <form method="post" action="/community/comments/{{ $comment->id }}" onsubmit="return confirm('댓글을 삭제할까요?')" style="display:inline; margin:0;">
+                        <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form style="display:inline; margin:0;">
                             @csrf @method('DELETE')
-                            <button type="submit" class="action-btn action-text danger-text">삭제</button>
+                            <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까즔?')">삭제</button>
                         </form>
                     @endif
                 </div>
@@ -496,9 +497,9 @@
                                 </form>
                                 @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
                                     <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">수정</a>
-                                    <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="return confirm('답글을 삭제할까요?')" style="display:inline; margin:0;">
+                                    <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form style="display:inline; margin:0;">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="action-btn action-text danger-text">삭제</button>
+                                        <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까즔?')">삭제</button>
                                     </form>
                                 @endif
                             </div>
@@ -574,6 +575,27 @@
         } finally {
             if (button) button.disabled = false;
             form.dataset.loading = '0';
+        }
+    });
+
+    // 삭제 폼 처리 (웹뷰 환경 지원)
+    document.addEventListener('submit', async (event) => {
+        const deleteForm = event.target.closest('form[data-delete-form]');
+        if (deleteForm) {
+            event.preventDefault();
+            try {
+                const res = await fetch(deleteForm.action, {
+                    method: 'POST',
+                    body: new FormData(deleteForm),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
+                if (!res.ok) throw new Error(`실패 (${res.status})`);
+                window.location.reload();
+            } catch (err) {
+                alert('삭제 중 오류: ' + err.message);
+            }
+            return false;
         }
     });
 

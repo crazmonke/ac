@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $post->title }}</title>
     <style>
         :root {
@@ -610,10 +611,9 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                     <span class="sr-only">수정</span>
                 </a>
-                <form method="post" action="/community/posts/{{ $post->id }}" onsubmit="return confirm('삭제할까요?')" style="display:inline; margin:0;">
-                    @csrf
-                    @method('DELETE')
-                    <button class="danger icon-square-btn" type="submit" aria-label="삭제">
+                <form method="post" action="/community/posts/{{ $post->id }}" data-delete-form style="display:inline; margin:0;">
+                    @csrf @method('DELETE')
+                    <button class="danger icon-square-btn" type="submit" aria-label="삭제" onclick="return confirm('정말 삭제할까요?')">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                         <span class="sr-only">삭제</span>
                     </button>
@@ -663,9 +663,9 @@
                                 @endif
                                 @if($canComment && ($currentUserId === $bestComment->user_id || $isApartmentAdmin))
                                     <a href="/community/comments/{{ $bestComment->id }}/edit" class="action-btn action-text">수정</a>
-                                    <form method="post" action="/community/comments/{{ $bestComment->id }}" onsubmit="return confirm('댓글을 삭제할까요?')" style="display:inline; margin:0;">
+                                    <form method="post" action="/community/comments/{{ $bestComment->id }}" data-delete-form style="display:inline; margin:0;">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="action-btn action-text danger-text">삭제</button>
+                                        <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">삭제</button>
                                     </form>
                                 @endif
                             </div>
@@ -700,9 +700,9 @@
                                                     </form>
                                                     @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
                                                         <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">수정</a>
-                                                        <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="return confirm('답글을 삭제할까요?')" style="display:inline; margin:0;">
+                                                        <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form style="display:inline; margin:0;">
                                                             @csrf @method('DELETE')
-                                                            <button type="submit" class="action-btn action-text danger-text">삭제</button>
+                                                            <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">삭제</button>
                                                         </form>
                                                     @endif
                                                 </div>
@@ -764,9 +764,9 @@
                         {{-- 수정/삭제 --}}
                         @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
                             <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">수정</a>
-                            <form method="post" action="/community/comments/{{ $comment->id }}" onsubmit="return confirm('댓글을 삭제할까요?')" style="display:inline; margin:0;">
+                            <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form style="display:inline; margin:0;">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="action-btn action-text danger-text">삭제</button>
+                                <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까즔?')">삭제</button>
                             </form>
                         @endif
                     </div>
@@ -801,10 +801,10 @@
                                             </form>
                                             @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
                                                 <a href="/community/comments/{{ $child->id }}/edit" onclick="event.stopPropagation();" class="action-btn action-text">수정</a>
-                                                <form method="post" action="/community/comments/{{ $child->id }}" onsubmit="event.stopPropagation(); return confirm('답글을 삭제할까요?')" style="display:inline; margin:0;">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="action-btn action-text danger-text">삭제</button>
-                                                </form>
+                                                    <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form style="display:inline; margin:0;">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="action-btn action-text danger-text" onclick="event.stopPropagation(); return confirm('답글을 삭제할까즔?')">삭제</button>
+                                                    </form>
                                             @endif
                                         </div>
                                     </div>
@@ -1089,6 +1089,27 @@
         } finally {
             if (button) button.disabled = false;
             form.dataset.loading = '0';
+        }
+    });
+
+    // 삭제 폼 처리 (웹뷰 환경 지원)
+    document.addEventListener('submit', async (event) => {
+        const deleteForm = event.target.closest('form[data-delete-form]');
+        if (deleteForm) {
+            event.preventDefault();
+            try {
+                const res = await fetch(deleteForm.action, {
+                    method: 'POST',
+                    body: new FormData(deleteForm),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
+                if (!res.ok) throw new Error(`실패 (${res.status})`);
+                window.location.reload();
+            } catch (err) {
+                alert('삭제 중 오류: ' + err.message);
+            }
+            return false;
         }
     });
 
