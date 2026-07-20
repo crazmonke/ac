@@ -396,7 +396,7 @@
     <p class="meta"><a class="back-chip" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">← 상세로 돌아가기</a></p>
 
     <section class="panel">
-        <h1>게시글 수정</h1>
+        <!--<h1>게시글 수정</h1>-->
         <form method="post" enctype="multipart/form-data" action="/community/posts/{{ $post->id }}" class="js-smarteditor-form">
             @csrf
             @method('PUT')

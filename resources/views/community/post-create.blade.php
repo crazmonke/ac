@@ -488,7 +488,7 @@
     @endphp
     <section class="card">
         <p class="meta"><a class="back-chip" href="/community?scope={{ $communityScope }}&apartment_id={{ $apartmentId }}@if(!empty($requestedTopicSlug))&topic={{ urlencode($requestedTopicSlug) }}@endif">← 커뮤니티로</a></p>
-        <h1 style="margin-top:0;">새 글 작성</h1>
+        <!--<h1 style="margin-top:0;">새 글 작성</h1>-->
         <p class="meta">게시판: {{ $board->name }}</p>
 
         <form method="post" enctype="multipart/form-data" action="/community/boards/{{ $board->slug }}/posts?apartment_id={{ $apartmentId }}" class="js-smarteditor-form">
