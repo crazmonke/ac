@@ -298,12 +298,7 @@
         .danger-text { color: #b42318; }
         .best-box { background: #f7f9ff; border: 1px solid #dbe5ff; border-radius: 16px; padding: 12px; margin-bottom: 12px; }
         .best-label { display: inline-flex; align-items: center; gap: 6px; color: #2f52b8; font-weight: 800; font-size: 0.88rem; margin-bottom: 8px; }
-        .children {
-            margin-top: 12px;
-            margin-left: 16px;
-            padding-left: 14px;
-            border-left: 3px solid #d9e4ff;
-        }
+
         .reply-box {
             margin-top: 10px;
             padding: 10px;
@@ -635,7 +630,7 @@
         @if(count($bestCommentIds))
             <div class="best-box">
                 @foreach($post->comments->whereIn('id', $bestCommentIds) as $bestComment)
-                    <article class="comment" style="padding-top: 8px; cursor: pointer;" onclick="navigateToCommentDetail(event, {{ $post->id }}, {{ $bestComment->id }}, '{{ $apartmentId }}');">
+                    <article class="comment" style="padding-top: 24px; cursor: pointer;" onclick="navigateToCommentDetail(event, {{ $post->id }}, {{ $bestComment->id }}, '{{ $apartmentId }}');">
                         @php($bestCommentAuthorName = $bestComment->is_anonymous ? '익명' : ($bestComment->user->name ?? '알 수 없음'))
                         <div class="avatar">{{ $avatarInitial($bestCommentAuthorName) }}</div>
                         <div class="comment-body">
@@ -678,9 +673,9 @@
                                 @php($bestChildren = $bestComment->children)
                                 @php($bestVisibleChildren = $bestChildren->take(2))
                                 @php($bestHasMore = $bestChildren->count() > 2)
-                                <div class="children" style="margin-top:8px;">
+                                <div class="children" style="margin-top:24px;">
                                     @foreach($bestVisibleChildren as $child)
-                                        <article class="comment" style="grid-template-columns: 32px 1fr; padding-top:8px;">
+                                        <article class="comment" style="grid-template-columns: 32px 1fr; padding-top:24px;">
                                             @php($bestChildAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
                                             <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($bestChildAuthorName) }}</div>
                                             <div class="comment-body">
@@ -1151,7 +1146,6 @@
         const apartmentId = backChip?.getAttribute('data-apartment-id');
         const boardSlug = backChip?.getAttribute('data-board-slug');
         const scope = backChip?.getAttribute('data-scope');
-        
         // 직전 페이지가 게시판 리스트 페이지인지 확인
         // /community?... 형태의 URL이면 리스트 페이지
         if (referrer && /\/community\?/.test(referrer)) {
@@ -1164,6 +1158,7 @@
             } else if (apartmentId) {
                 window.location.href = `/community?apartment_id=${apartmentId}`;
             } else {
+                
                 history.back();
             }
         }

@@ -234,7 +234,6 @@
             margin-top: 12px;
             margin-left: 20px;
             padding-left: 12px;
-            border-left: 2px solid #d9e4ff;
         }
         .reply-box {
             margin-top: 12px;
@@ -621,11 +620,7 @@
         const backChip = event.target.closest('.back-chip');
         const apartmentId = backChip?.getAttribute('data-apartment-id');
         const postId = backChip?.getAttribute('data-post-id');
-        if (referrer && postId && referrer.includes('/community/posts/' + postId)) {
-            history.back();
-        } else {
-            window.location.href = `/community/posts/${postId}?apartment_id=${apartmentId}`;
-        }
+        window.location.href = `/community/posts/${postId}?apartment_id=${apartmentId}`;
     };
 })();
 </script>
