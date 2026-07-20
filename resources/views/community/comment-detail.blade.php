@@ -348,7 +348,11 @@
 
     <div class="appbar">
         <div class="left">
-            <a class="back-chip" href="#" onclick="navigateBack(event);" data-apartment-id="{{ $apartmentId }}" data-post-id="{{ $post->id }}">  < </a>
+            <a class="back-chip" href="#" onclick="navigateBack(event);" data-apartment-id="{{ $apartmentId }}" data-post-id="{{ $post->id }}"> 
+                <svg viewBox="0 0 25 25" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                    <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAFxJREFUWIVjYBjGgG8gLY9kYGB4zcDAYDJQlv+G4tCBtDxi1PJRy0ctH7V81PIhYTkTier/U9sBxALkUAgfdcSoI0YdMeqIUUcMJUfQvWOC7IgB65rBwIB2TokGAJkqRkxiPMupAAAAAElFTkSuQmCC" width="25" height="25" x="0" y="0" />
+                </svg> 
+            </a>
             <div class="title">{{ $post->board->name }}</div>
         </div>
         <div class="right">
