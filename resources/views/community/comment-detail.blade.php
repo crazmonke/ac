@@ -76,16 +76,16 @@
         .author-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .author { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .avatar {
-            width: 25px;
-            height: 25px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: linear-gradient(145deg, #dce6ff, #eef2ff);
+            background: linear-gradient(145deg, #2e4fb8, #0f6f67);
             border: 1px solid var(--line);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            color: #35528a;
+            font-weight: 600;
+            color: #fff;
             flex: 0 0 auto;
         }
         .avatar.small {
@@ -164,7 +164,7 @@
             fill: currentColor;
             stroke: currentColor;
         }
-        .comment { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 12px 0; }
+        .comment { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px 0; }
         .comment:first-child { padding-top: 0; }
         .comment-body { min-width: 0; overflow: hidden; }
         .comment-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -457,10 +457,16 @@
                         </button>
                     @endif
                     @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
-                        <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">수정</a>
+                        <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span class="sr-only">수정</span>
+                        </a>
                         <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form data-delete-type="comment-main" style="display:inline; margin:0;">
                             @csrf @method('DELETE')
-                            <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까즔?')">삭제</button>
+                            <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                        <span class="sr-only">삭제</span>
+                            </button>
                         </form>
                     @endif
                 </div>
@@ -499,10 +505,16 @@
                                     </button>
                                 </form>
                                 @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
-                                    <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">수정</a>
+                                    <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span class="sr-only">수정</span>
+                                    </a>
                                     <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">삭제</button>
+                                        <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                        <span class="sr-only">삭제</span>
+                                        </button>
                                     </form>
                                 @endif
                             </div>

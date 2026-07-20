@@ -71,16 +71,16 @@
         .author-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .author { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .avatar {
-            width: 25px;
-            height: 25px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: linear-gradient(145deg, #dce6ff, #eef2ff);
+            background: linear-gradient(145deg, #2e4fb8, #0f6f67);
             border: 1px solid var(--line);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            color: #35528a;
+            font-weight: 600;
+            color: #fff;
             flex: 0 0 auto;
         }
         .author-name { font-weight: 800; }
@@ -238,12 +238,12 @@
             fill: currentColor;
             stroke: currentColor;
         }
-        .comment { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; cursor: pointer; transition: background 0.2s ease; padding: 12px; margin: -12px; }
+        .comment { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; cursor: pointer; transition: background 0.2s ease; padding: 12px; margin: -12px; }
         .comment:hover { background: rgba(47, 82, 184, 0.04); border-radius: 10px; }
         .comment:first-child { border-top: 0; }
         .comment-body { min-width: 0; overflow: hidden; }
         .comment-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .comment-name { font-weight: 800; }
+        .comment-name { font-weight: 600; }
         .comment-meta { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
         .comment-text {
             margin-top: 8px;
@@ -661,10 +661,16 @@
                                     </a>
                                 @endif
                                 @if($canComment && ($currentUserId === $bestComment->user_id || $isApartmentAdmin))
-                                    <a href="/community/comments/{{ $bestComment->id }}/edit" class="action-btn action-text">수정</a>
+                                    <a href="/community/comments/{{ $bestComment->id }}/edit" class="action-btn action-text">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                        <span class="sr-only">수정</span>
+                                    </a>
                                     <form method="post" action="/community/comments/{{ $bestComment->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">삭제</button>
+                                        <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                            <span class="sr-only">삭제</span>
+                                        </button>
                                     </form>
                                 @endif
                             </div>
@@ -675,9 +681,9 @@
                                 @php($bestHasMore = $bestChildren->count() > 2)
                                 <div class="children" style="margin-top:24px;">
                                     @foreach($bestVisibleChildren as $child)
-                                        <article class="comment" style="grid-template-columns: 32px 1fr; padding-top:24px;">
+                                        <article class="comment" style="grid-template-columns: 22px 1fr; padding-top:24px;">
                                             @php($bestChildAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
-                                            <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($bestChildAuthorName) }}</div>
+                                            <div class="avatar" style="width:20px; height:20px;">{{ $avatarInitial($bestChildAuthorName) }}</div>
                                             <div class="comment-body">
                                                 <div class="comment-head">
                                                     <div class="comment-name">{{ $bestChildAuthorName }}</div>
@@ -698,10 +704,16 @@
                                                         </button>
                                                     </form>
                                                     @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
-                                                        <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">수정</a>
+                                                        <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">
+                                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                                            <span class="sr-only">수정</span>
+                                                        </a>
                                                         <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                                             @csrf @method('DELETE')
-                                                            <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">삭제</button>
+                                                            <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">
+                                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                                                <span class="sr-only">삭제</span>
+                                                            </button>
                                                         </form>
                                                     @endif
                                                 </div>
@@ -762,10 +774,16 @@
                         @endif
                         {{-- 수정/삭제 --}}
                         @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
-                            <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">수정</a>
+                            <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                <span class="sr-only">수정</span>
+                            </a>
                             <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까즔?')">삭제</button>
+                                <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                    <span class="sr-only">삭제</span>
+                                </button>
                             </form>
                         @endif
                     </div>
@@ -778,7 +796,7 @@
                             @foreach($visibleChildren as $child)
                                 <article class="comment" style="grid-template-columns: 32px 1fr;">
                                     @php($childAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
-                                    <div class="avatar" style="width:32px; height:32px;">{{ $avatarInitial($childAuthorName) }}</div>
+                                    <div class="avatar" style="width:20px; height:20px;">{{ $avatarInitial($childAuthorName) }}</div>
                                     <div class="comment-body">
                                         <div class="comment-head">
                                             <div class="comment-name">{{ $childAuthorName }}</div>
@@ -799,10 +817,16 @@
                                                 </button>
                                             </form>
                                             @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
-                                                <a href="/community/comments/{{ $child->id }}/edit" onclick="event.stopPropagation();" class="action-btn action-text">수정</a>
+                                                <a href="/community/comments/{{ $child->id }}/edit" onclick="event.stopPropagation();" class="action-btn action-text">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                                    <span class="sr-only">수정</span>
+                                                </a>
                                                     <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                                         @csrf @method('DELETE')
-                                                        <button type="submit" class="action-btn action-text danger-text" onclick="event.stopPropagation(); return confirm('답글을 삭제할까즔?')">삭제</button>
+                                                        <button type="submit" class="action-btn action-text danger-text" onclick="event.stopPropagation(); return confirm('답글을 삭제할까요?')">
+                                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                                            <span class="sr-only">삭제</span>
+                                                        </button>
                                                     </form>
                                             @endif
                                         </div>

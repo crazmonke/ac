@@ -299,17 +299,17 @@
         .feed-ad-item { border-top: 1px solid #e4ebf2; padding: 12px 0; }
         .feed-row { display: flex; gap: 10px; align-items: flex-start; }
         .avatar {
-            width: 25px;
-            height: 25px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: linear-gradient(145deg, #182230, #3b4a62);
+            background: linear-gradient(145deg, #2e4fb8, #0f6f67);
             color: #fff;
-            font-size: 0.85rem;
-            font-weight: 800;
+            font-size: 0.75rem;
+            font-weight: 600;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            flex: 0 0 25px;
+            flex: 0 0 20px;
         }
         .feed-main { flex: 1 1 auto; min-width: 0; }
         .author { display: inline-flex; align-items: center; gap: 6px; }

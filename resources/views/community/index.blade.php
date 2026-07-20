@@ -90,18 +90,18 @@
         .post-item:first-child { border-top: 0; padding-top: 2px; }
         .post-row { display: flex; align-items: flex-start; gap: 10px; }
         .author-avatar {
-            flex: 0 0 25px;
-            width: 25px;
-            height: 25px;
+            flex: 0 0 20px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: linear-gradient(145deg, #182230, #3b4a62);
+            background: linear-gradient(145deg, #2e4fb8, #0f6f67);
             color: #fff;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.85rem;
-            font-weight: 800;
-            letter-spacing: 0.02em;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
         }
         .post-main { flex: 1 1 auto; min-width: 0; }
         .post-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
