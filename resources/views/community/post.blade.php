@@ -611,7 +611,7 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                     <span class="sr-only">수정</span>
                 </a>
-                <form method="post" action="/community/posts/{{ $post->id }}" data-delete-form style="display:inline; margin:0;">
+                <form method="post" action="/community/posts/{{ $post->id }}" data-delete-form data-delete-type="post" style="display:inline; margin:0;">
                     @csrf @method('DELETE')
                     <button class="danger icon-square-btn" type="submit" aria-label="삭제" onclick="return confirm('정말 삭제할까요?')">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -663,7 +663,7 @@
                                 @endif
                                 @if($canComment && ($currentUserId === $bestComment->user_id || $isApartmentAdmin))
                                     <a href="/community/comments/{{ $bestComment->id }}/edit" class="action-btn action-text">수정</a>
-                                    <form method="post" action="/community/comments/{{ $bestComment->id }}" data-delete-form style="display:inline; margin:0;">
+                                    <form method="post" action="/community/comments/{{ $bestComment->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">삭제</button>
                                     </form>
@@ -700,7 +700,7 @@
                                                     </form>
                                                     @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
                                                         <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">수정</a>
-                                                        <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form style="display:inline; margin:0;">
+                                                        <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                                             @csrf @method('DELETE')
                                                             <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">삭제</button>
                                                         </form>
@@ -764,7 +764,7 @@
                         {{-- 수정/삭제 --}}
                         @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
                             <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">수정</a>
-                            <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form style="display:inline; margin:0;">
+                            <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까즔?')">삭제</button>
                             </form>
@@ -801,7 +801,7 @@
                                             </form>
                                             @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
                                                 <a href="/community/comments/{{ $child->id }}/edit" onclick="event.stopPropagation();" class="action-btn action-text">수정</a>
-                                                    <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form style="display:inline; margin:0;">
+                                                    <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="action-btn action-text danger-text" onclick="event.stopPropagation(); return confirm('답글을 삭제할까즔?')">삭제</button>
                                                     </form>
@@ -1105,7 +1105,21 @@
                     credentials: 'same-origin'
                 });
                 if (!res.ok) throw new Error(`실패 (${res.status})`);
-                window.location.reload();
+                
+                // 삭제 타입에 따라 다른 동작
+                const deleteType = deleteForm.dataset.deleteType;
+                if (deleteType === 'post') {
+                    // 게시물 삭제 → 목록으로 이동 (scope, board 유지)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const apartmentId = urlParams.get('apartment_id');
+                    let redirectUrl = '/community?apartment_id=' + apartmentId;
+                    if (urlParams.get('scope')) redirectUrl += '&scope=' + urlParams.get('scope');
+                    if (urlParams.get('board')) redirectUrl += '&board=' + urlParams.get('board');
+                    window.location.href = redirectUrl;
+                } else {
+                    // 댓글/답글 삭제 → 현재 페이지 리로드
+                    window.location.reload();
+                }
             } catch (err) {
                 alert('삭제 중 오류: ' + err.message);
             }
@@ -1128,25 +1142,26 @@
     window.navigateBack = function(event) {
         event.preventDefault();
         
-        // 직전 페이지 URL 확인
         const referrer = document.referrer;
+        const backChip = event.target.closest('.back-chip');
+        const apartmentId = backChip?.getAttribute('data-apartment-id');
+        const boardSlug = backChip?.getAttribute('data-board-slug');
+        const scope = backChip?.getAttribute('data-scope');
         
-        // 직전 페이지가 게시물 수정 페이지인지 확인
-        if (referrer && /\/community\/posts\/\d+\/edit/.test(referrer)) {
-            // 수정 페이지에서 온 경우: 게시판 리스트로 이동
-            const backChip = event.target.closest('.back-chip');
-            const apartmentId = backChip?.getAttribute('data-apartment-id');
-            const boardSlug = backChip?.getAttribute('data-board-slug');
-            const scope = backChip?.getAttribute('data-scope');
-            
+        // 직전 페이지가 게시판 리스트 페이지인지 확인
+        // /community?... 형태의 URL이면 리스트 페이지
+        if (referrer && /\/community\?/.test(referrer)) {
+            // 리스트에서 온 경우: 이전 페이지로 돌아가기
+            history.back();
+        } else {
+            // 작성/수정/기타 페이지에서 온 경우: 게시판 리스트로 이동 (scope, board 유지)
             if (apartmentId && boardSlug && scope) {
                 window.location.href = `/community?scope=${scope}&apartment_id=${apartmentId}&board=${boardSlug}`;
+            } else if (apartmentId) {
+                window.location.href = `/community?apartment_id=${apartmentId}`;
             } else {
                 history.back();
             }
-        } else {
-            // 그 외의 경우: 이전 페이지로 이동
-            history.back();
         }
     };
 })();
