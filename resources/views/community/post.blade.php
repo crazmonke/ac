@@ -31,7 +31,6 @@
             padding: 12px 4px 14px;
             background: linear-gradient(180deg, rgba(245,247,251,0.98), rgba(245,247,251,0.82));
             backdrop-filter: blur(8px);
-            padding-top: 50px;
         }
         .appbar .left,
         .appbar .right { display: flex; align-items: center; gap: 8px; }
