@@ -379,7 +379,11 @@
     @include('partials.site-nav', ['apartmentId' => $apartmentId])
 
     <div class="top">
-        <h1 style="margin:0;">커뮤니티</h1>
+        <h1 style="margin:0;">커뮤니티
+            <label style="font-size: medium;font-weight: 400;">
+                {{ $selectedBoardSlug !== '' ? $boardsFromCommunityCategory->firstWhere('slug', $selectedBoardSlug)->name : '전체' }}
+            </label>
+        </h1>
         @if($canCreatePost)
             @if($selectedBoardSlug !== '')
                 <a class="scope-tab active desktop-write-cta" href="/community/boards/{{ $selectedBoardSlug }}/create?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif">글쓰기</a>
