@@ -36,10 +36,7 @@
             margin: 0;
             font-family: 'SUIT', sans-serif;
             color: var(--ink);
-            background:
-                radial-gradient(circle at 12% -10%, rgba(15, 122, 114, 0.2), transparent 30%),
-                radial-gradient(circle at 88% 0%, rgba(245, 158, 11, 0.18), transparent 34%),
-                var(--bg);
+            background:#fff;
         }
         .shell { max-width: 1180px; margin: 0 auto; padding: 18px 16px 46px; }
         .btn {
@@ -60,7 +57,7 @@
             position: relative;
             border-radius: 0;
             overflow: hidden;
-            background: #f0f0f0;
+            background: #fff;
             aspect-ratio: 16 / 9;
             min-height: 321px;
             max-height: 500px;
@@ -167,7 +164,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.6);
+            background: #f0f0f0;
             border: 0;
             cursor: pointer;
             display: none;
