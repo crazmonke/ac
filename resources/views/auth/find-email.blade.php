@@ -6,7 +6,7 @@
     <title>이메일 찾기</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #eef4fa; color: #1b2d45; }
-        .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 16px 20px 28px; gap: 14px; }
+        .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 0px 20px 28px; gap: 14px; }
         .card { width: min(430px, 100%); background: #fff; border: 1px solid #d6e1ef; border-radius: 14px; padding: 22px; }
         h1 { margin: 0 0 6px; font-size: 1.45rem; }
         .desc { margin: 0 0 14px; font-size: 0.88rem; color: #53657a; line-height: 1.5; }

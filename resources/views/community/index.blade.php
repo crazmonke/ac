@@ -6,7 +6,7 @@
     <title>{{ $apartmentName }} 커뮤니티</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f7f9; color: #171717; }
-        .wrap { max-width: 760px; margin: 0 auto; padding: 14px 12px 24px; }
+        .wrap { max-width: 760px; margin: 0 auto; padding: 0px 12px 24px; }
         .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;  margin-top: 50px;}
         .meta { color: #5b6d82; font-size: 0.92rem; }
         .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }

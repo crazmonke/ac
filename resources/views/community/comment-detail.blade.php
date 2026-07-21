@@ -19,7 +19,7 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
-        .wrap { max-width: 740px; margin: 0 auto; padding: 12px 12px calc(var(--fixed-actions-height) + 16px); }
+        .wrap { max-width: 740px; margin: 0 auto; padding: 0px 12px calc(var(--fixed-actions-height) + 16px); }
         .appbar {
             position: sticky;
             top: 0;
