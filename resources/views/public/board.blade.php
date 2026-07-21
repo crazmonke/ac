@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $board->name }}</title>
     <style>
-        body { margin: 0; font-family: 'SUIT', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f8fb; color: #17263d; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f5f8fb; color: #17263d; }
         .wrap { max-width: 980px; margin: 0 auto; padding: 22px 16px 42px; }
         .top { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 50px;}
         .top a { text-decoration: none; color: #0f6f67; font-weight: 700; }

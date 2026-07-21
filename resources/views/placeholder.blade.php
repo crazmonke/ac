@@ -7,7 +7,7 @@
     <style>
         body {
             margin: 0;
-            font-family: "SUIT", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             color: #17263d;
             background: #f4f8fb;
         }

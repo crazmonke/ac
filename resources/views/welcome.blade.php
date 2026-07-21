@@ -8,9 +8,6 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --ink: #132237;
@@ -22,7 +19,7 @@
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: 'SUIT', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             color: var(--ink);
             background:
                 radial-gradient(circle at 20% 10%, rgba(11, 122, 117, 0.1), transparent 30%),

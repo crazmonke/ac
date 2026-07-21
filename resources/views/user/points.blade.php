@@ -4,9 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>포인트 이력</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;700;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
             --bg: #f4f8fb;
@@ -17,7 +15,7 @@
             --brand: #2e4fb8;
         }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'SUIT', sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .shell { max-width: 880px; margin: 0 auto; padding: 18px 16px 40px; }
         .page-title { margin: 0 0 14px; font-size: clamp(1.25rem, 2.6vw, 1.8rem); }
         .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; }

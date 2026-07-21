@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apaind - {{ $post->title }}</title>
     <style>
-        body { margin: 0; font-family: 'SUIT', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f8fb; color: #17263d; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f5f8fb; color: #17263d; }
         .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px;  margin-top: 50px; }
         .top a { color: #0f6f67; text-decoration: none; font-weight: 700; }
         .panel { margin-top: 12px; background: #fff; border: 1px solid #d5dfec; border-radius: 14px; padding: 14px; }
