@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $post->title }}</title>
+    <title>Apaind - {{ $post->title }}</title>
     <style>
         body { margin: 0; font-family: 'SUIT', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f8fb; color: #17263d; }
         .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px;  margin-top: 50px; }
