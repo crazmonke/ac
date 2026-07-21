@@ -43,6 +43,7 @@ class CommunityPageController extends Controller
         $preferredResidenceComplexId = (int) ($user?->preferred_residence_complex_id ?? 0);
         $scope = (string) $request->query('scope', 'all');
         $topic = trim((string) $request->query('topic', ''));
+        $searchQuery = trim((string) $request->query('q', ''));
         $selectedTopicName = $topic !== ''
             ? PostTopic::query()->where('slug', $topic)->value('name')
             : null;
@@ -129,6 +130,13 @@ class CommunityPageController extends Controller
                 if ($selectedTopicName) {
                     $query->orWhere('name', $selectedTopicName);
                 }
+            });
+        }
+
+        if ($canQueryCommunityFeed && $searchQuery !== '') {
+            $postsQuery->where(function (Builder $query) use ($searchQuery) {
+                $query->where('title', 'like', '%' . $searchQuery . '%')
+                    ->orWhere('body', 'like', '%' . $searchQuery . '%');
             });
         }
 
@@ -340,6 +348,17 @@ class CommunityPageController extends Controller
             '우리 단지의 정보와 일상을 함께 만들어가요.',
         ];
 
+        // 검색 쿼리가 있으면 검색 결과 페이지로 렌더링
+        if ($searchQuery !== '') {
+            return view('community.search', [
+                'apartmentId' => $apartmentId,
+                'apartmentName' => $apartmentName,
+                'searchQuery' => $searchQuery,
+                'posts' => $posts,
+                'isVerified' => $isVerified,
+            ]);
+        }
+
         return view('community.index', [
             'apartmentId' => $apartmentId,
             'apartmentName' => $apartmentName,
@@ -347,6 +366,7 @@ class CommunityPageController extends Controller
             'posts' => $posts,
             'scope' => $scope,
             'topic' => $topic,
+            'searchQuery' => $searchQuery,
             'isVerified' => $isVerified,
             'requiresSignupForScope' => $requiresSignupForScope,
             'topicFacets' => $topicFacets,

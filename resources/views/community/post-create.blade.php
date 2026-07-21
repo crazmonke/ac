@@ -18,7 +18,7 @@
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
         .wrap { max-width: 740px; margin: 0 auto; padding: 12px 12px calc(var(--publish-dock-height) + 16px); }
         .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
-        .meta { color: var(--muted); font-size: 0.88rem; }
+        .meta { color: var(--muted); font-size: 0.88rem; padding-top: 10px;}
         .back-chip {
             display: inline-flex;
             align-items: center;

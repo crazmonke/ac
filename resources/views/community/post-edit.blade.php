@@ -6,7 +6,7 @@
     <title>게시글 수정</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f8fb; color: #17263d; }
-        .wrap { max-width: 860px; margin: 0 auto; padding: 24px; }
+        .wrap { max-width: 860px; margin: 0 auto; padding: 24px;  }
         .panel { background: #fff; border: 1px solid #d5dfec; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
         input, textarea { width: 100%; border: 1px solid #c7d8ea; border-radius: 8px; padding: 9px; }
         .form-select {
@@ -83,7 +83,7 @@
             color: #20324b;
             border: 1px solid #c9d4e4;
         }
-        .meta { color: #5b6d82; font-size: 0.9rem; }
+        .meta { color: #5b6d82; font-size: 0.9rem; padding-top: 50px; }
         .back-chip {
             display: inline-flex;
             align-items: center;

@@ -422,7 +422,7 @@
 
     <section class="panel">
         @php
-            $renderPostItem = function (array $post) {
+            $renderPostItem = function (array $post) use ($searchQuery) {
                 $titleClass = !auth()->check() && !$post['can_read'] ? 'requires-signup' : '';
                 $signupAttr = !auth()->check() && !$post['can_read'] ? 'data-signup-url="'.e($post['url']).'"' : '';
                 $isLiked = (bool) ($post['liked_by_me'] ?? false);
@@ -440,6 +440,19 @@
                 $commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>';
                 $viewIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
 
+                // 검색어 하이라이트 처리
+                $highlightText = function ($text, $query) {
+                    if (trim($query) === '') {
+                        return $text;
+                    }
+                    $pattern = '/(' . preg_quote($query, '/') . ')/iu';
+                    return preg_replace($pattern, '<mark style="background-color: #FFEB3B; font-weight: bold;">$1</mark>', $text);
+                };
+
+                $titleDisplay = $highlightText(e($post['title']), $searchQuery);
+                $bodyPreviewDisplay = $highlightText(e($bodyPreview), $searchQuery);
+
+
                 return '<li class="post-item">'
                     .'<div class="post-row">'
                     .'<span class="author-avatar">'.e($post['author_initial']).'</span>'
@@ -447,8 +460,8 @@
                     .'<div class="post-head">'
                     .'<div class="author-line"><strong>'.e($post['author_name']).'</strong><span class="meta">· '.e($post['created_label']).'</span></div>'
                     .'</div>'
-                    .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.e($post['title']).'</a>'
-                    .($bodyPreview !== '' ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="body-preview">'.e($bodyPreview).'</div></a>' : '')
+                    .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.$titleDisplay.'</a>'
+                    .($bodyPreview !== '' ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="body-preview">'.$bodyPreviewDisplay.'</div></a>' : '')
                     .($isPoll ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="poll-preview"><p class="poll-preview-title">📊 '.e($pollQuestion !== '' ? $pollQuestion : '투표 게시글').'</p>'
                         .(!empty($pollOptions) ? '<div class="poll-preview-options">'.collect($pollOptions)->map(fn ($opt) => '<span class="poll-preview-option">'.e((string) $opt).'</span>')->implode('').'</div>' : '')
                         .'<div class="poll-preview-meta">총 '.e((string) $pollTotalVotes).'표 · 자세히 보려면 눌러주세요</div></div></a>' : '')

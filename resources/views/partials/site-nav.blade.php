@@ -86,6 +86,9 @@
     $apartmentId = (int) ($contextApartment?->id ?? ($requestedApartmentId > 0 ? $requestedApartmentId : 1));
     $regionLabel = trim((string) ($contextApartment?->sigungu ?: $contextApartment?->eupmyeondong ?: $contextApartment?->sido ?: $residenceRegion));
     $nameLabel = trim((string) ($contextApartment?->name ?: $residenceName));
+    
+    // 검색창 표시 여부: 메인 페이지(/) 또는 커뮤니티 메인(/community)에서만 표시
+    $showSearchBar = in_array(request()->path(), ['', '/', 'community'], true);
 @endphp
 
 <style>
@@ -308,24 +311,26 @@
         right: 8px;
         top: 50%;
         transform: translateY(-50%);
-        width: 16px;
-        height: 16px;
+        width: 30px;
+        height: 30px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #8b9aae;
-        pointer-events: none;
+        pointer-events: auto;
         flex-shrink: 0;
+        cursor: pointer;
     }
     
     .search-bar-icon svg {
-        width: 16px;
-        height: 16px;
+        width: 30px;
+        height: 30px;
         stroke: currentColor;
         fill: none;
         stroke-width: 2;
         stroke-linecap: round;
         stroke-linejoin: round;
+        pointer-events: auto;
     }
     
     @media (max-width: 640px) {
@@ -356,14 +361,16 @@
         }
         
         .search-bar-icon {
-            width: 14px;
-            height: 14px;
-            right: 7px;
+            width: 30px;
+            height: 30px;
+            right: 8px;
+            pointer-events: auto;
+            cursor: pointer;
         }
         
         .search-bar-icon svg {
-            width: 14px;
-            height: 14px;
+            width: 30px;
+            height: 30px;
         }
     }
     
@@ -416,6 +423,7 @@
             </a>
         </nav>
     </div>
+    @if ($showSearchBar)
     <div class="search-bar">
         <div class="search-bar-inner">
             <div class="search-bar-logo">A</div>
@@ -435,6 +443,7 @@
             </div>
         </div>
     </div>
+    @endif
 </header>
 
 
@@ -519,29 +528,50 @@
             const searchInput = document.querySelector('.search-bar-input');
             if (!searchInput) return;
             
-            // 검색 제출 처리
+            // 검색 제출 처리 함수
+            const performSearch = () => {
+                const query = searchInput.value.trim();
+                if (query) {
+                    const currentUrl = new URL(window.location);
+                    const pathname = currentUrl.pathname;
+                    
+                    // 홈 페이지에서 검색하는 경우 /community로 리다이렉트
+                    if (pathname === '/' || pathname === '') {
+                        currentUrl.pathname = '/community';
+                    }
+                    
+                    currentUrl.searchParams.set('q', query);
+                    window.location.href = currentUrl.toString();
+                }
+            };
+            
+            // 엔터 키 처리
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    const query = searchInput.value.trim();
-                    if (query) {
-                        const currentUrl = new URL(window.location);
-                        currentUrl.searchParams.set('q', query);
-                        window.location.href = currentUrl.toString();
-                    }
+                    performSearch();
                 }
             });
             
             // 돋보기 아이콘 클릭 처리
             const searchIcon = document.querySelector('.search-bar-icon');
             if (searchIcon) {
-                searchIcon.addEventListener('click', () => {
-                    const query = searchInput.value.trim();
-                    if (query) {
-                        const currentUrl = new URL(window.location);
-                        currentUrl.searchParams.set('q', query);
-                        window.location.href = currentUrl.toString();
-                    }
+                // 아이콘 자체에 클릭 이벤트
+                searchIcon.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    performSearch();
                 });
+                
+                // 아이콘 내부 SVG에도 클릭 이벤트 (이벤트 전파 방지)
+                const svg = searchIcon.querySelector('svg');
+                if (svg) {
+                    svg.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        performSearch();
+                    });
+                }
+                
                 searchIcon.style.cursor = 'pointer';
             }
         };
