@@ -66,7 +66,7 @@
             max-height: 500px;
             width: 100vw;
             margin-left: calc(-50vw + 50%);
-            margin-top: 0px;
+            margin-top: 50px;
         }
         .flicking-viewport {
             width: 100%;
