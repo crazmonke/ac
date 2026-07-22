@@ -28,7 +28,7 @@ class ApartmentSelectionService
     {
     }
 
-    public function search(string $query, int $limit = 8): Collection
+    public function search(string $query, int $limit = 8, ?array $region = null): Collection
     {
         $keyword = trim($query);
         $normalizedKeyword = $this->normalizeText($keyword);
@@ -45,6 +45,17 @@ class ApartmentSelectionService
             ->where(function (Builder $builder) {
                 $builder->where('is_active', true)
                     ->orWhereNull('is_active');
+            })
+            ->when($region !== null, function (Builder $builder) use ($region) {
+                if (!empty($region['sido'])) {
+                    $builder->where('sido', $region['sido']);
+                }
+                if (!empty($region['sigungu'])) {
+                    $builder->where('sigungu', $region['sigungu']);
+                }
+                if (!empty($region['eupmyeondong'])) {
+                    $builder->where('eupmyeondong', $region['eupmyeondong']);
+                }
             })
             ->where(function (Builder $builder) use ($keyword, $normalizedKeyword, $isAddressQuery, $searchTerms) {
                 $builder->where('name', 'like', '%' . $keyword . '%')

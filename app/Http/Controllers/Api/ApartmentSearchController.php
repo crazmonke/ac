@@ -17,8 +17,15 @@ class ApartmentSearchController extends Controller
     {
         $query = trim((string) $request->query('q', ''));
         $limit = (int) $request->query('limit', 20);
+        $sido = trim((string) $request->query('sido', ''));
+        $sigungu = trim((string) $request->query('sigungu', ''));
+        $eupmyeondong = trim((string) $request->query('eupmyeondong', ''));
 
-        $results = $this->apartmentSelectionService->search($query, $limit);
+        $region = ($sido !== '' || $sigungu !== '' || $eupmyeondong !== '')
+            ? compact('sido', 'sigungu', 'eupmyeondong')
+            : null;
+
+        $results = $this->apartmentSelectionService->search($query, $limit, $region);
 
         return response()->json([
             'data' => $results,

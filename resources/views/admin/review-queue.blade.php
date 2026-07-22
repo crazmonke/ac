@@ -81,7 +81,7 @@
                         @csrf
                         @method('put')
                         <div class="apt-search-wrapper">
-                            <input type="text" class="apt-search-input" name="custom_apartment_name" placeholder="공동주택명 검색" data-review-id="{{ $review->id }}" autocomplete="off">
+                            <input type="text" class="apt-search-input" name="custom_apartment_name" placeholder="공동주택명 검색" data-review-id="{{ $review->id }}" data-sido="{{ $review->user?->home_sido ?? '' }}" data-sigungu="{{ $review->user?->home_sigungu ?? '' }}" data-eupmyeondong="{{ $review->user?->home_eupmyeondong ?? '' }}" autocomplete="off">
                             <input type="hidden" class="apt-search-hidden-id" name="resolved_apartment_id">
                             <div class="apt-search-dropdown"></div>
                         </div>
@@ -244,7 +244,14 @@ document.querySelectorAll('.apt-search-input').forEach(input => {
         }
         
         try {
-            const response = await fetch(`/apartments/search?q=${encodeURIComponent(query)}&limit=10`);
+            const sido = e.target.dataset.sido || '';
+            const sigungu = e.target.dataset.sigungu || '';
+            const eupmyeondong = e.target.dataset.eupmyeondong || '';
+            const regionParams = new URLSearchParams({ q: query, limit: '10' });
+            if (sido) regionParams.set('sido', sido);
+            if (sigungu) regionParams.set('sigungu', sigungu);
+            if (eupmyeondong) regionParams.set('eupmyeondong', eupmyeondong);
+            const response = await fetch(`/apartments/search?${regionParams.toString()}`);
             const data = await response.json();
             const results = data.results || data.data || [];
             
