@@ -386,15 +386,31 @@ class ApartmentSelectionService
                 );
                 
                 if ($nearbyComplex) {
-                    // 근처 공동주택이 있으면 자동 선택 및 자동 승인
-                    $user->preferred_residence_complex_id = $nearbyComplex->id;
-                    $selectedBuilding = ResidenceBuilding::query()
-                        ->where('complex_id', $nearbyComplex->id)
-                        ->orderBy('id')
-                        ->first();
-                    if ($selectedBuilding) {
-                        $user->preferred_residence_building_id = $selectedBuilding->id;
-                        $autoVerified = true;
+                    // 근처 공동주택의 지역과 사용자의 입력 주소 지역이 일치하는지 확인
+                    // 사용자의 지역 정보는 회원가입 시 입력한 것 (home_sido, home_sigungu, home_eupmyeondong)
+                    $userSido = (string) ($user->home_sido ?? '');
+                    $userSigungu = (string) ($user->home_sigungu ?? '');
+                    $userEupmyeondong = (string) ($user->home_eupmyeondong ?? '');
+                    
+                    $complexSido = (string) $nearbyComplex->sido;
+                    $complexSigungu = (string) $nearbyComplex->sigungu;
+                    $complexEupmyeondong = (string) $nearbyComplex->eupmyeondong;
+                    
+                    // 지역이 모두 일치하면 자동 승인
+                    if ($userSido && $userSigungu && $userEupmyeondong &&
+                        $userSido === $complexSido &&
+                        $userSigungu === $complexSigungu &&
+                        $userEupmyeondong === $complexEupmyeondong) {
+                        // 지역이 일치하면 자동 선택 및 자동 승인
+                        $user->preferred_residence_complex_id = $nearbyComplex->id;
+                        $selectedBuilding = ResidenceBuilding::query()
+                            ->where('complex_id', $nearbyComplex->id)
+                            ->orderBy('id')
+                            ->first();
+                        if ($selectedBuilding) {
+                            $user->preferred_residence_building_id = $selectedBuilding->id;
+                            $autoVerified = true;
+                        }
                     }
                 }
             }
