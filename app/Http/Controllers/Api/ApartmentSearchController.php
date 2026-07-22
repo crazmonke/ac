@@ -16,9 +16,13 @@ class ApartmentSearchController extends Controller
     public function index(Request $request)
     {
         $query = trim((string) $request->query('q', ''));
+        $limit = (int) $request->query('limit', 20);
+
+        $results = $this->apartmentSelectionService->search($query, $limit);
 
         return response()->json([
-            'data' => $this->apartmentSelectionService->search($query),
+            'data' => $results,
+            'results' => $results, // Admin dashboard compatibility
         ]);
     }
 

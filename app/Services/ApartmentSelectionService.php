@@ -266,7 +266,8 @@ class ApartmentSelectionService
         ?float $longitude = null,
         ?int $residenceBuildingId = null,
         ?string $unitDong = null,
-        ?string $unitHo = null
+        ?string $unitHo = null,
+        ?string $roadAddress = null
     ): array
     {
         $query = trim($apartmentQuery);
@@ -371,6 +372,35 @@ class ApartmentSelectionService
                 'auto_verified' => $autoVerified,
             ]);
         } elseif ($query !== '') {
+            // 직접 주소로 가입한 경우 - home_apartment_name에 저장
+            $user->home_apartment_name = $query;
+            $user->preferred_apartment_id = null;
+            
+            // GPS 좌표가 있으면 근처 공동주택을 찾아서 자동 매칭 시도
+            $autoVerified = false;
+            if ($latitude !== null && $longitude !== null) {
+                $nearbyComplex = $this->findNearbyComplexByCoordinates(
+                    $latitude,
+                    $longitude,
+                    3000 // 3km 이내
+                );
+                
+                if ($nearbyComplex) {
+                    // 근처 공동주택이 있으면 자동 선택 및 자동 승인
+                    $user->preferred_residence_complex_id = $nearbyComplex->id;
+                    $selectedBuilding = ResidenceBuilding::query()
+                        ->where('complex_id', $nearbyComplex->id)
+                        ->orderBy('id')
+                        ->first();
+                    if ($selectedBuilding) {
+                        $user->preferred_residence_building_id = $selectedBuilding->id;
+                        $autoVerified = true;
+                    }
+                }
+            }
+            
+            $user->save();
+
             $matchReview = ApartmentMatchReview::query()->updateOrCreate(
                 [
                     'user_id' => $user->id,
@@ -380,14 +410,29 @@ class ApartmentSelectionService
                 [
                     'source' => $source,
                     'raw_region' => null,
+                    'road_address' => $roadAddress,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
                     'suggested_apartment_id' => $this->suggestApartmentId($query),
-                    'admin_note' => null,
+                    'admin_note' => $autoVerified ? 'GPS 3km 내외 자동 매칭' : null,
                 ]
             );
+            
+            // GPS 기반 자동 승인
+            if ($autoVerified && $matchReview) {
+                $matchReview->fill([
+                    'status' => 'resolved',
+                    'resolved_apartment_id' => null, // 실제 Apartment가 아닌 ResidenceComplex이므로 null
+                    'resolved_at' => now(),
+                ])->save();
+            }
 
             $this->operationalMetricsService->log('residence_selection_pending_review', $user->id, null, null, [
                 'query' => $query,
                 'source' => $source,
+                'auto_verified' => $autoVerified,
+                'has_gps' => $latitude !== null && $longitude !== null,
+                'has_road_address' => !empty($roadAddress),
             ]);
         }
 
@@ -689,6 +734,55 @@ class ApartmentSelectionService
             + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
 
         return 2 * $earthRadius * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    /**
+     * GPS 좌표 기반으로 근처 공동주택을 찾음
+     */
+    private function findNearbyComplexByCoordinates(float $latitude, float $longitude, int $radiusMeters = 3000): ?ResidenceComplex
+    {
+        // 대략적인 위도/경도 범위 계산 (미터 단위)
+        // 1 도 ≈ 111km
+        $oneDegreeMetersCosLat = 111000 * cos(deg2rad($latitude));
+        $oneDegreeMeters = 111000;
+        
+        $latDelta = $radiusMeters / $oneDegreeMeters;
+        $lngDelta = $radiusMeters / $oneDegreeMetersCosLat;
+        
+        $minLat = $latitude - $latDelta;
+        $maxLat = $latitude + $latDelta;
+        $minLng = $longitude - $lngDelta;
+        $maxLng = $longitude + $lngDelta;
+        
+        // 범위 내 모든 공동주택을 가져오기
+        $complexes = ResidenceComplex::query()
+            ->where('latitude', '>=', $minLat)
+            ->where('latitude', '<=', $maxLat)
+            ->where('longitude', '>=', $minLng)
+            ->where('longitude', '<=', $maxLng)
+            ->orderBy('latitude')
+            ->orderBy('longitude')
+            ->get();
+        
+        // 실제 거리 계산해서 가장 가까운 공동주택 찾기
+        $closest = null;
+        $closestDistance = PHP_INT_MAX;
+        
+        foreach ($complexes as $complex) {
+            $distance = $this->haversineMeters(
+                $latitude,
+                $longitude,
+                (float) $complex->latitude,
+                (float) $complex->longitude
+            );
+            
+            if ($distance <= $radiusMeters && $distance < $closestDistance) {
+                $closestDistance = $distance;
+                $closest = $complex;
+            }
+        }
+        
+        return $closest;
     }
 
     private function extractResidenceRegionSnapshot(ResidenceComplex $complex, ResidenceBuilding $building): array

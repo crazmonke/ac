@@ -17,6 +17,9 @@ return new class extends Migration
             $table->string('source', 30)->default('user');
             $table->string('raw_apartment_name', 120);
             $table->string('raw_region', 120)->nullable();
+            $table->string('road_address', 255)->nullable();
+            $table->double('latitude')->nullable();
+            $table->double('longitude')->nullable();
             $table->foreignId('suggested_apartment_id')->nullable()->constrained('apartments')->nullOnDelete();
             $table->foreignId('resolved_apartment_id')->nullable()->constrained('apartments')->nullOnDelete();
             $table->string('status', 30)->default('pending');

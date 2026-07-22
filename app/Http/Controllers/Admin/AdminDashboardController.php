@@ -76,9 +76,33 @@ class AdminDashboardController extends Controller
             ->limit(50)
             ->get();
 
+        // 사용자의 지역 정보를 기반으로 suggestions 필터링
         $matchSuggestions = $matchReviews->mapWithKeys(function (ApartmentMatchReview $review) {
+            $userRegion = [
+                'sido' => $review->user?->home_sido,
+                'sigungu' => $review->user?->home_sigungu,
+                'eupmyeondong' => $review->user?->home_eupmyeondong,
+            ];
+            
+            // 검색 결과를 모두 가져온 후 사용자 지역으로 필터링
+            $allResults = $this->apartmentSelectionService->search($review->raw_apartment_name, 20);
+            $filtered = $allResults->filter(function ($apartment) use ($userRegion) {
+                // 지역 정보가 일치하는 공동주택만 반환
+                if (!$userRegion['sido'] || !$userRegion['sigungu'] || !$userRegion['eupmyeondong']) {
+                    return true; // 사용자 지역이 없으면 모두 표시
+                }
+                return isset($apartment->sido) && $apartment->sido === $userRegion['sido'] &&
+                       isset($apartment->sigungu) && $apartment->sigungu === $userRegion['sigungu'] &&
+                       isset($apartment->eupmyeondong) && $apartment->eupmyeondong === $userRegion['eupmyeondong'];
+            })->take(6)->map(function ($apartment) {
+                return [
+                    'id' => $apartment->id,
+                    'label' => $apartment->name,
+                ];
+            });
+            
             return [
-                $review->id => $this->apartmentSelectionService->search($review->raw_apartment_name, 6),
+                $review->id => $filtered,
             ];
         });
 
@@ -675,25 +699,90 @@ class AdminDashboardController extends Controller
 
         $data = $request->validate([
             'status' => ['required', 'in:resolved,rejected'],
-            'resolved_apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'resolved_apartment_id' => ['nullable', 'integer'], // 0은 직접입력을 의미
+            'custom_apartment_name' => ['nullable', 'string', 'max:255'], // 관리자가 직접 입력한 공동주택명
             'admin_note' => ['nullable', 'string', 'max:2000'],
+            'create_new_apartment' => ['nullable', 'boolean'], // 새 공동주택을 DB에 추가할지 여부
         ]);
 
-        if ($data['status'] === 'resolved' && empty($data['resolved_apartment_id'])) {
-            return back()->withErrors(['resolved_apartment_id' => '확정할 공동주택를 선택해 주세요.']);
+        // resolved_apartment_id가 null이거나 빈 문자열이거나 정말 공백인 경우만 에러
+        if ($data['status'] === 'resolved' && !isset($data['resolved_apartment_id'])) {
+            return back()->withErrors(['resolved_apartment_id' => '확정할 공동주택을 선택해 주세요.']);
+        }
+
+        $isDirectInput = $data['status'] === 'resolved' && ($data['resolved_apartment_id'] == 0 || $data['resolved_apartment_id'] === '0');
+        $shouldCreateNewApartment = $isDirectInput && ($data['create_new_apartment'] ?? false) && !empty($data['custom_apartment_name']);
+        
+        $resolvedApartmentId = null;
+        $adminNote = $data['admin_note'] ?? '';
+        
+        if ($shouldCreateNewApartment) {
+            // 사용자의 지역 정보를 이용하여 새 공동주택 생성
+            $sido = '';
+            $sigungu = '';
+            $eupmyeondong = '';
+            
+            if ($review->user && $review->user->home_sido) {
+                $sido = $review->user->home_sido;
+                $sigungu = $review->user->home_sigungu ?? '';
+                $eupmyeondong = $review->user->home_eupmyeondong ?? '';
+            } elseif ($review->raw_region) {
+                // raw_region에서 지역 정보 파싱 시도
+                $parts = explode(' ', trim($review->raw_region));
+                if (count($parts) >= 1) $sido = $parts[0] ?? '';
+                if (count($parts) >= 2) $sigungu = $parts[1] ?? '';
+                if (count($parts) >= 3) $eupmyeondong = $parts[2] ?? '';
+            }
+            
+            // 기본값 설정 (지역 정보가 없으면)
+            if (!$sido) {
+                $sido = '기타';
+                $sigungu = '기타';
+                $eupmyeondong = '기타';
+            }
+            
+            $newApartment = Apartment::create([
+                'name' => $data['custom_apartment_name'],
+                'road_address' => $review->road_address ?? $data['custom_apartment_name'],
+                'sido' => $sido,
+                'sigungu' => $sigungu,
+                'eupmyeondong' => $eupmyeondong,
+                'source' => 'admin_direct_input',
+                'is_active' => true,
+            ]);
+            
+            $resolvedApartmentId = $newApartment->id;
+            $adminNote = '[새로 추가] ' . $data['custom_apartment_name'] . ($adminNote ? "\n" . $adminNote : '');
+        } elseif ($isDirectInput && !empty($data['custom_apartment_name'])) {
+            // 직접입력 (DB에 추가하지 않음)
+            $adminNote = '[직접입력] ' . $data['custom_apartment_name'] . ($adminNote ? "\n" . $adminNote : '');
+        } elseif (!$isDirectInput && $data['status'] === 'resolved' && $data['resolved_apartment_id']) {
+            // DB의 기존 공동주택으로 매칭
+            $resolvedApartmentId = (int) $data['resolved_apartment_id'];
         }
 
         $review->fill([
             'status' => $data['status'],
-            'resolved_apartment_id' => $data['status'] === 'resolved' ? (int) $data['resolved_apartment_id'] : null,
-            'admin_note' => $data['admin_note'] ?? null,
+            'resolved_apartment_id' => $resolvedApartmentId,
+            'admin_note' => $adminNote,
             'resolved_by' => $request->user()->id,
             'resolved_at' => now(),
         ])->save();
 
-        if ($data['status'] === 'resolved' && $review->user) {
-            $review->user->preferred_apartment_id = (int) $data['resolved_apartment_id'];
+        // resolved_apartment_id가 설정되면 user의 preferred_apartment_id 업데이트 및 resident 권한 부여
+        if ($data['status'] === 'resolved' && $resolvedApartmentId && $review->user) {
+            $review->user->preferred_apartment_id = $resolvedApartmentId;
             $review->user->save();
+            
+            // UserRole에 resident 권한 추가 (입주민 인증 완료)
+            UserRole::query()->firstOrCreate(
+                [
+                    'user_id' => $review->user->id,
+                    'apartment_id' => $resolvedApartmentId,
+                    'role' => 'resident',
+                ],
+                []
+            );
         }
 
         return redirect('/admin/review-queue')->with('status', '공동주택 매칭 검수 상태가 업데이트되었습니다.');

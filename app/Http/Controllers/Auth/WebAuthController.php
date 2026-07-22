@@ -134,8 +134,12 @@ class WebAuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'apartment_id' => ['required', 'integer'],
             'apartment_query' => ['nullable', 'string', 'max:120'],
-            'apartment_id' => ['required', 'integer', 'exists:apartments,id'],
+            'home_sido' => ['required', 'string', 'max:40'],
+            'home_sigungu' => ['required', 'string', 'max:40'],
+            'home_eupmyeondong' => ['required', 'string', 'max:40'],
+            'road_address' => ['nullable', 'string', 'max:255'],
             'residence_building_id' => ['nullable', 'integer', 'exists:residence_buildings,id'],
             'residence_dong' => ['nullable', 'string', 'max:40'],
             'residence_ho' => ['nullable', 'string', 'max:40'],
@@ -148,14 +152,27 @@ class WebAuthController extends Controller
             'password.regex' => '비밀번호는 영문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
         ]);
 
+        // apartment_id = 0 (직접 입력)인 경우 apartment_query가 필요
+        if ((int) $data['apartment_id'] === 0 && empty($data['apartment_query'])) {
+            return back()->withErrors(['apartment_query' => '공동주택명을 입력해주세요.']);
+        }
+
+        // apartment_id > 0인 경우 유효성 검증
+        if ((int) $data['apartment_id'] > 0 && !Apartment::where('id', $data['apartment_id'])->exists()) {
+            return back()->withErrors(['apartment_id' => '유효하지 않은 공동주택입니다.']);
+        }
+
         $apartmentQuery = $data['apartment_query']
-            ?? Apartment::query()->find((int) $data['apartment_id'])?->name
+            ?? ($data['apartment_id'] > 0 ? Apartment::query()->find((int) $data['apartment_id'])?->name : '')
             ?? '';
 
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'preferred_apartment_id' => (int) $data['apartment_id'],
+            'preferred_apartment_id' => ((int) $data['apartment_id'] > 0) ? (int) $data['apartment_id'] : null,
+            'home_sido' => $data['home_sido'],
+            'home_sigungu' => $data['home_sigungu'],
+            'home_eupmyeondong' => $data['home_eupmyeondong'],
             'password' => $data['password'],
         ]);
 
@@ -166,9 +183,10 @@ class WebAuthController extends Controller
             'register',
             isset($data['latitude']) ? (float) $data['latitude'] : null,
             isset($data['longitude']) ? (float) $data['longitude'] : null,
-               isset($data['residence_building_id']) ? (int) $data['residence_building_id'] : null,
+            isset($data['residence_building_id']) ? (int) $data['residence_building_id'] : null,
             $data['residence_dong'] ?? null,
-            $data['residence_ho'] ?? null
+            $data['residence_ho'] ?? null,
+            $data['road_address'] ?? null
         );
 
         Auth::login($user);

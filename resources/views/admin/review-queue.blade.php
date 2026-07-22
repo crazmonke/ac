@@ -25,6 +25,13 @@
         .inline-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .output { white-space: pre-wrap; background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 10px; font-size: 0.84rem; overflow: auto; }
         h1, h2, h3 { margin: 0; }
+        .apt-search-wrapper { position: relative; }
+        .apt-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #c8d5e7; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; display: none; z-index: 100; }
+        .apt-search-dropdown.show { display: block; }
+        .apt-search-option { padding: 10px 9px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.15s; }
+        .apt-search-option:hover { background: #f4f8ff; }
+        .apt-search-option.selected { background: #e3efff; }
+        .apt-search-no-results { padding: 10px 9px; color: #607086; text-align: center; }
     </style>
 </head>
 <body>
@@ -47,23 +54,44 @@
                 <article class="card">
                     <h3>{{ $review->raw_apartment_name }}</h3>
                     <p class="meta">요청 사용자: {{ $review->user->name ?? '미지정' }} · 상태 <span class="status">{{ $review->status }}</span></p>
+                    
+                    @if($review->latitude && $review->longitude)
+                        <p class="meta">📍 GPS 좌표: {{ number_format($review->latitude, 6) }}, {{ number_format($review->longitude, 6) }}</p>
+                    @endif
+                    
+                    @if($review->road_address)
+                        <p class="meta">📮 도로명주소: {{ $review->road_address }}</p>
+                    @endif
+                    
+                    @if($review->user?->home_sido)
+                        <p class="meta">지역: {{ $review->user->home_sido }} {{ $review->user->home_sigungu }} {{ $review->user->home_eupmyeondong }}</p>
+                    @endif
+                    
                     @if($review->suggestedApartment)
                         <p class="meta">자동 제안: {{ $review->suggestedApartment->name }}</p>
                     @endif
+                    
                     <div class="suggestions">
                         @foreach(($matchSuggestions[$review->id] ?? collect()) as $suggestion)
                             <span>{{ $suggestion['label'] }}</span>
                         @endforeach
                     </div>
+                    
                     <form method="post" action="/admin/review-queue/matches/{{ $review->id }}" class="form-grid">
                         @csrf
                         @method('put')
-                        <select name="resolved_apartment_id">
-                            <option value="">확정 공동주택 선택</option>
-                            @foreach(($matchSuggestions[$review->id] ?? collect()) as $suggestion)
-                                <option value="{{ $suggestion['id'] }}">{{ $suggestion['label'] }}</option>
-                            @endforeach
-                        </select>
+                        <div class="apt-search-wrapper">
+                            <input type="text" class="apt-search-input" name="custom_apartment_name" placeholder="공동주택명 검색" data-review-id="{{ $review->id }}" autocomplete="off">
+                            <input type="hidden" class="apt-search-hidden-id" name="resolved_apartment_id">
+                            <div class="apt-search-dropdown"></div>
+                        </div>
+                        <div class="create-new-apt-option" style="display: none; padding: 8px; background: #f0f8ff; border: 1px solid #d0e8ff; border-radius: 4px; margin: 8px 0;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="checkbox" class="create-new-apartment-check" name="create_new_apartment" value="1">
+                                <span>✨ 이 공동주택을 데이터베이스에 새로 추가</span>
+                            </label>
+                            <p style="font-size: 0.9em; color: #666; margin: 6px 0 0 0;">체크하면 입력한 공동주택명이 새로운 항목으로 DB에 추가되고 사용자와 매칭됩니다.</p>
+                        </div>
                         <textarea name="admin_note" placeholder="검수 메모"></textarea>
                         <div class="actions">
                             <button class="btn btn-primary" type="submit" name="status" value="resolved">매칭 확정</button>
@@ -198,5 +226,93 @@
         </div>
     </section>
 </div>
+
+<script>
+document.querySelectorAll('.apt-search-input').forEach(input => {
+    input.addEventListener('input', async (e) => {
+        const query = e.target.value.trim();
+        const reviewId = e.target.dataset.reviewId;
+        const dropdown = e.target.nextElementSibling.nextElementSibling; // skip hidden input
+        const hiddenInput = e.target.nextElementSibling;
+        const form = e.target.closest('form');
+        const createNewOption = form?.querySelector('.create-new-apt-option');
+        
+        if (!query) {
+            dropdown.classList.remove('show');
+            if (createNewOption) createNewOption.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/apartments/search?q=${encodeURIComponent(query)}&limit=10`);
+            const data = await response.json();
+            const results = data.results || data.data || [];
+            
+            if (results.length === 0) {
+                // 검색 결과 없음 → 사용자 입력을 직접입력 옵션으로 제공
+                dropdown.innerHTML = `<div class="apt-search-option" data-id="0" data-name="${query}" style="background: #fff9e6; border-top: 2px solid #ffd966;">
+                    ${query}
+                    <span style="color: #ff9800; font-size: 0.85em; margin-left: 8px;">
+                        💡 직접입력
+                    </span>
+                </div>`;
+            } else {
+                dropdown.innerHTML = results.map(apt => {
+                    const label = apt.name || apt.label || '';
+                    const region = [apt.sido, apt.sigungu, apt.eupmyeondong].filter(x => x).join(' ');
+                    return `<div class="apt-search-option" data-id="${apt.id}" data-name="${label}">
+                        ${label}
+                        <span style="color: #999; font-size: 0.85em; margin-left: 8px;">
+                            ${region}
+                        </span>
+                    </div>`;
+                }).join('');
+            }
+            
+            dropdown.classList.add('show');
+            
+            dropdown.querySelectorAll('.apt-search-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const id = option.dataset.id;
+                    const name = option.dataset.name;
+                    input.value = name;
+                    hiddenInput.value = id;
+                    dropdown.classList.remove('show');
+                    
+                    // 직접입력(id=0) 선택 시 새 공동주택 생성 옵션 표시
+                    if (createNewOption) {
+                        if (id === '0' || id === 0) {
+                            createNewOption.style.display = 'block';
+                        } else {
+                            createNewOption.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('검색 오류:', error);
+            dropdown.innerHTML = '<div class="apt-search-no-results">검색 오류 발생</div>';
+            dropdown.classList.add('show');
+        }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.apt-search-wrapper')) {
+            document.querySelectorAll('.apt-search-dropdown').forEach(dd => {
+                dd.classList.remove('show');
+            });
+        }
+    });
+    
+    // Focus event to show suggestions
+    input.addEventListener('focus', async (e) => {
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+            e.target.dispatchEvent(new Event('input'));
+        }
+    });
+});
+</script>
 </body>
 </html>

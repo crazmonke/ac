@@ -87,6 +87,11 @@
         </div>
 
         <input id="apartmentId" type="hidden" name="apartment_id" value="{{ old('apartment_id', request()->query('apartment_id')) }}">
+        <input id="apartmentQuery" type="hidden" name="apartment_query" value="{{ old('apartment_query') }}">
+        <input id="homeSido" type="hidden" name="home_sido" value="{{ old('home_sido') }}">
+        <input id="homeSigngu" type="hidden" name="home_sigungu" value="{{ old('home_sigungu') }}">
+        <input id="homeEupmyeondong" type="hidden" name="home_eupmyeondong" value="{{ old('home_eupmyeondong') }}">
+        <input id="roadAddress" type="hidden" name="road_address" value="{{ old('road_address') }}">
         <input id="residenceBuildingId" type="hidden" name="residence_building_id" value="{{ old('residence_building_id') }}">
         <input id="latitude" type="hidden" name="latitude" value="{{ old('latitude') }}">
         <input id="longitude" type="hidden" name="longitude" value="{{ old('longitude') }}">
@@ -130,6 +135,7 @@
     const aptNameInput       = document.getElementById('aptNameInput');
     const aptDropdown        = document.getElementById('aptDropdown');
     const apartmentIdInput   = document.getElementById('apartmentId');
+    const apartmentQueryInput = document.getElementById('apartmentQuery');
     const residenceBuildingIdInput = document.getElementById('residenceBuildingId');
     const latitudeInput      = document.getElementById('latitude');
     const longitudeInput     = document.getElementById('longitude');
@@ -163,28 +169,52 @@
     }
 
     async function ensureGeoCoordinates() {
-        if (!latitudeInput || !longitudeInput) return;
-        if (latitudeInput.value && longitudeInput.value) return;
-        await new Promise((resolve) => {
-            _appGetPosition(
-                (pos) => {
-                    latitudeInput.value  = String(pos.coords.latitude);
-                    longitudeInput.value = String(pos.coords.longitude);
-                    resolve();
-                },
-                () => resolve(),
-                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
-            );
+        if (!latitudeInput || !longitudeInput) {
+            console.log('[GPS] Input elements not found');
+            return;
+        }
+        
+        // 이미 좌표가 있으면 스킵
+        if (latitudeInput.value && longitudeInput.value) {
+            console.log('[GPS] Coordinates already exist:', latitudeInput.value, longitudeInput.value);
+            return;
+        }
+        
+        return new Promise((resolve) => {
+            console.log('[GPS] Starting GPS collection...');
+            try {
+                _appGetPosition(
+                    (pos) => {
+                        console.log('[GPS] Success! Lat:', pos.coords.latitude, 'Lon:', pos.coords.longitude);
+                        latitudeInput.value  = String(pos.coords.latitude);
+                        longitudeInput.value = String(pos.coords.longitude);
+                        resolve();
+                    },
+                    (error) => {
+                        console.log('[GPS] Error:', error.message);
+                        resolve(); // GPS 실패해도 계속 진행
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } catch (error) {
+                console.log('[GPS] Exception:', error.message);
+                resolve();
+            }
         });
     }
 
+    // 페이지 로드 시 GPS 미리 수집 시도
+    console.log('[Init] Page loaded, attempting to collect GPS...');
     _appGetPosition(
         (pos) => {
+            console.log('[Init] Initial GPS success! Lat:', pos.coords.latitude);
             latitudeInput.value  = String(pos.coords.latitude);
             longitudeInput.value = String(pos.coords.longitude);
         },
-        () => {},
-        { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+        (error) => {
+            console.log('[Init] Initial GPS failed:', error.message);
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 }
     );
 
     // ── helpers ───────────────────────────────────────────────────────────────
@@ -300,6 +330,11 @@
             return;
         }
 
+        // 선택된 지역 정보를 hidden input에 저장
+        document.getElementById('homeSido').value = sido;
+        document.getElementById('homeSigngu').value = sigungu;
+        document.getElementById('homeEupmyeondong').value = eupmyeondong;
+
         aptComboboxWrap.classList.add('visible');
         aptNameInput.placeholder = '불러오는 중…';
         aptNameInput.disabled = true;
@@ -320,13 +355,31 @@
             : allApartments;
 
         if (!filtered.length) {
-            aptDropdown.innerHTML = '<div class="apt-option" style="color:#94a3b8;cursor:default;">검색 결과 없음</div>';
+            // 검색 결과가 없을 때, 사용자 입력값이 있으면 "공동주택" 옵션 표시
+            if (query.trim()) {
+                // 선택된 지역 정보를 기반으로 도로명주소 생성
+                const homeSidoInput = document.getElementById('homeSido');
+                const homeSignguInput = document.getElementById('homeSigngu');
+                const homeEupmyeondongInput = document.getElementById('homeEupmyeondong');
+                const roadAddr = [homeSidoInput.value, homeSignguInput.value, homeEupmyeondongInput.value]
+                    .filter(v => v && v !== '')
+                    .join(' ');
+                const customLabel = query.trim() + ' 공동주택';
+                aptDropdown.innerHTML = `
+                    <div class="apt-option" data-id="0" data-building-id="" data-name="${escHtml(customLabel)}" data-road-address="${escHtml(roadAddr)}" data-custom="true">
+                        <strong>${escHtml(customLabel)}</strong>
+                        <small style="color:#0f7a72; font-weight: 500;">직접 입력한 주소</small>
+                    </div>
+                `;
+            } else {
+                aptDropdown.innerHTML = '<div class="apt-option" style="color:#94a3b8;cursor:default;">검색 결과 없음</div>';
+            }
             aptDropdown.style.display = 'block';
             return;
         }
 
         aptDropdown.innerHTML = filtered.map((a) => `
-            <div class="apt-option" data-id="${a.id}" data-building-id="${a.building_id || ''}" data-name="${escHtml(a.name)}">
+            <div class="apt-option" data-id="${a.id}" data-building-id="${a.building_id || ''}" data-name="${escHtml(a.name)}" data-road-address="${escHtml(a.road_address || '')}">
                 ${highlightMatch(a.name, query.trim())}
                 <small>${escHtml(a.road_address || '')}</small>
             </div>
@@ -353,6 +406,17 @@
         residenceBuildingIdInput.value = item.dataset.buildingId;
         selectedAptName = item.dataset.name;
         aptNameInput.value = item.dataset.name;
+        
+        // road_address 저장
+        document.getElementById('roadAddress').value = item.dataset.roadAddress || '';
+        
+        // 커스텀 공동주택(apartment_id = 0)인 경우 apartment_query 설정
+        if (item.dataset.id === '0') {
+            apartmentQueryInput.value = item.dataset.name;
+        } else {
+            apartmentQueryInput.value = '';
+        }
+        
         aptSelectError.style.display = 'none';
         closeDropdown();
     });
@@ -373,9 +437,21 @@
             }
             aptSelectError.style.display = 'none';
 
-            if (latitudeInput.value && longitudeInput.value) return;
+            // GPS 좌표가 이미 있으면 form 제출
+            if (latitudeInput.value && longitudeInput.value) {
+                return; // form 자동 제출
+            }
+            
+            // GPS 좌표가 없으면 먼저 수집 시도
             event.preventDefault();
-            ensureGeoCoordinates().then(function () { registerForm.submit(); });
+            console.log('[Register] Starting GPS collection...');
+            ensureGeoCoordinates().then(function () {
+                console.log('[Register] GPS collection completed');
+                console.log('[Register] Latitude:', latitudeInput.value);
+                console.log('[Register] Longitude:', longitudeInput.value);
+                console.log('[Register] Submitting form...');
+                registerForm.submit();
+            });
         });
     }
 
