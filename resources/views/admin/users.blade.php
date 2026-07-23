@@ -11,7 +11,7 @@
         .meta { color: #607086; font-size: 0.85rem; }
         .toolbar { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
         .toolbar form { display: flex; gap: 8px; align-items: center; }
-        input { border: 1px solid #c8d5e7; border-radius: 8px; padding: 9px; font: inherit; }
+        input,select { border: 1px solid #c8d5e7; border-radius: 8px; padding: 9px; font: inherit; }
         .btn { border: 0; border-radius: 10px; padding: 8px 10px; font-weight: 700; cursor: pointer; }
         .btn-primary { background: #2e4fb8; color: #fff; }
         .btn-danger { background: #b42318; color: #fff; }
@@ -50,6 +50,21 @@
     <section class="panel toolbar">
         <div class="meta">회원가입 계정 목록과 운영 제어(인증/접근/탈퇴/프로필잠금)를 관리합니다.</div>
         <form method="get" action="/admin/users">
+            <select name="profile_locked" id="profile_locked">
+                <option value="" @selected(request('profile_locked') === '')>프로필잠금여부</option>
+                <option value="1" @selected(request('profile_locked') === '1')>잠금</option>
+                <option value="0" @selected(request('profile_locked') === '0')>잠금해제</option>
+            </select>
+            <select name="computed_is_verified" id="computed_is_verified">
+                <option value="" @selected(request('computed_is_verified') === '')>인증여부</option>
+                <option value="true" @selected(request('computed_is_verified') === 'true')>인증완료</option>
+                <option value="false" @selected(request('computed_is_verified') === 'false')>미인증</option>
+            </select>
+            <select name="access_allowed" id="access_allowed">
+                <option value="" @selected(request('access_allowed') === '')>접근여부</option>
+                <option value="1" @selected(request('access_allowed') === '1')>접근허용</option>
+                <option value="0" @selected(request('access_allowed') === '0')>접근거부</option>
+            </select>
             <input type="text" name="q" value="{{ $q }}" placeholder="이름/이메일/공동주택/지역 검색">
             <input type="hidden" name="sort" value="{{ $sort }}">
             <input type="hidden" name="dir" value="{{ $dir }}">
@@ -58,14 +73,28 @@
     </section>
 
     @php
-        function sortUrl(string $col, string $currentSort, string $currentDir, string $q): string {
+        function sortUrl(string $col, string $currentSort, string $currentDir, array $filters): string {
             $newDir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
-            return '/admin/users?' . http_build_query(array_filter(['sort' => $col, 'dir' => $newDir, 'q' => $q]));
+            return '/admin/users?' . http_build_query(array_filter([
+                'sort' => $col,
+                'dir' => $newDir,
+                'q' => $filters['q'] ?? '',
+                'profile_locked' => $filters['profile_locked'] ?? '',
+                'computed_is_verified' => $filters['computed_is_verified'] ?? '',
+                'access_allowed' => $filters['access_allowed'] ?? '',
+            ], fn ($value) => $value !== ''));
         }
         function sortArrow(string $col, string $currentSort, string $currentDir): string {
             if ($currentSort !== $col) return '↕';
             return $currentDir === 'asc' ? '↑' : '↓';
         }
+
+        $activeFilters = [
+            'q' => request('q', ''),
+            'profile_locked' => request('profile_locked', ''),
+            'computed_is_verified' => request('computed_is_verified', ''),
+            'access_allowed' => request('access_allowed', ''),
+        ];
     @endphp
 
     <section class="panel table-wrap">
@@ -73,33 +102,33 @@
             <thead>
             <tr>
                 <th>
-                    <a href="{{ sortUrl('id', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'id' ? 'active' : '' }}">
+                    <a href="{{ sortUrl('id', $sort, $dir, $activeFilters) }}" class="sort-link {{ $sort === 'id' ? 'active' : '' }}">
                         ID <span class="sort-arrow">{{ sortArrow('id', $sort, $dir) }}</span>
                     </a>
                 </th>
                 <th>기본 정보</th>
                 <th>
-                    <a href="{{ sortUrl('posts_count', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'posts_count' ? 'active' : '' }}">
+                    <a href="{{ sortUrl('posts_count', $sort, $dir, $activeFilters) }}" class="sort-link {{ $sort === 'posts_count' ? 'active' : '' }}">
                         작성글 <span class="sort-arrow">{{ sortArrow('posts_count', $sort, $dir) }}</span>
                     </a>
                 </th>
                 <th>
-                    <a href="{{ sortUrl('comments_count', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'comments_count' ? 'active' : '' }}">
+                    <a href="{{ sortUrl('comments_count', $sort, $dir, $activeFilters) }}" class="sort-link {{ $sort === 'comments_count' ? 'active' : '' }}">
                         댓글 <span class="sort-arrow">{{ sortArrow('comments_count', $sort, $dir) }}</span>
                     </a>
                 </th>
                 <th>
-                    <a href="{{ sortUrl('last_login_at', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'last_login_at' ? 'active' : '' }}">
+                    <a href="{{ sortUrl('last_login_at', $sort, $dir, $activeFilters) }}" class="sort-link {{ $sort === 'last_login_at' ? 'active' : '' }}">
                         최근 로그인 <span class="sort-arrow">{{ sortArrow('last_login_at', $sort, $dir) }}</span>
                     </a>
                 </th>
                 <th>
-                    <a href="{{ sortUrl('created_at', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'created_at' ? 'active' : '' }}">
+                    <a href="{{ sortUrl('created_at', $sort, $dir, $activeFilters) }}" class="sort-link {{ $sort === 'created_at' ? 'active' : '' }}">
                         가입일 <span class="sort-arrow">{{ sortArrow('created_at', $sort, $dir) }}</span>
                     </a>
                 </th>
                 <th>
-                    <a href="{{ sortUrl('verified', $sort, $dir, $q) }}" class="sort-link {{ $sort === 'verified' ? 'active' : '' }}">
+                    <a href="{{ sortUrl('verified', $sort, $dir, $activeFilters) }}" class="sort-link {{ $sort === 'verified' ? 'active' : '' }}">
                         인증여부 <span class="sort-arrow">{{ sortArrow('verified', $sort, $dir) }}</span>
                     </a>
                 </th>

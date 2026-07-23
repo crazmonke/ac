@@ -308,6 +308,9 @@ class AdminDashboardController extends Controller
     public function users(Request $request)
     {
         $keyword = trim((string) $request->query('q', ''));
+        $profileLocked = $request->query('profile_locked', '');
+        $computedIsVerified = $request->query('computed_is_verified', '');
+        $accessAllowed = $request->query('access_allowed', '');
         $sort = $request->query('sort', 'id');
         $dir = $request->query('dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -335,8 +338,25 @@ class AdminDashboardController extends Controller
                     $subQuery->where('name', 'like', '%'.$keyword.'%')
                         ->orWhere('email', 'like', '%'.$keyword.'%')
                         ->orWhere('home_apartment_name', 'like', '%'.$keyword.'%')
+                        ->orWhere('home_sido', 'like', '%'.$keyword.'%')
                         ->orWhere('home_sigungu', 'like', '%'.$keyword.'%');
                 });
+            })
+            ->when($profileLocked === '0' || $profileLocked === '1', function ($query) use ($profileLocked) {
+                $query->where('profile_locked', (int) $profileLocked);
+            })
+            ->when($accessAllowed === '0' || $accessAllowed === '1', function ($query) use ($accessAllowed) {
+                $query->where('access_allowed', (int) $accessAllowed);
+            })
+            ->when($computedIsVerified === 'true', function ($query) {
+                $query->where(function ($subQuery) {
+                    $subQuery->where('has_verified_role', true)
+                        ->orWhere('has_verified_residence', true);
+                });
+            })
+            ->when($computedIsVerified === 'false', function ($query) {
+                $query->where('has_verified_role', false)
+                    ->where('has_verified_residence', false);
             });
 
         if ($sort === 'verified') {
