@@ -72,18 +72,16 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -4 -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload files via SCP (retry)
+      - name: Upload files via SSH archive (retry)
         run: |
           set -euo pipefail
 
-          tar -C .deploy -czf /tmp/deploy.tgz .
-
           success=0
           for attempt in 1 2 3; do
-            echo "SCP upload attempt $attempt"
-            if scp -4 -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
-              /tmp/deploy.tgz \
-              "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}:~/deploy.tgz" && \
+            echo "SSH upload attempt $attempt"
+            if tar -C .deploy -czf - . | ssh -4 -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
+              "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
+              "cat > \"\$HOME/deploy.tgz\"" && \
               ssh -4 -i ~/.ssh/cafe24_key -o StrictHostKeyChecking=yes \
               -P "${{ secrets.CAFE24_PORT }}" \
               "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
@@ -104,7 +102,7 @@ jobs:
           done
 
           if [ "$success" -ne 1 ]; then
-            echo "SCP upload failed after retries"
+            echo "SSH upload failed after retries"
             exit 1
           fi
 
