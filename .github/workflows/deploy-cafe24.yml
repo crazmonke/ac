@@ -81,7 +81,17 @@ jobs:
             if tar -C .deploy -cf - . | ssh -4 -i ~/.ssh/cafe24_key -o StrictHostKeyChecking=yes \
               -P "${{ secrets.CAFE24_PORT }}" \
               "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
-              'cd ~/www && tar -xf -'; then
+              "DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}'; \
+               if [ -n \"\$DEPLOY_PATH\" ]; then \
+                 mkdir -p \"\$DEPLOY_PATH\" && cd \"\$DEPLOY_PATH\"; \
+               elif [ -d \"\$HOME/www\" ]; then \
+                 cd \"\$HOME/www\"; \
+               elif [ -d \"www\" ]; then \
+                 cd \"www\"; \
+               else \
+                 mkdir -p \"\$HOME/www\" && cd \"\$HOME/www\"; \
+               fi; \
+               tar -xf -"; then
               success=1
               break
             fi
