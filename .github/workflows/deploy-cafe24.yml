@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS]
 
     steps:
       - name: Checkout
@@ -72,30 +72,17 @@ jobs:
           chmod 600 ~/.ssh/cafe24_key
           ssh-keyscan -4 -p "${{ secrets.CAFE24_PORT }}" "${{ secrets.CAFE24_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload files via SSH archive (retry)
+      - name: Upload files via SSH stream (retry)
         run: |
           set -euo pipefail
 
           success=0
           for attempt in 1 2 3; do
             echo "SSH upload attempt $attempt"
-            if tar -C .deploy -czf - . | ssh -4 -i ~/.ssh/cafe24_key -P "${{ secrets.CAFE24_PORT }}" -o StrictHostKeyChecking=yes \
-              "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
-              "cat > \"\$HOME/deploy.tgz\"" && \
-              ssh -4 -i ~/.ssh/cafe24_key -o StrictHostKeyChecking=yes \
+            if tar -C .deploy -cf - . | ssh -4 -i ~/.ssh/cafe24_key -o StrictHostKeyChecking=yes \
               -P "${{ secrets.CAFE24_PORT }}" \
               "${{ secrets.CAFE24_USER }}@${{ secrets.CAFE24_HOST }}" \
-              "DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}'; \
-               if [ -n \"\$DEPLOY_PATH\" ]; then \
-                 mkdir -p \"\$DEPLOY_PATH\" && cd \"\$DEPLOY_PATH\"; \
-               elif [ -d \"\$HOME/www\" ]; then \
-                 cd \"\$HOME/www\"; \
-               elif [ -d \"www\" ]; then \
-                 cd \"www\"; \
-               else \
-                 mkdir -p \"\$HOME/www\" && cd \"\$HOME/www\"; \
-               fi; \
-               tar -xzf \"\$HOME/deploy.tgz\" -C . && rm -f \"\$HOME/deploy.tgz\""; then
+              'cd ~/www && tar -xf -'; then
               success=1
               break
             fi
