@@ -314,6 +314,17 @@ class AdminDashboardController extends Controller
         $sort = $request->query('sort', 'id');
         $dir = $request->query('dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
+        $verifiedRoleScope = function ($query) {
+            $query->whereIn('role', self::VERIFIED_ROLES)
+                ->where(function ($subQuery) {
+                    $subQuery->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                });
+        };
+
+        $verifiedResidenceScope = function ($query) {
+            $query->where('verification_status', 'verified');
+        };
+
         $allowedSorts = ['id', 'posts_count', 'comments_count', 'last_login_at', 'created_at', 'verified'];
         if (! in_array($sort, $allowedSorts, true)) {
             $sort = 'id';
@@ -323,15 +334,8 @@ class AdminDashboardController extends Controller
             ->with(['preferredApartment', 'preferredResidenceComplex'])
             ->withCount(['posts', 'comments'])
             ->withExists([
-                'userRoles as has_verified_role' => function ($query) {
-                    $query->whereIn('role', self::VERIFIED_ROLES)
-                        ->where(function ($subQuery) {
-                            $subQuery->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                        });
-                },
-                'userResidences as has_verified_residence' => function ($query) {
-                    $query->where('verification_status', 'verified');
-                },
+                'userRoles as has_verified_role' => $verifiedRoleScope,
+                'userResidences as has_verified_residence' => $verifiedResidenceScope,
             ])
             ->when($keyword !== '', function ($query) use ($keyword) {
                 $query->where(function ($subQuery) use ($keyword) {
@@ -348,15 +352,15 @@ class AdminDashboardController extends Controller
             ->when($accessAllowed === '0' || $accessAllowed === '1', function ($query) use ($accessAllowed) {
                 $query->where('access_allowed', (int) $accessAllowed);
             })
-            ->when($computedIsVerified === 'true', function ($query) {
-                $query->where(function ($subQuery) {
-                    $subQuery->where('has_verified_role', true)
-                        ->orWhere('has_verified_residence', true);
+            ->when($computedIsVerified === 'true', function ($query) use ($verifiedRoleScope, $verifiedResidenceScope) {
+                $query->where(function ($subQuery) use ($verifiedRoleScope, $verifiedResidenceScope) {
+                    $subQuery->whereHas('userRoles', $verifiedRoleScope)
+                        ->orWhereHas('userResidences', $verifiedResidenceScope);
                 });
             })
-            ->when($computedIsVerified === 'false', function ($query) {
-                $query->where('has_verified_role', false)
-                    ->where('has_verified_residence', false);
+            ->when($computedIsVerified === 'false', function ($query) use ($verifiedRoleScope, $verifiedResidenceScope) {
+                $query->whereDoesntHave('userRoles', $verifiedRoleScope)
+                    ->whereDoesntHave('userResidences', $verifiedResidenceScope);
             });
 
         if ($sort === 'verified') {
