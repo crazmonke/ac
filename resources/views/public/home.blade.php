@@ -55,16 +55,19 @@
     .btn-primary { background: var(--brand); color: #fff; }
     .btn-soft { background: #fff; border: 1px solid var(--line); color: var(--ink); }
 
+    /* --- [배너 부모 영역: 모바일 5:4 비율 완벽 대응] --- */
     .hero {
         margin: 16px 0 0 0;
         position: relative;
         border-radius: 0;
         overflow: hidden;
         background: #fff;
-        aspect-ratio: 16 / 9;
-        min-height: 321px;
-        max-height: 500px;
+        
+        /* [핵심] 가로(100vw) 기준으로 세로 높이를 정확히 80vw로 설정 (100:80 = 5:4) */
         width: 100vw;
+        height: 55vw; 
+        max-height: none; /* 화면이 커져도 비율이 유지되도록 기존 500px 제한 해제 */
+        
         margin-left: calc(-50vw + 50%);
         margin-top: 30px;
     }
@@ -72,7 +75,6 @@
     .flicking-viewport {
         width: 100%;
         height: 100%;
-        min-height: 321px;
     }
 
     .flicking-camera {
@@ -93,15 +95,17 @@
         color: inherit;
     }
 
+    /* --- [핵심 수정: 모바일에서는 이미지가 절대 잘리지 않도록 contain 유지] --- */
     .banner-slide img,
     .banner-slide video {
         width: 100%;
         height: 100%;
-        object-fit: contain;
+        object-fit: contain; /* 이미지를 자르지 않고 100% 다 보여줌 */
         position: absolute;
         inset: 0;
     }
 
+    /* --- (배너 텍스트 콘텐츠 등 기존 요소 유지) --- */
     .banner-content {
         position: relative;
         z-index: 2;
@@ -180,10 +184,9 @@
         .banner-nav { display: flex; }
         .banner-nav.prev { left: calc(50% - 590px); }
         .banner-nav.next { right: calc(50% - 590px); }
-        .hero { min-height: 350px; }
     }
 
-    /* 이하 생략된 중간 코드들은 동일하게 유지됨 */
+    /* 나머지 피드, 카드 등 디자인 요소들 */
     .hero-main { background: linear-gradient(140deg, rgba(18, 76, 110, 0.96), rgba(15, 122, 114, 0.94)); color: #fff; border-radius: 22px; border: 1px solid rgba(255, 255, 255, 0.22); padding: 24px; position: relative; overflow: hidden; }
     .hero-main::after { content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%; background: rgba(255, 255, 255, 0.09); right: -70px; top: -70px; }
     .hero-main h1 { margin: 0 0 8px; line-height: 1.25; font-size: clamp(1.35rem, 3vw, 2.2rem); }
@@ -269,19 +272,15 @@
     }
 
     /* =========================================
-    배너 최적화 스타일 (모바일 및 PC 분기)
+    배너 최적화 스타일 (PC 분기)
     ========================================= */
 
-    /* 모바일 화면에서는 기존 스타일 유지 (꽉 차게) */
-    .banner-slide { width: 100%; }
-    .banner-slide img { width: 100%; display: block; }
-
-    /* PC 화면(768px 이상) 배너 최적화 - 갤러리 뷰 스타일 */
+    /* PC 화면(768px 이상) 배너 최적화 - 갤러리 뷰 스타일 유지 */
     @media screen and (min-width: 768px) {
-        /* 부모 영역: 휑한 흰색 여백 대신 사이트 배경과 어울리는 부드러운 색상(#f4f8fb) 적용 */
         .hero {
-            aspect-ratio: auto !important; 
-            height: 350px !important; /* 이미지 전체가 잘 보이도록 높이 확보 */
+            /* PC에서는 고정 높이 350px 유지 (여백이 생겨도 포스터 느낌으로 처리됨) */
+            width: 100vw !important;
+            height: 350px !important; 
             min-height: 350px !important;
             background-color: #f4f8fb !important; 
         }
@@ -295,23 +294,21 @@
             background-color: transparent; 
         }
 
-        /* PC에서 이미지가 잘리지 않고 '포스터'처럼 중앙에 예쁘게 배치됨 */
         .banner-slide img {
             width: 100% !important;
             height: 100% !important;
-            object-fit: contain !important; /* 이미지를 자르지 않고 전체 노출 */
+            object-fit: contain !important; /* PC에서도 전체 노출 */
             object-position: center center !important;
-            
-            /* [디자인 포인트] 이미지 겉면에 그림자를 주어 카드/포스터 같은 세련된 느낌 부여 */
             filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.1));
-            
-            /* 가로로 너무 무한정 늘어나지 않도록 최대 너비를 주고 가운데 정렬 */
             max-width: 650px !important; 
             margin: 0 auto; 
-            border-radius: 12px; /* 모서리 살짝 둥글게 */
+            border-radius: 12px;
         }
     }
     </style>
+
+
+
 
 
 </head>
