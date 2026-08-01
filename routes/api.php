@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\AdminInquiryController;
 use App\Http\Controllers\Api\FcmTokenController;
+use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\PostFileController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostLikeController;
@@ -61,6 +63,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reports', [ReportController::class, 'store'])
         ->middleware('role:resident');
 
+    Route::post('/messages', [MessageController::class, 'store'])
+        ->middleware('throttle:60,1');
+    Route::get('/messages', [MessageController::class, 'index']);
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::get('/messages/{conversationId}', [MessageController::class, 'show'])
+        ->whereNumber('conversationId');
+    Route::put('/messages/{messageId}/read', [MessageController::class, 'markAsRead'])
+        ->whereNumber('messageId');
+
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::post('/boards', [AdminBoardController::class, 'store']);
         Route::put('/boards/{id}', [AdminBoardController::class, 'update']);
@@ -68,5 +79,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/reports', [AdminReportController::class, 'index']);
         Route::put('/reports/{id}', [AdminReportController::class, 'update']);
+
+        Route::get('/inquiries', [AdminInquiryController::class, 'index']);
+        Route::get('/inquiries/{memberId}', [AdminInquiryController::class, 'show'])
+            ->whereNumber('memberId');
     });
 });

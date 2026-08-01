@@ -89,6 +89,15 @@
     
     // 검색창 표시 여부: 메인 페이지(/) 또는 커뮤니티 메인(/community)에서만 표시
     $showSearchBar = in_array(request()->path(), ['', '/', 'community'], true);
+
+    $unreadMessageCount = 0;
+    if ($isLoggedIn && $currentUser) {
+        try {
+            $unreadMessageCount = \App\Models\Message::unreadCountFor($currentUser->id);
+        } catch (\Throwable $e) {
+            $unreadMessageCount = 0;
+        }
+    }
 @endphp
 
 <style>
@@ -191,6 +200,26 @@
     .site-icon-link:hover .site-icon-box {
         border-color: #9bb0cf;
         transform: translateY(-1px);
+    }
+    .site-icon-badge-wrap {
+        position: relative;
+        display: inline-flex;
+    }
+    .site-icon-unread {
+        position: absolute;
+        top: -7px;
+        right: -9px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: #e5484d;
+        color: #fff;
+        font-size: 0.64rem;
+        font-weight: 800;
+        line-height: 16px;
+        text-align: center;
+        box-shadow: 0 0 0 2px #f5f7fb;
     }
     .site-icon-link.active .site-icon-box {
         border-color: #8ba7cf;
@@ -410,6 +439,17 @@
                     <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="17" rx="1.6"/><path d="M3 20h18"/><path d="M9 7h2M13 7h2M9 10h2M13 10h2M9 13h2M13 13h2"/><path d="M11 20v-4h2v4"/></svg>
                 </span>
                 <span class="site-icon-label">공동주택</span>
+            </a>
+            <a class="site-icon-link" href="{{ $isLoggedIn ? '/messages' : '/login?redirect='.urlencode('/messages') }}" aria-label="쪽지">
+                <span class="site-icon-badge-wrap">
+                    <span class="site-icon-box" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4.5 7 7.5 6 7.5-6"/></svg>
+                    </span>
+                    @if($unreadMessageCount > 0)
+                        <span class="site-icon-unread">{{ $unreadMessageCount > 99 ? '99+' : $unreadMessageCount }}</span>
+                    @endif
+                </span>
+                <span class="site-icon-label">쪽지</span>
             </a>
             <a class="site-icon-link" href="{{ auth()->check() ? '/settings?apartment_id='.$apartmentId : '/login?redirect='.urlencode(url()->current().(request()->getQueryString() ? '?'.request()->getQueryString() : '')) }}" aria-label="계정">
                 <span class="site-icon-box" aria-hidden="true">
