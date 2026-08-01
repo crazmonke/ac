@@ -108,6 +108,7 @@
                     @if($notif->type === 'comment') 💬
                     @elseif($notif->type === 'like') ❤️
                     @elseif($notif->type === 'point') 🪙
+                    @elseif($notif->type === 'message') 💌
                     @else 📢
                     @endif
                 </div>

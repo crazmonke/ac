@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\ReportWebController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
+use App\Http\Controllers\MessageWebController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\UserPointController;
 use Illuminate\Support\Facades\Route;
@@ -170,6 +171,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/points', [UserPointController::class, 'index']);
     Route::get('/notifications', [NotificationController::class, 'index']);
+
+    Route::get('/messages', [MessageWebController::class, 'inbox']);
+    Route::get('/messages/compose', [MessageWebController::class, 'compose']);
+    Route::get('/messages/users/search', [MessageWebController::class, 'searchUsers']);
+    Route::post('/messages', [MessageWebController::class, 'store'])->middleware('throttle:60,1');
+    Route::get('/messages/{peerId}', [MessageWebController::class, 'conversation'])->whereNumber('peerId');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
