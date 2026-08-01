@@ -80,11 +80,17 @@ class AccountSettingsController extends Controller
                 'max:190',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'apartment_query' => ['required', 'string', 'max:120'],
+            'apartment_query' => ['nullable', 'string', 'max:120'],
             'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
-            'residence_building_id' => ['required', 'integer', 'exists:residence_buildings,id'],
+            'residence_building_id' => ['nullable', 'integer', 'exists:residence_buildings,id'],
             'residence_dong' => ['nullable', 'string', 'max:40'],
             'residence_ho' => ['nullable', 'string', 'max:40'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'home_sido' => ['nullable', 'string', 'max:100'],
+            'home_sigungu' => ['nullable', 'string', 'max:100'],
+            'home_eupmyeondong' => ['nullable', 'string', 'max:100'],
+            'road_address' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user->update([
@@ -92,21 +98,35 @@ class AccountSettingsController extends Controller
             'email' => $data['email'],
         ]);
 
+        // 지역 정보가 있으면 사용자 home 지역도 갱신
+        if (!empty($data['home_sido'])) {
+            $user->forceFill([
+                'home_sido'         => $data['home_sido'],
+                'home_sigungu'      => $data['home_sigungu'] ?? null,
+                'home_eupmyeondong' => $data['home_eupmyeondong'] ?? null,
+            ])->save();
+        }
+
         $selection = $this->apartmentSelectionService->applySelection(
             $user,
             isset($data['apartment_id']) ? (int) $data['apartment_id'] : null,
-            $data['apartment_query'],
+            $data['apartment_query'] ?? '',
             'settings',
-            null,
-            null,
-            (int) $data['residence_building_id'],
+            isset($data['latitude'])  ? (float) $data['latitude']  : null,
+            isset($data['longitude']) ? (float) $data['longitude'] : null,
+            isset($data['residence_building_id']) ? (int) $data['residence_building_id'] : null,
             $data['residence_dong'] ?? null,
-            $data['residence_ho'] ?? null
+            $data['residence_ho'] ?? null,
+            $data['road_address'] ?? null,
         );
 
-        $message = $selection['selected_complex']
-            ? '프로필 정보와 공동주택 설정이 업데이트되었습니다.'
-            : '프로필 정보가 업데이트되었고 공동주택 매칭 검수 요청이 접수되었습니다.';
+        if ($selection['selected_complex']) {
+            $message = $selection['auto_verified']
+                ? '프로필 정보와 공동주택 설정이 업데이트되었습니다. GPS 위치 확인으로 자동 반영되었습니다.'
+                : '프로필 정보와 공동주택 설정이 업데이트되었습니다.';
+        } else {
+            $message = '프로필 정보가 업데이트되었고 공동주택 매칭 검수 요청이 접수되었습니다. 관리자 승인 후 반영됩니다.';
+        }
 
         return redirect('/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1))
             ->with('status', $message);
