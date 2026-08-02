@@ -24,7 +24,8 @@
         .thread { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .bubble-row { display: flex; }
         .bubble-row.mine { justify-content: flex-end; }
-        .bubble { max-width: 78%; border-radius: 16px; padding: 10px 14px; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+        .bubble-wrap { max-width: 78%; }
+        .bubble { border-radius: 16px; padding: 10px 14px; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
         .bubble-row.mine .bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 6px; }
         .bubble-row.theirs .bubble { background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
         .bubble-meta { font-size: 0.7rem; color: #98aabf; margin-top: 3px; }
@@ -60,7 +61,7 @@
     <div class="thread">
         @forelse($messages->reverse() as $message)
             <div class="bubble-row {{ $message->sender_id === $user->id ? 'mine' : 'theirs' }}">
-                <div>
+                <div class="bubble-wrap">
                     <div class="bubble">{{ $message->content }}</div>
                     <div class="bubble-meta">
                         {{ $message->created_at->format('Y-m-d H:i') }}

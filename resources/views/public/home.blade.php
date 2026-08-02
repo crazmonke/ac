@@ -349,13 +349,6 @@
             @if($banners->count() > 1)
                 <button type="button" class="banner-nav prev" aria-label="이전 배너">‹</button>
                 <button type="button" class="banner-nav next" aria-label="다음 배너">›</button>
-                <!--
-                <div class="banner-indicators" id="banner-indicators">
-                    @foreach($banners as $index => $banner)
-                        <button type="button" class="banner-indicator {{ $index === 0 ? 'active' : '' }}" data-index="{{ $index }}" aria-label="배너 {{ $index + 1 }}"></button>
-                    @endforeach
-                </div>
-                -->
             @endif
         </section>
 @endif
@@ -511,15 +504,6 @@
         <span class="sr-only">글쓰기</span>
     </a>
 @endif
-<!--
-<div class="media-lightbox" id="media-lightbox" aria-hidden="true">
-    <button type="button" class="media-lightbox-close" id="media-lightbox-close" aria-label="닫기">×</button>
-    <button type="button" class="media-lightbox-nav prev hidden" id="media-lightbox-prev" aria-label="이전">‹</button>
-    <button type="button" class="media-lightbox-nav next hidden" id="media-lightbox-next" aria-label="다음">›</button>
-    <div class="media-lightbox-content" id="media-lightbox-content"></div>
-    <div class="media-lightbox-counter" id="media-lightbox-counter" hidden></div>
-</div>
--->
 <script>
 (() => {
     const lightbox = document.getElementById('media-lightbox');

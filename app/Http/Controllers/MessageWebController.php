@@ -72,6 +72,14 @@ class MessageWebController extends Controller
         ]);
     }
 
+    /** DELETE /messages/conversations/{peerId} — 대화 전체 삭제 */
+    public function deleteConversation(Request $request, int $peerId)
+    {
+        $user = $request->user();
+        Message::query()->between($user->id, $peerId)->delete();
+        return response()->json(['ok' => true]);
+    }
+
     /** GET /messages/compose — 쪽지 작성 (?to=userId 로 수신자 미리 선택) */
     public function compose(Request $request)
     {

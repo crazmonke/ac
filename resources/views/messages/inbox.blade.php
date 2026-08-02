@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>쪽지함</title>
     <style>
         :root {
@@ -24,8 +25,12 @@
         .tab { padding: 6px 12px; border-radius: 999px; background: #edf1f7; color: #22344f; font-size: 0.88rem; text-decoration: none; font-weight: 700; }
         .tab.active { background: var(--brand); color: #fff; }
         .flash { background: #e7f6ec; border: 1px solid #b9e3c6; color: #1f7a3d; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.9rem; }
-        .msg-item { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 8px; text-decoration: none; color: inherit; }
+        .msg-item { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-decoration: none; color: inherit; transition: transform 0.22s ease; position: relative; z-index: 1; }
         .msg-item:hover { background: #f2f7ff; }
+        .swipe-wrapper { position: relative; overflow: hidden; border-radius: 14px; margin-bottom: 8px; }
+        .swipe-delete-btn { position: absolute; right: 0; top: 0; bottom: 0; width: 76px; background: #e5484d; color: #fff; font-weight: 800; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 0 14px 14px 0; transform: translateX(100%); transition: transform 0.22s ease; user-select: none; }
+        .swipe-wrapper.swiped .msg-item { transform: translateX(-76px); }
+        .swipe-wrapper.swiped .swipe-delete-btn { transform: translateX(0); }
         .avatar { width: 42px; height: 42px; border-radius: 12px; background: #e5edf9; color: #2e4fb8; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.05rem; flex-shrink: 0; }
         .msg-body { flex: 1; min-width: 0; }
         .msg-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -72,19 +77,22 @@
         @forelse($conversations as $conversation)
             @php($peer = $conversation['peer'])
             @php($last = $conversation['last_message'])
-            <a class="msg-item" href="/messages/{{ $peer->id }}">
-                <div class="avatar">{{ $avatarInitial($peer->name) }}</div>
-                <div class="msg-body">
-                    <div class="msg-top">
-                        <span class="msg-name">{{ $peer->name }}</span>
-                        <span class="msg-time">{{ format_relative_time($last->created_at) }}</span>
+            <div class="swipe-wrapper" data-peer-id="{{ $peer->id }}">
+                <a class="msg-item" href="/messages/{{ $peer->id }}">
+                    <div class="avatar">{{ $avatarInitial($peer->name) }}</div>
+                    <div class="msg-body">
+                        <div class="msg-top">
+                            <span class="msg-name">{{ $peer->name }}</span>
+                            <span class="msg-time">{{ format_relative_time($last->created_at) }}</span>
+                        </div>
+                        <p class="msg-preview">{{ $last->sender_id === $user->id ? '나: ' : '' }}{{ \Illuminate\Support\Str::limit($last->content, 80) }}</p>
                     </div>
-                    <p class="msg-preview">{{ $last->sender_id === $user->id ? '나: ' : '' }}{{ \Illuminate\Support\Str::limit($last->content, 80) }}</p>
-                </div>
-                @if($conversation['unread_count'] > 0)
-                    <span class="unread-badge">{{ $conversation['unread_count'] > 99 ? '99+' : $conversation['unread_count'] }}</span>
-                @endif
-            </a>
+                    @if($conversation['unread_count'] > 0)
+                        <span class="unread-badge">{{ $conversation['unread_count'] > 99 ? '99+' : $conversation['unread_count'] }}</span>
+                    @endif
+                </a>
+                <div class="swipe-delete-btn" role="button" aria-label="삭제">삭제</div>
+            </div>
         @empty
             <div class="empty-state">
                 <div class="emoji">💌</div>
@@ -122,5 +130,74 @@
         @endif
     @endif
 </div>
+<script>
+(function () {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    let activeSwiped = null;
+
+    document.querySelectorAll('.swipe-wrapper').forEach(wrapper => {
+        const item = wrapper.querySelector('.msg-item');
+        const deleteBtn = wrapper.querySelector('.swipe-delete-btn');
+        let startX = 0, startY = 0, tracking = false, moved = false;
+
+        item.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            tracking = true;
+            moved = false;
+        }, { passive: true });
+
+        item.addEventListener('touchmove', e => {
+            if (!tracking) return;
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+            if (Math.abs(dy) > Math.abs(dx) + 5) { tracking = false; return; }
+            if (Math.abs(dx) > 8) {
+                moved = true;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        item.addEventListener('touchend', e => {
+            if (!tracking) return;
+            tracking = false;
+            const dx = e.changedTouches[0].clientX - startX;
+            if (dx < -50) {
+                if (activeSwiped && activeSwiped !== wrapper) activeSwiped.classList.remove('swiped');
+                wrapper.classList.add('swiped');
+                activeSwiped = wrapper;
+            } else if (dx > 20 || !moved) {
+                wrapper.classList.remove('swiped');
+                if (activeSwiped === wrapper) activeSwiped = null;
+                if (!moved) return; // 클릭 허용
+            }
+            if (moved) e.preventDefault();
+        }, { passive: false });
+
+        deleteBtn.addEventListener('click', async () => {
+            const peerId = wrapper.dataset.peerId;
+            try {
+                const res = await fetch(`/messages/conversations/${peerId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                });
+                if (res.ok) {
+                    wrapper.style.transition = 'opacity 0.2s';
+                    wrapper.style.opacity = '0';
+                    setTimeout(() => wrapper.remove(), 200);
+                }
+            } catch (e) { /* 실패 시 무시 */ }
+        });
+    });
+
+    // 다른 곳 터치 시 열린 항목 닫기
+    document.addEventListener('touchstart', e => {
+        if (activeSwiped && !activeSwiped.contains(e.target)) {
+            activeSwiped.classList.remove('swiped');
+            activeSwiped = null;
+        }
+    }, { passive: true });
+})();
+</script>
 </body>
 </html>

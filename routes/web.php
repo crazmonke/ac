@@ -177,6 +177,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages/users/search', [MessageWebController::class, 'searchUsers']);
     Route::post('/messages', [MessageWebController::class, 'store'])->middleware('throttle:60,1');
     Route::get('/messages/{peerId}', [MessageWebController::class, 'conversation'])->whereNumber('peerId');
+    Route::delete('/messages/conversations/{peerId}', [MessageWebController::class, 'deleteConversation'])->whereNumber('peerId');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
