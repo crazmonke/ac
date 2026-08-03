@@ -401,6 +401,16 @@
             @csrf
             @method('PUT')
             <div style="display:grid; gap:10px;">
+                @if(!empty($editTemplate))
+                    <div style="border:1px solid #c7d8ea; background:#eef3fc; border-radius:14px; padding:14px;">
+                        <strong style="color:#2f52b8;">"{{ $editTemplate['name'] }}" 템플릿으로 작성된 글입니다.</strong>
+                        <p class="meta" style="margin:6px 0 12px; padding-top:0;">설문 답변을 수정하면 제목과 본문이 답변에 맞춰 다시 생성됩니다.</p>
+                        <button type="button" class="js-template-open" style="border:1px solid #2f52b8; background:#2f52b8; color:#fff; border-radius:12px; padding:11px 16px; font-weight:800; cursor:pointer;">설문 답변 수정하기</button>
+                    </div>
+                    <input type="hidden" name="post_template_id" value="">
+                    <input type="hidden" name="template_answers" value="">
+                    <div style="display:none;">
+                @endif
                 <input name="title" value="{{ old('title', $post->title) }}" required>
                 <div class="compose-editor-wrap">
                     <textarea id="editorBody" name="body" style="width:100%; min-width:100px; height:200px;" data-editor-required="true">{{ old('body', $post->body) }}</textarea>
@@ -425,6 +435,9 @@
                     <input type="file" class="js-mobile-image-input" accept="image/*" multiple hidden>
                     <input type="file" class="js-mobile-video-input" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" multiple hidden>
                 </div>
+                @if(!empty($editTemplate))
+                    </div>
+                @endif
                 <label class="js-post-option-field">노출 카테고리
                     <select name="audience_scope" class="form-select" style="margin-top:6px;">
                         <option value="region" @selected(old('audience_scope', $post->audience_scope ?? 'region') === 'region')>동네 (비회원은 제목만, 로그인 회원은 상세 가능)</option>
@@ -482,6 +495,14 @@
                 </div>
             </div>
         </form>
+        @if(!empty($editTemplate))
+            @include('community.partials.template-wizard', [
+                'wizardTemplates' => [$editTemplate],
+                'wizardMode' => 'edit',
+                'wizardInitialAnswers' => $post->template_answers ?? [],
+                'wizardFixedTemplateId' => $editTemplate['id'],
+            ])
+        @endif
     </section>
 
     @if($post->files->count())

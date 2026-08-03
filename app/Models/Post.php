@@ -18,6 +18,8 @@ class Post extends Model
     protected $fillable = [
         'board_id',
         'post_topic_id',
+        'post_template_id',
+        'template_answers',
         'apartment_id',
         'residence_complex_id',
         'region_sido',
@@ -41,6 +43,7 @@ class Post extends Model
             'is_notice' => 'boolean',
             'is_anonymous' => 'boolean',
             'is_guest_visible' => 'boolean',
+            'template_answers' => 'array',
         ];
     }
 
@@ -87,6 +90,11 @@ class Post extends Model
     public function reports(): MorphMany
     {
         return $this->morphMany(Report::class, 'reportable');
+    }
+
+    public function postTemplate(): BelongsTo
+    {
+        return $this->belongsTo(PostTemplate::class, 'post_template_id');
     }
 
     public function poll(): HasOne

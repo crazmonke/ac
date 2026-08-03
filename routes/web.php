@@ -151,6 +151,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/community/compose', [CommunityBoardController::class, 'compose']);
     Route::get('/community/posts/{id}/edit', [CommunityBoardController::class, 'editPost']);
     Route::get('/community/boards/{slug}/create', [CommunityBoardController::class, 'createPost']);
+    Route::get('/community/boards/{slug}/post-templates', [CommunityBoardController::class, 'postTemplates']);
+    Route::post('/community/post-templates/{id}/preview', [CommunityBoardController::class, 'previewPostTemplate'])->whereNumber('id');
     Route::post('/community/boards/{slug}/posts', [CommunityBoardController::class, 'storePost']);
     Route::put('/community/posts/{id}', [CommunityBoardController::class, 'updatePost']);
     Route::delete('/community/posts/{id}', [CommunityBoardController::class, 'destroyPost']);
@@ -208,6 +210,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/banners/upload-temp', [\App\Http\Controllers\Admin\BannerController::class, 'uploadTemp']);
     Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class);
     Route::post('/banners/reorder', \App\Http\Controllers\Admin\BannerController::class . '@reorder');
+    Route::resource('post-templates', \App\Http\Controllers\Admin\PostTemplateController::class)->except(['show']);
     Route::get('/fcm-diagnostic', [AdminDashboardController::class, 'fcmDiagnostic']);
     Route::get('/server-info', function () {
         return view('admin.server-info', [
