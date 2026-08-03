@@ -122,11 +122,32 @@ class ApartmentSelectionService
 
         $residences = ResidenceBuilding::query()
             ->with('complex')
-            ->whereHas('complex', function (Builder $builder) use ($isAddressQuery) {
+            ->whereHas('complex', function (Builder $builder) use ($isAddressQuery, $region) {
                 $builder->where('status', 'active');
 
                 if (! $isAddressQuery) {
                     $builder->where('housing_type', '!=', 'mixed');
+                }
+
+                // 지역 지정 검색은 주소(공백 무시)에 지역명이 포함된 단지만 노출한다.
+                if ($region !== null) {
+                    foreach (['sido', 'sigungu', 'eupmyeondong'] as $regionKey) {
+                        $token = preg_replace('/\s+/u', '', (string) ($region[$regionKey] ?? ''));
+
+                        if ($token === '' || $token === null) {
+                            continue;
+                        }
+
+                        $builder->where(function (Builder $addressQuery) use ($token) {
+                            $addressQuery->whereRaw(
+                                "REPLACE(COALESCE(road_address, ''), ' ', '') LIKE ?",
+                                ['%'.$token.'%']
+                            )->orWhereRaw(
+                                "REPLACE(COALESCE(jibun_address, ''), ' ', '') LIKE ?",
+                                ['%'.$token.'%']
+                            );
+                        });
+                    }
                 }
             })
             ->where(function (Builder $builder) use ($keyword, $isAddressQuery, $searchTerms) {
@@ -194,6 +215,13 @@ class ApartmentSelectionService
             ]);
 
             return $residences;
+        }
+
+        // 지역 지정 검색은 관할 지역 내 결과만 노출한다.
+        // 외부 지오코딩 폴백(전국 범위)은 건너뛰고 빈 결과를 반환해
+        // 화면에서 "직접입력"으로 신규 등록하도록 유도한다.
+        if ($region !== null) {
+            return collect();
         }
 
         $fallbackRows = collect();
