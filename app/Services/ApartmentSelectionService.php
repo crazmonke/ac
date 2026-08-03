@@ -671,9 +671,15 @@ class ApartmentSelectionService
             'apartment'
         );
 
-        $complex = ResidenceComplex::query()->updateOrCreate([
+        // legacy_apartment_id 매칭이 없어도 동일 normalized_key 단지가 이미 있으면
+        // 신규 insert 시 unique 제약 위반이 나므로 기존 행을 찾아 갱신한다.
+        $complex = ResidenceComplex::query()
+            ->where('legacy_apartment_id', $apartment->id)
+            ->first()
+            ?? ResidenceComplex::query()->where('normalized_key', $normalizedKey)->first();
+
+        $complexValues = [
             'legacy_apartment_id' => $apartment->id,
-        ], [
             'housing_type' => 'apartment',
             'official_name' => $apartment->name,
             'alias_name' => null,
@@ -683,7 +689,13 @@ class ApartmentSelectionService
             'jibun_address' => $apartment->jibun_address,
             'normalized_key' => $normalizedKey,
             'status' => ((bool) ($apartment->is_active ?? true)) ? 'active' : 'hidden',
-        ]);
+        ];
+
+        if ($complex) {
+            $complex->fill($complexValues)->save();
+        } else {
+            $complex = ResidenceComplex::query()->create($complexValues);
+        }
 
         ResidenceBuilding::query()->firstOrCreate([
             'normalized_key' => $this->residenceNamingService->normalize($normalizedKey . '|' . $apartment->name),
