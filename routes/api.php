@@ -43,6 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/boards/{boardId}/posts', [PostController::class, 'store'])
         ->middleware(['board.access:write', 'throttle:60,1']);
 
+    Route::get('/boards/{boardId}/post-templates', [\App\Http\Controllers\Api\PostTemplateController::class, 'index'])
+        ->middleware('board.access:read');
+    Route::post('/post-templates/{id}/preview', [\App\Http\Controllers\Api\PostTemplateController::class, 'preview'])
+        ->middleware('throttle:60,1');
+
     Route::get('/posts/{id}', [PostController::class, 'show']);
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);

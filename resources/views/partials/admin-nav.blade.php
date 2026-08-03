@@ -85,6 +85,7 @@
         <a href="/admin/posts">게시글 관리</a>
         <a href="/admin/boards">게시판 관리</a>
         <a href="/admin/banners">배너 관리</a>
+        <a href="/admin/post-templates">게시글 템플릿</a>
         <a href="/admin/reports">신고 관리</a>
         <a href="/admin/notifications">알림 발송</a>
         <a href="/admin/points">포인트 관리</a>

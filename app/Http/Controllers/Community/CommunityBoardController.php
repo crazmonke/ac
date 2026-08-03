@@ -13,8 +13,10 @@ use App\Models\PostLike;
 use App\Models\PostTopic;
 use App\Models\PostFile;
 use App\Models\Post;
+use App\Models\PostTemplate;
 use App\Models\User;
 use App\Services\PermissionService;
+use App\Services\PostTemplateRenderer;
 use App\Services\UserNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +27,7 @@ class CommunityBoardController extends Controller
     public function __construct(
         private readonly PermissionService $permissionService,
         private readonly UserNotificationService $userNotificationService,
+        private readonly PostTemplateRenderer $postTemplateRenderer,
     )
     {
     }
@@ -218,11 +221,26 @@ class CommunityBoardController extends Controller
 
         $topicOptions = $this->loadDistinctTopicOptions((int) $post->apartment_id);
 
+        // 템플릿으로 작성된 글은 설문 인터페이스로 수정한다 (템플릿 삭제/비활성 시 일반 편집 폴백)
+        $editTemplate = null;
+        if ($post->post_template_id) {
+            $template = PostTemplate::query()->active()->find($post->post_template_id);
+            if ($template) {
+                $editTemplate = [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'questions' => $template->questions ?? [],
+                ];
+            }
+        }
+
         return view('community.post-edit', [
             'post' => $post,
             'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
             'topicOptions' => $topicOptions,
             'canUseRestrictedAudience' => $this->permissionService->hasVerifiedRole($user, (int) $post->apartment_id),
+            'editTemplate' => $editTemplate,
         ]);
     }
 
@@ -273,7 +291,91 @@ class CommunityBoardController extends Controller
             'defaultTopicId' => $defaultTopicId,
             'requestedScope' => $requestedScope,
             'requestedTopicSlug' => $requestedTopicSlug,
+            'postTemplates' => $this->postTemplatePayload($board),
         ]);
+    }
+
+    /**
+     * 게시판에서 사용 가능한 설문형 템플릿 목록 (위저드 모달용 payload).
+     */
+    private function postTemplatePayload(Board $board): array
+    {
+        return PostTemplate::availableForBoard((string) $board->slug)
+            ->map(fn (PostTemplate $template) => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'description' => $template->description,
+                'questions' => $template->questions ?? [],
+            ])
+            ->all();
+    }
+
+    public function postTemplates(Request $request, string $slug)
+    {
+        $apartmentId = $this->resolveContextApartmentId($request);
+        $board = $this->resolveBoard($slug, $apartmentId);
+
+        if (! $this->canWriteInBoard($request->user(), $board)) {
+            abort(403);
+        }
+
+        return response()->json(['data' => $this->postTemplatePayload($board)]);
+    }
+
+    public function previewPostTemplate(Request $request, int $id)
+    {
+        $template = PostTemplate::query()->active()->findOrFail($id);
+
+        $payload = $request->validate([
+            'answers' => ['required', 'array'],
+        ]);
+
+        $answers = $this->postTemplateRenderer->validateAnswers($template, $payload['answers']);
+        $rendered = $this->postTemplateRenderer->render($template, $answers);
+
+        return response()->json([
+            'title' => $rendered['title'],
+            'body_html' => $rendered['body_html'],
+            'answers' => $answers,
+        ]);
+    }
+
+    /**
+     * 요청에 설문형 템플릿 답변이 포함된 경우 검증 후
+     * [템플릿, 정규화 답변, 생성된 제목, 생성된 본문]을 반환한다.
+     * 제목/본문은 항상 서버가 답변으로부터 생성한다 (클라이언트 값 무시).
+     *
+     * @return array{0: PostTemplate, 1: array, 2: string, 3: string}|null
+     */
+    private function resolveTemplateSubmission(Request $request, Board $board): ?array
+    {
+        if (! $request->filled('post_template_id')) {
+            return null;
+        }
+
+        $validated = $request->validate([
+            'post_template_id' => ['required', 'integer', 'exists:post_templates,id'],
+            'template_answers' => ['required', 'json'],
+        ]);
+
+        $template = PostTemplate::query()->active()->find((int) $validated['post_template_id']);
+        if (! $template || ! $template->isAvailableForBoard((string) $board->slug)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'post_template_id' => ['이 게시판에서 사용할 수 없는 템플릿입니다.'],
+            ]);
+        }
+
+        $answers = json_decode((string) $validated['template_answers'], true);
+        if (! is_array($answers)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'template_answers' => ['템플릿 답변 형식이 올바르지 않습니다.'],
+            ]);
+        }
+
+        $normalized = $this->postTemplateRenderer->validateAnswers($template, $answers);
+        $rendered = $this->postTemplateRenderer->render($template, $normalized);
+
+        return [$template, $normalized, $rendered['title'], $rendered['body_html']];
     }
 
     public function compose(Request $request)
@@ -341,9 +443,11 @@ class CommunityBoardController extends Controller
         $writerApartmentId = (int) ($writerApartment?->id ?? 0);
         $storageApartmentId = $writerApartmentId > 0 ? $writerApartmentId : $apartmentId;
 
+        $templateSubmission = $this->resolveTemplateSubmission($request, $board);
+
         $rules = [
-            'title' => ['required', 'string', 'max:160'],
-            'body' => ['required', 'string'],
+            'title' => [$templateSubmission ? 'nullable' : 'required', 'string', 'max:160'],
+            'body' => [$templateSubmission ? 'nullable' : 'required', 'string'],
             'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
             'new_topic' => ['nullable', 'string', 'max:60'],
             'audience_scope' => ['required', 'in:region,apartment'],
@@ -361,6 +465,10 @@ class CommunityBoardController extends Controller
         }
 
         $data = $request->validate($rules);
+
+        if ($templateSubmission) {
+            [, $templateAnswers, $data['title'], $data['body']] = $templateSubmission;
+        }
 
         $audienceScope = (string) $data['audience_scope'];
         $canUseApartmentScope = $writerResidenceComplexId > 0
@@ -392,6 +500,8 @@ class CommunityBoardController extends Controller
         $post = Post::query()->create([
             'board_id' => $board->id,
             'post_topic_id' => $postTopicId,
+            'post_template_id' => $templateSubmission ? $templateSubmission[0]->id : null,
+            'template_answers' => $templateSubmission ? $templateAnswers : null,
             'apartment_id' => $storageApartmentId,
             'residence_complex_id' => $writerResidenceComplexId > 0 ? $writerResidenceComplexId : null,
             'region_sido' => $region['sido'],
@@ -431,9 +541,11 @@ class CommunityBoardController extends Controller
             abort(403);
         }
 
+        $templateSubmission = $this->resolveTemplateSubmission($request, $post->board);
+
         $rules = [
-            'title' => ['required', 'string', 'max:160'],
-            'body' => ['required', 'string'],
+            'title' => [$templateSubmission ? 'nullable' : 'required', 'string', 'max:160'],
+            'body' => [$templateSubmission ? 'nullable' : 'required', 'string'],
             'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
             'new_topic' => ['nullable', 'string', 'max:60'],
             'audience_scope' => ['required', 'in:region,apartment'],
@@ -449,6 +561,10 @@ class CommunityBoardController extends Controller
         }
 
         $data = $request->validate($rules);
+
+        if ($templateSubmission) {
+            [, $templateAnswers, $data['title'], $data['body']] = $templateSubmission;
+        }
 
         $audienceScope = (string) $data['audience_scope'];
         $canUseApartmentScope = (int) ($post->residence_complex_id ?? 0) > 0
@@ -473,7 +589,14 @@ class CommunityBoardController extends Controller
             'audience_scope' => $audienceScope,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
             'is_guest_visible' => (bool) ($data['is_guest_visible'] ?? false),
-        ])->save();
+        ]);
+
+        if ($templateSubmission) {
+            $post->post_template_id = $templateSubmission[0]->id;
+            $post->template_answers = $templateAnswers;
+        }
+
+        $post->save();
 
         $this->storeAttachments($request, $post);
 

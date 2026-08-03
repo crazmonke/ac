@@ -494,7 +494,16 @@
         <form method="post" enctype="multipart/form-data" action="/community/boards/{{ $board->slug }}/posts?apartment_id={{ $apartmentId }}" class="js-smarteditor-form">
             @csrf
             <div class="grid">
-                <input name="title" placeholder="제목" value="{{ old('title') }}" required>
+                @if(!empty($postTemplates))
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input name="title" placeholder="제목" value="{{ old('title') }}" required style="flex:1;">
+                        <button type="button" class="js-template-open" style="flex:none; border:1px solid #2f52b8; background:#eef3fc; color:#2f52b8; border-radius:12px; padding:11px 14px; font-weight:800; cursor:pointer; white-space:nowrap;">템플릿으로 작성하기</button>
+                    </div>
+                    <input type="hidden" name="post_template_id" value="">
+                    <input type="hidden" name="template_answers" value="">
+                @else
+                    <input name="title" placeholder="제목" value="{{ old('title') }}" required>
+                @endif
                 <div class="compose-editor-wrap">
                     <textarea id="editorBody" name="body" placeholder="내용" style="width:100%; min-width:100px; height:200px;" data-editor-required="true">{{ old('body') }}</textarea>
                     <div class="mobile-compose-tools">
@@ -588,6 +597,14 @@
                 </div>
             </div>
         </form>
+        @if(!empty($postTemplates))
+            @include('community.partials.template-wizard', [
+                'wizardTemplates' => $postTemplates,
+                'wizardMode' => 'create',
+                'wizardInitialAnswers' => null,
+                'wizardFixedTemplateId' => null,
+            ])
+        @endif
     </section>
 </div>
 
