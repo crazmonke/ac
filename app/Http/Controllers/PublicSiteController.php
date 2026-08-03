@@ -8,7 +8,6 @@ use App\Models\Board;
 use App\Models\Post;
 use App\Models\PostFile;
 use App\Models\PostLike;
-use App\Models\User;
 use App\Services\PermissionService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
@@ -46,82 +45,50 @@ class PublicSiteController extends Controller
         }
 
         $hasPostLikesTable = Schema::hasTable('post_likes');
-        $candidates = collect();
-        if (Schema::hasTable('posts') && Schema::hasTable('boards')) {
+        $canQueryFeed = Schema::hasTable('posts') && Schema::hasTable('boards');
+        $hasAudienceScopeColumn = $canQueryFeed && Schema::hasColumn('posts', 'audience_scope');
+
+        // 커뮤니티 메인(/community) 전체 탭과 동일한 조건으로 노출한다.
+        if ($canQueryFeed) {
             $query = Post::query()
                 ->with(['board', 'apartment', 'files', 'user', 'poll.options'])
                 ->where('visibility', '!=', 'deleted')
                 ->whereHas('board', function ($query) {
-                    $query->where('is_active', true);
+                    $query->where('is_active', true)
+                        ->where('slug', '!=', 'policy');
                 })
-                ->latest()
-                ->limit(500);
+                ->latest();
 
             if ($hasPostLikesTable) {
                 $query->withCount('likes');
             }
 
-            $candidates = $query->get();
+            if ($hasAudienceScopeColumn) {
+                $query->whereIn('audience_scope', ['region', 'all']);
+            }
+
+            $feedPaginator = $query->paginate(20)->withQueryString();
+        } else {
+            $page = max(1, (int) $request->query('page', 1));
+            $feedPaginator = new LengthAwarePaginator(
+                collect(),
+                0,
+                20,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
         }
 
-        // public-info 카테고리 게시물을 별도로 필터링
-        $publicInfoPosts = $candidates
-            ->filter(function (Post $post) use ($user, $apartment) {
-                // policy 슬러그는 제외
-                if ((string) ($post->board?->slug ?? '') === 'policy') {
-                    return false;
-                }
-                
-                // public-info 카테고리만 포함
-                if ((string) ($post->board?->category?->slug ?? '') !== 'public-info') {
-                    return false;
-                }
-
-                return $this->shouldShowOnHomeFeed($post, $user, $apartment);
-            })
-            ->values();
-
-        // 나머지 게시물 필터링
-        $otherPosts = $candidates
-            ->filter(function (Post $post) use ($user, $apartment) {
-                // public-info는 제외 (이미 위에서 처리함)
-                if ((string) ($post->board?->category?->slug ?? '') === 'public-info') {
-                    return false;
-                }
-
-                return $this->shouldShowOnHomeFeed($post, $user, $apartment);
-            })
-            ->values();
-
-        // public-info를 먼저, 나머지를 나중에 배치
-        $feedPosts = $publicInfoPosts->concat($otherPosts)->values();
-
-        $page = max(1, (int) $request->query('page', 1));
-        $perPage = 20;
-        $feedPaginator = new LengthAwarePaginator(
-            $feedPosts->forPage($page, $perPage)->values(),
-            $feedPosts->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
         $feedPaginator = $this->mapPostPaginator($feedPaginator, $user, $hasPostLikesTable);
 
         $isLoggedIn = (bool) $user;
         $isVerifiedUser = (bool) ($user && $this->permissionService->hasVerifiedRole($user));
 
-        $feedTitle = ! $isLoggedIn
-            ? '전국 동네 공개 피드'
-            : ($isVerifiedUser ? '인증 회원 맞춤 피드' : '비인증 회원 피드');
-
-        $feedDescription = ! $isLoggedIn
-            ? '비회원도 읽을 수 있는 동네 공개 게시글을 최신순으로 제공합니다.'
-            : ($isVerifiedUser
-                ? '인증된 동네 게시글과 내 공동주택 게시글을 최신순으로 보여드립니다.'
-                : '동네 영역 게시글과 비인증 회원도 읽을 수 있는 게시글을 최신순으로 보여드립니다.');
+        $feedTitle = '전국 동네 피드';
+        $feedDescription = '전국 동네 게시글을 최신순으로 보여드립니다.';
 
         $banners = Banner::active()->ordered()->get()->map(function ($banner) {
             // 업로드된 파일이 있으면 그것을 우선 사용 (Cafe24 호환성: public/uploads 경로 사용)
@@ -428,106 +395,6 @@ class PublicSiteController extends Controller
 
         return null;
     }
-
-    private function shouldShowOnHomeFeed(Post $post, ?User $user, Apartment $fallbackApartment): bool
-    {
-        // policy 슬러그 보드는 홈 피드에서 제외
-        if ((string) ($post->board?->slug ?? '') === 'policy') {
-            return false;
-        }
-
-        if (! $this->permissionService->canReadPostDetail($user, $post)) {
-            return false;
-        }
-
-        $scope = (string) ($post->audience_scope ?? 'all');
-
-        if (! $user) {
-            return $scope === 'region';
-        }
-
-        if (! $this->permissionService->hasVerifiedRole($user)) {
-            return $scope === 'region' || $this->permissionService->canReadPostDetail($user, $post);
-        }
-
-        if ($scope === 'apartment') {
-            return (int) $post->apartment_id === $this->resolveUserApartmentId($user, $fallbackApartment);
-        }
-
-        if ($scope === 'region') {
-            return $this->isSameNeighborhood($post, $user, $fallbackApartment);
-        }
-
-        return false;
-    }
-
-    private function resolveUserApartmentId(User $user, Apartment $fallbackApartment): int
-    {
-        $preferredApartmentId = (int) ($user->preferred_apartment_id ?? 0);
-        if ($preferredApartmentId > 0) {
-            return $preferredApartmentId;
-        }
-
-        $legacyApartmentId = (int) ($user->preferredResidenceComplex?->legacy_apartment_id ?? 0);
-        if ($legacyApartmentId > 0) {
-            return $legacyApartmentId;
-        }
-
-        return 0;
-    }
-
-    private function isSameNeighborhood(Post $post, User $user, Apartment $fallbackApartment): bool
-    {
-        $targetSido = trim((string) ($user->home_sido ?: ''));
-        $targetSigungu = trim((string) ($user->home_sigungu ?: ''));
-        $targetDong = trim((string) ($user->home_eupmyeondong ?: ''));
-
-        $postSido = trim((string) ($post->region_sido ?: $post->apartment?->sido));
-        $postSigungu = trim((string) ($post->region_sigungu ?: $post->apartment?->sigungu));
-        $postDong = trim((string) ($post->region_eupmyeondong ?: $post->apartment?->eupmyeondong));
-
-        if ($targetSido !== '' && $postSido !== '' && ! $this->regionTokenMatches($targetSido, $postSido, false)) {
-            return false;
-        }
-
-        if ($targetSigungu !== '' && $postSigungu !== '' && ! $this->regionTokenMatches($targetSigungu, $postSigungu, true)) {
-            return false;
-        }
-
-        if ($targetDong !== '' && $postDong !== '' && ! $this->regionTokenMatches($targetDong, $postDong, false)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private function regionTokenMatches(string $left, string $right, bool $normalizeCityToken): bool
-    {
-        $lhs = $this->normalizeRegionToken($left, $normalizeCityToken);
-        $rhs = $this->normalizeRegionToken($right, $normalizeCityToken);
-
-        if ($lhs === '' || $rhs === '') {
-            return true;
-        }
-
-        if ($lhs === $rhs) {
-            return true;
-        }
-
-        return str_contains($lhs, $rhs) || str_contains($rhs, $lhs);
-    }
-
-    private function normalizeRegionToken(string $value, bool $normalizeCityToken): string
-    {
-        $normalized = preg_replace('/\s+/u', '', trim($value)) ?: '';
-
-        if (! $normalizeCityToken) {
-            return $normalized;
-        }
-
-        return str_replace('시', '', $normalized);
-    }
-
     private function applyNoticeFilter($query): void
     {
         $query->where('is_notice', true)
