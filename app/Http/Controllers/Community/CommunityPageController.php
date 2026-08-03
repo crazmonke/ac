@@ -147,7 +147,7 @@ class CommunityPageController extends Controller
         }
 
         if ($canQueryCommunityFeed) {
-            $postsQuery->latest();
+            $postsQuery->latest()->orderByDesc('id');
         }
 
         $topicFacets = collect();
