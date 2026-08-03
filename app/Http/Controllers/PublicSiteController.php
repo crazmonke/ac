@@ -57,7 +57,8 @@ class PublicSiteController extends Controller
                     $query->where('is_active', true)
                         ->where('slug', '!=', 'policy');
                 })
-                ->latest();
+                ->latest()
+                ->orderByDesc('id');
 
             if ($hasPostLikesTable) {
                 $query->withCount('likes');
