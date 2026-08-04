@@ -28,6 +28,7 @@ class MessageController extends Controller
         if ($box === 'received' || $box === 'sent') {
             $messages = Message::query()
                 ->where($box === 'received' ? 'receiver_id' : 'sender_id', $user->id)
+                ->whereNull($box === 'received' ? 'receiver_hidden_at' : 'sender_hidden_at')
                 ->with(['sender:id,name', 'receiver:id,name'])
                 ->orderByDesc('id')
                 ->paginate(20);
@@ -102,6 +103,7 @@ class MessageController extends Controller
 
         $messages = Message::query()
             ->between($user->id, $peer->id)
+            ->visibleTo($user->id)
             ->with(['sender:id,name', 'receiver:id,name'])
             ->orderByDesc('id')
             ->paginate(30);
@@ -130,6 +132,17 @@ class MessageController extends Controller
         }
 
         return response()->json(['data' => $message->fresh()]);
+    }
+
+    /**
+     * DELETE /api/messages/conversations/{peerId}
+     * 대화를 요청자 쪽지함에서만 감춘다 (상대방 쪽지함에는 유지).
+     */
+    public function destroyConversation(Request $request, int $peerId): JsonResponse
+    {
+        $this->messageService->hideConversationFor($request->user()->id, $peerId);
+
+        return response()->json(['ok' => true]);
     }
 
     /**
