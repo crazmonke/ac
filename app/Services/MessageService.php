@@ -58,6 +58,7 @@ class MessageService
     {
         $messages = Message::query()
             ->involving($userId)
+            ->visibleTo($userId)
             ->orderByDesc('id')
             ->limit($scanLimit)
             ->get();
@@ -104,6 +105,25 @@ class MessageService
             ->where('sender_id', $peerId)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
+    }
+
+    /**
+     * 대화를 요청자 쪽지함에서만 감춘다 (상대방 쪽지함에는 그대로 유지).
+     * 이후 새로 주고받는 쪽지는 다시 보인다.
+     */
+    public function hideConversationFor(int $userId, int $peerId): void
+    {
+        Message::query()
+            ->between($userId, $peerId)
+            ->where('sender_id', $userId)
+            ->whereNull('sender_hidden_at')
+            ->update(['sender_hidden_at' => now()]);
+
+        Message::query()
+            ->between($userId, $peerId)
+            ->where('receiver_id', $userId)
+            ->whereNull('receiver_hidden_at')
+            ->update(['receiver_hidden_at' => now()]);
     }
 
     /**

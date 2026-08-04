@@ -14,12 +14,16 @@ class Message extends Model
         'parent_message_id',
         'content',
         'read_at',
+        'sender_hidden_at',
+        'receiver_hidden_at',
     ];
 
     protected function casts(): array
     {
         return [
             'read_at' => 'datetime',
+            'sender_hidden_at' => 'datetime',
+            'receiver_hidden_at' => 'datetime',
         ];
     }
 
@@ -58,11 +62,24 @@ class Message extends Model
         });
     }
 
+    /** 해당 사용자가 감추지 않은(쪽지함에 보이는) 쪽지 */
+    public function scopeVisibleTo(Builder $query, int $userId): Builder
+    {
+        return $query->where(function (Builder $q) use ($userId) {
+            $q->where(function (Builder $inner) use ($userId) {
+                $inner->where('sender_id', $userId)->whereNull('sender_hidden_at');
+            })->orWhere(function (Builder $inner) use ($userId) {
+                $inner->where('receiver_id', $userId)->whereNull('receiver_hidden_at');
+            });
+        });
+    }
+
     public static function unreadCountFor(int $userId): int
     {
         return static::query()
             ->where('receiver_id', $userId)
             ->whereNull('read_at')
+            ->whereNull('receiver_hidden_at')
             ->count();
     }
 }

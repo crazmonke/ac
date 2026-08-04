@@ -72,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('throttle:60,1');
     Route::get('/messages', [MessageController::class, 'index']);
     Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::delete('/messages/conversations/{peerId}', [MessageController::class, 'destroyConversation'])
+        ->whereNumber('peerId');
     Route::get('/messages/{conversationId}', [MessageController::class, 'show'])
         ->whereNumber('conversationId');
     Route::put('/messages/{messageId}/read', [MessageController::class, 'markAsRead'])
