@@ -140,6 +140,7 @@ Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::c
 Route::middleware('auth')->group(function () {
     Route::get('/settings', [AccountSettingsController::class, 'show']);
     Route::put('/settings/profile', [AccountSettingsController::class, 'updateProfile']);
+    Route::put('/settings/nickname', [AccountSettingsController::class, 'changeNickname']);
     Route::put('/settings/password', [AccountSettingsController::class, 'updatePassword']);
     Route::post('/settings/resident-verification-request', [AccountSettingsController::class, 'requestResidentVerification']);
     Route::post('/settings/withdraw-request', [AccountSettingsController::class, 'requestWithdrawal']);

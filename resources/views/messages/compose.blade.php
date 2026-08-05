@@ -56,6 +56,7 @@
 
     <form class="card" method="post" action="/messages">
         @csrf
+        @include('messages.partials.quota-notice')
         <div class="field recipient-box">
             <label for="recipient-search">받는 사람</label>
 

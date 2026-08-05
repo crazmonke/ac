@@ -139,6 +139,48 @@ class PointService
         $this->notifyAdminPointChange($user, $tx);
     }
 
+    /**
+     * 사용자가 포인트를 사용(차감)한다. 잔액과 최소 사용 가능 포인트를 사전 검증하며,
+     * 부족하면 아무것도 기록하지 않고 false를 반환한다.
+     * (record()는 잔액을 0으로 clamp하므로 사용자 결제성 차감에는 반드시 이 메서드를 쓸 것)
+     */
+    public function spend(User $user, int $amount, string $note): bool
+    {
+        if ($amount <= 0) {
+            return true;
+        }
+
+        $policy = PointPolicy::getPolicy();
+
+        return DB::transaction(function () use ($user, $amount, $note, $policy) {
+            $lockedUser = User::query()->where('id', $user->id)->lockForUpdate()->first();
+            $balance = (int) $lockedUser->point_balance;
+
+            if ($balance < $amount || $balance < (int) $policy->min_spend_points) {
+                return false;
+            }
+
+            $newBalance = $balance - $amount;
+
+            PointTransaction::query()->create([
+                'user_id'       => $user->id,
+                'type'          => 'deduct',
+                'source'        => 'system',
+                'source_id'     => null,
+                'source_post_id' => null,
+                'amount'        => -$amount,
+                'balance_after' => $newBalance,
+                'note'          => $note,
+                'expires_at'    => null,
+            ]);
+
+            $lockedUser->update(['point_balance' => $newBalance]);
+            $user->point_balance = $newBalance;
+
+            return true;
+        });
+    }
+
     private function getDailyEarned(User $user): int
     {
         return (int) PointTransaction::query()

@@ -3,23 +3,30 @@
 namespace App\Services;
 
 use App\Models\Message;
+use App\Models\PointPolicy;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
     public function __construct(
         private readonly UserNotificationService $userNotificationService,
+        private readonly PointService $pointService,
     ) {
     }
 
     /**
      * 쪽지를 발송하고 수신자에게 FCM 푸시 알림을 보낸다.
+     * 일일 무료 발송(정책 daily_free_messages) 소진 시 건당 포인트(message_send_points)를 차감하며,
+     * 포인트가 부족하면 ValidationException을 던진다.
      */
     public function send(User $sender, User $receiver, string $content, ?int $parentMessageId = null): Message
     {
+        $this->chargeForSendIfNeeded($sender);
+
         $message = Message::query()->create([
             'sender_id' => $sender->id,
             'receiver_id' => $receiver->id,
@@ -47,6 +54,65 @@ class MessageService
         }
 
         return $message;
+    }
+
+    /**
+     * 오늘 발송한 쪽지 수 (매일 자정 기준 초기화, 이월 없음).
+     */
+    public function sentTodayCount(int $userId): int
+    {
+        return Message::query()
+            ->where('sender_id', $userId)
+            ->whereDate('created_at', today())
+            ->count();
+    }
+
+    /**
+     * 발송 가능 상태 요약 (웹/앱 UI 안내용).
+     *
+     * @return array{free_limit:int, free_remaining:int, cost:int, balance:int, min_spend:int, can_send:bool}
+     */
+    public function quotaFor(User $user): array
+    {
+        $policy = PointPolicy::getPolicy();
+        $freeLimit = (int) $policy->daily_free_messages;
+        $freeRemaining = max(0, $freeLimit - $this->sentTodayCount($user->id));
+        $cost = (int) $policy->message_send_points;
+        $balance = (int) $user->point_balance;
+        $minSpend = (int) $policy->min_spend_points;
+
+        $canSend = $freeRemaining > 0
+            || $cost === 0
+            || ($balance >= $cost && $balance >= $minSpend);
+
+        return [
+            'free_limit' => $freeLimit,
+            'free_remaining' => $freeRemaining,
+            'cost' => $cost,
+            'balance' => $balance,
+            'min_spend' => $minSpend,
+            'can_send' => $canSend,
+        ];
+    }
+
+    /**
+     * 무료 발송분 소진 시 포인트를 차감한다. 부족하면 ValidationException.
+     */
+    private function chargeForSendIfNeeded(User $sender): void
+    {
+        $policy = PointPolicy::getPolicy();
+        $freeLimit = (int) $policy->daily_free_messages;
+        $cost = (int) $policy->message_send_points;
+
+        if ($cost <= 0 || $this->sentTodayCount($sender->id) < $freeLimit) {
+            return;
+        }
+
+        if (! $this->pointService->spend($sender, $cost, '쪽지 추가 발송')) {
+            throw ValidationException::withMessages([
+                'content' => "오늘 무료 쪽지 발송 {$freeLimit}건을 모두 사용했습니다. 추가 발송에는 {$cost}P가 필요하지만 포인트가 부족합니다. (보유 {$sender->point_balance}P, 최소 사용 가능 {$policy->min_spend_points}P)",
+            ]);
+        }
     }
 
     /**

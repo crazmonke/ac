@@ -51,6 +51,9 @@ class AdminPointController extends Controller
             'comment_points'   => ['required', 'integer', 'min:0', 'max:9999'],
             'daily_max_points' => ['required', 'integer', 'min:1', 'max:99999'],
             'min_spend_points' => ['required', 'integer', 'min:0', 'max:999999'],
+            'nickname_change_points' => ['required', 'integer', 'min:0', 'max:999999'],
+            'daily_free_messages' => ['required', 'integer', 'min:0', 'max:999'],
+            'message_send_points' => ['required', 'integer', 'min:0', 'max:999999'],
             'expiry_months'    => ['nullable', 'integer', 'min:1', 'max:120'],
         ]);
 

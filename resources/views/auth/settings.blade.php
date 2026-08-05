@@ -245,6 +245,46 @@
         @endif
     </section>
 
+    @if($isProfileLocked)
+    <section class="card">
+        <h2>닉네임 변경 (포인트 사용)</h2>
+        @php $nicknameCost = (int) $pointPolicy->nickname_change_points; @endphp
+        <p>
+            프로필이 잠금 상태여도 닉네임은
+            @if($nicknameCost > 0)
+                포인트 <strong>{{ number_format($nicknameCost) }}P</strong>를 사용해
+            @endif
+            변경할 수 있습니다.
+            보유 포인트: <strong>{{ number_format((int) $user->point_balance) }}P</strong>
+            @if($nicknameCost > 0 && (int) $pointPolicy->min_spend_points > 0)
+                <span class="meta">(포인트는 {{ number_format((int) $pointPolicy->min_spend_points) }}P 이상 보유 시 사용 가능)</span>
+            @endif
+        </p>
+        <form method="post" action="/settings/nickname" class="form-grid two"
+              @if($nicknameCost > 0) onsubmit="return confirm('닉네임을 변경하면 {{ number_format($nicknameCost) }}P가 차감됩니다. 진행할까요?');" @endif>
+            @csrf
+            @method('put')
+            <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
+            <label>
+                새 닉네임
+                <input name="name" value="{{ old('name') }}" maxlength="120" placeholder="현재: {{ $user->name }}" required>
+            </label>
+            <div class="row" style="align-items:end;">
+                <button class="btn btn-primary" type="submit">
+                    @if($nicknameCost > 0)
+                        {{ number_format($nicknameCost) }}P 사용하고 변경
+                    @else
+                        닉네임 변경
+                    @endif
+                </button>
+            </div>
+        </form>
+        @if($errors->has('nickname'))
+            <div class="error">{{ $errors->first('nickname') }}</div>
+        @endif
+    </section>
+    @endif
+
     <section class="card">
         <h2>비밀번호 변경</h2>
         <p>현재 비밀번호를 확인한 뒤 새로운 비밀번호로 변경합니다.<br>

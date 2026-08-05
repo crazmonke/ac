@@ -146,6 +146,15 @@ class MessageController extends Controller
     }
 
     /**
+     * GET /api/messages/quota
+     * 오늘 발송 가능 상태 (무료 잔여/초과 발송 비용/보유 포인트).
+     */
+    public function quota(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->messageService->quotaFor($request->user())]);
+    }
+
+    /**
      * GET /api/messages/unread-count
      */
     public function unreadCount(Request $request): JsonResponse

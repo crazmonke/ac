@@ -71,6 +71,7 @@ class MessageWebController extends Controller
             'messages' => $messages,
             'canReply' => $this->messageService->canReceive($peer),
             'apartmentId' => (int) ($user->preferred_apartment_id ?? 1),
+            'messageQuota' => $this->messageService->quotaFor($user),
         ]);
     }
 
@@ -105,6 +106,7 @@ class MessageWebController extends Controller
             'recipient' => $recipient,
             'adminUser' => $this->messageService->primaryAdmin(),
             'apartmentId' => (int) ($user->preferred_apartment_id ?? 1),
+            'messageQuota' => $this->messageService->quotaFor($user),
         ]);
     }
 
