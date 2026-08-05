@@ -79,6 +79,30 @@
                 </div>
             </label>
 
+            <label>
+                닉네임 변경 차감 <span class="unit">(프로필 잠금 회원의 닉네임 1회 변경 시. 0 = 무료)</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="number" name="nickname_change_points" value="{{ old('nickname_change_points', $policy->nickname_change_points) }}" min="0" max="999999" required>
+                    <span class="unit">P</span>
+                </div>
+            </label>
+
+            <label>
+                쪽지 일일 무료 발송 <span class="unit">(매일 초기화, 누적 없음)</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="number" name="daily_free_messages" value="{{ old('daily_free_messages', $policy->daily_free_messages) }}" min="0" max="999" required>
+                    <span class="unit">건 / 일</span>
+                </div>
+            </label>
+
+            <label>
+                쪽지 추가 발송 차감 <span class="unit">(무료 소진 후 1건 발송 시. 0 = 무제한 무료)</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="number" name="message_send_points" value="{{ old('message_send_points', $policy->message_send_points) }}" min="0" max="999999" required>
+                    <span class="unit">P / 건</span>
+                </div>
+            </label>
+
             <hr style="border:none; border-top:1px solid #e5eaf2; margin:16px 0;">
             <h2>소멸 정책</h2>
 

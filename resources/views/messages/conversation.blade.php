@@ -77,6 +77,7 @@
     </div>
 
     @if($canReply)
+        @include('messages.partials.quota-notice')
         <form class="reply-card" method="post" action="/messages">
             @csrf
             <input type="hidden" name="receiver_id" value="{{ $peer->id }}">

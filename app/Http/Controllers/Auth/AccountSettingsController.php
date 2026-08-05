@@ -4,17 +4,22 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
+use App\Models\PointPolicy;
 use App\Models\ResidentVerificationRequest;
 use App\Models\UserRole;
 use App\Models\UserResidence;
 use App\Services\ApartmentSelectionService;
+use App\Services\PointService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class AccountSettingsController extends Controller
 {
-    public function __construct(private readonly ApartmentSelectionService $apartmentSelectionService)
+    public function __construct(
+        private readonly ApartmentSelectionService $apartmentSelectionService,
+        private readonly PointService $pointService,
+    )
     {
     }
 
@@ -59,7 +64,44 @@ class AccountSettingsController extends Controller
             'latestMatchReview' => $latestMatchReview,
             'hasResidentRole' => $hasResidentRole,
             'isProfileLocked' => (bool) ($user->profile_locked ?? true),
+            'pointPolicy' => PointPolicy::getPolicy(),
         ]);
+    }
+
+    /**
+     * PUT /settings/nickname — 포인트를 사용한 닉네임 변경.
+     * 프로필 잠금 회원도 닉네임만은 포인트를 지불하고 변경할 수 있다.
+     */
+    public function changeNickname(Request $request)
+    {
+        $user = $request->user();
+        $apartmentId = (int) $request->input('apartment_id', 1);
+        $redirect = '/settings?apartment_id=' . ($apartmentId > 0 ? $apartmentId : 1);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+        ], [], ['name' => '닉네임']);
+
+        $newName = trim($data['name']);
+
+        if ($newName === (string) $user->name) {
+            return redirect($redirect)->withErrors(['nickname' => '현재 닉네임과 동일합니다.']);
+        }
+
+        $policy = PointPolicy::getPolicy();
+        $cost = (int) $policy->nickname_change_points;
+
+        if ($cost > 0 && ! $this->pointService->spend($user, $cost, '닉네임 변경')) {
+            return redirect($redirect)->withErrors([
+                'nickname' => "포인트가 부족하여 닉네임을 변경할 수 없습니다. (필요 {$cost}P, 보유 {$user->point_balance}P, 최소 사용 가능 {$policy->min_spend_points}P)",
+            ]);
+        }
+
+        $user->update(['name' => $newName]);
+
+        return redirect($redirect)->with('status', $cost > 0
+            ? "닉네임이 변경되었습니다. ({$cost}P 차감)"
+            : '닉네임이 변경되었습니다.');
     }
 
     public function updateProfile(Request $request)
