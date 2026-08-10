@@ -511,17 +511,19 @@
         <div style="margin-top:16px;" class="body">{!! $post->body !!}</div>
 
         <div class="post-like-center">
-            <form method="post" action="/community/posts/{{ $post->id }}/likes" class="like-toggle-form" data-like-form data-liked="{{ $likedByMe ? '1' : '0' }}">
-                @csrf
-                @if($likedByMe)
-                    @method('DELETE')
-                @endif
-                <button class="like-toggle-btn {{ $likedByMe ? 'hearted' : '' }}" type="submit" aria-label="좋아요">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
-                    <span data-like-count>{{ $likeCount }}</span>
-                </button>
-            </form>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            @auth
+                <form method="post" action="/community/posts/{{ $post->id }}/likes" class="like-toggle-form" data-like-form data-liked="{{ $likedByMe ? '1' : '0' }}">
+                    @csrf
+                    @if($likedByMe)
+                        @method('DELETE')
+                    @endif
+                    <button class="like-toggle-btn {{ $likedByMe ? 'hearted' : '' }}" type="submit" aria-label="좋아요">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
+                        <span data-like-count>{{ $likeCount }}</span>
+                    </button>
+                </form>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            @endauth
             <button class="ghost" type="button" id="shareButton" aria-label="공유">
                 <svg class="bottom-bar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5"/><path d="M15.4 6.5 8.6 10.5"/></svg>
                 <span class="sr-only">공유</span>

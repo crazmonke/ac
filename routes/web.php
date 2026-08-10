@@ -134,6 +134,7 @@ Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout')->mi
 
 Route::get('/community', [CommunityPageController::class, 'index']);
 Route::get('/community/files/{id}', [CommunityBoardController::class, 'downloadFile']);
+Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
 Route::get('/community/api/apartments/{apartmentId}/boards', [BoardController::class, 'index'])
     ->middleware(['auth', 'role:resident,apartmentId']);
 
@@ -145,7 +146,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/resident-verification-request', [AccountSettingsController::class, 'requestResidentVerification']);
     Route::post('/settings/withdraw-request', [AccountSettingsController::class, 'requestWithdrawal']);
 
-    Route::get('/community/posts/{id}', [CommunityBoardController::class, 'showPost']);
     Route::get('/community/posts/{postId}/comments/{commentId}', [CommunityBoardController::class, 'showCommentDetail']);
     Route::post('/community/editor/photos', [CommunityBoardController::class, 'uploadEditorPhoto']);
     Route::post('/community/editor/videos', [CommunityBoardController::class, 'uploadEditorVideo']);

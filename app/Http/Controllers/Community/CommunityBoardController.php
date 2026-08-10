@@ -133,6 +133,7 @@ class CommunityBoardController extends Controller
             ->findOrFail($id);
 
         $user = $request->user();
+        $currentUserId = (int) ($user?->id ?? 0);
 
         if (! $this->permissionService->canReadPostDetail($user, $post)) {
             return redirect('/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id);
@@ -158,9 +159,13 @@ class CommunityBoardController extends Controller
         $userVoteOptionIds = collect();
         $pollTotalVotes = 0;
         if ($post->poll) {
+            if (! $user) {
+                $userVoteOptionIds = collect();
+            }
+
             $userVoteOptionIds = PollVote::query()
                 ->where('poll_id', $post->poll->id)
-                ->where('user_id', $user->id)
+                ->when($user, fn ($query) => $query->where('user_id', $user->id), fn ($query) => $query->whereRaw('1 = 0'))
                 ->pluck('poll_option_id');
             $pollTotalVotes = (int) $post->poll->options->sum('vote_count');
         }
@@ -168,7 +173,7 @@ class CommunityBoardController extends Controller
         $likeCount = (int) PostLike::query()->where('post_id', $post->id)->count();
         $likedByMe = (bool) PostLike::query()
             ->where('post_id', $post->id)
-            ->where('user_id', $user->id)
+            ->when($user, fn ($query) => $query->where('user_id', $user->id), fn ($query) => $query->whereRaw('1 = 0'))
             ->exists();
 
         // 댓글 좋아요 데이터 (댓글 ID => [like_count, liked_by_me])
@@ -189,10 +194,10 @@ class CommunityBoardController extends Controller
         return view('community.post', [
             'post' => $post,
             'apartmentId' => $this->resolveContextApartmentId($request, (int) $post->apartment_id),
-            'canWrite' => $this->canWriteInBoard($user, $post->board),
-            'canComment' => $this->permissionService->hasBoardPermission($user, $post->board, 'comment'),
-            'isApartmentAdmin' => $this->permissionService->hasAdminRole($user, (int) $post->apartment_id),
-            'currentUserId' => $user->id,
+            'canWrite' => (bool) $user && $this->canWriteInBoard($user, $post->board),
+            'canComment' => (bool) $user && $this->permissionService->hasBoardPermission($user, $post->board, 'comment'),
+            'isApartmentAdmin' => (bool) $user && $this->permissionService->hasAdminRole($user, (int) $post->apartment_id),
+            'currentUserId' => $currentUserId,
             'rootCommentCount' => $rootCommentCount,
             'replyCount' => $replyCount,
             'totalCommentCount' => $rootCommentCount + $replyCount,
