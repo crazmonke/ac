@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class PostTemplate extends Model
 {
@@ -47,6 +48,10 @@ class PostTemplate extends Model
      */
     public static function availableForBoard(string $boardSlug): Collection
     {
+        if (! Schema::hasTable('post_templates')) {
+            return new Collection();
+        }
+
         return static::active()->ordered()->get()
             ->filter(fn (self $template) => $template->isAvailableForBoard($boardSlug))
             ->values();

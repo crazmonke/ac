@@ -30,6 +30,14 @@
     .pt-choice { display: flex; align-items: flex-start; gap: 8px; border: 1px solid #d9e3ef; border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; cursor: pointer; background: #fff; }
     .pt-choice:hover { border-color: #2f52b8; }
     .pt-choice input { width: auto; margin-top: 3px; }
+    .pt-media-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pt-media-button { border: 1px solid #2f52b8; border-radius: 10px; background: #eef3fc; color: #2f52b8; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+    .pt-media-note { margin: 4px 0 10px; font-size: 0.86rem; color: #607086; }
+    .pt-media-list { display: grid; gap: 8px; }
+    .pt-media-item { border: 1px solid #d9e3ef; border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fff; }
+    .pt-media-name { color: #1c2d44; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pt-media-kind { font-size: 0.82rem; color: #607086; margin-left: 6px; }
+    .pt-media-remove { border: 1px solid #d9e3ef; border-radius: 8px; background: #f8fafd; color: #20324b; padding: 4px 10px; font-weight: 700; cursor: pointer; }
     .pt-nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
     .pt-nav button { border-radius: 12px; padding: 11px 18px; font-weight: 800; cursor: pointer; border: 1px solid #cfd8e6; background: #eef3f9; color: #20324b; }
     .pt-nav button.pt-primary { background: #2f52b8; border-color: #2f52b8; color: #fff; }
@@ -110,7 +118,16 @@
     var previewBodyEl = modal.querySelector('.js-pt-preview-body');
     var previewErrorEl = modal.querySelector('.js-pt-preview-error');
 
-    var current = { template: null, step: 0, answers: {}, previewAnswers: null };
+    var audienceAnswerKey = '__audience_scope';
+    var audienceSelect = form.querySelector('select[name="audience_scope"]');
+    var current = { template: null, step: 0, answers: {}, previewAnswers: null, mediaAssets: [] };
+
+    function defaultAudienceScope() {
+        if (audienceSelect && (audienceSelect.value === 'region' || audienceSelect.value === 'apartment')) {
+            return audienceSelect.value;
+        }
+        return 'region';
+    }
 
     function csrfToken() {
         var input = form.querySelector('input[name="_token"]');
@@ -139,6 +156,7 @@
         try {
             localStorage.setItem(draftKey(current.template.id), JSON.stringify({
                 answers: current.answers,
+                mediaAssets: current.mediaAssets,
                 step: current.step,
                 savedAt: Date.now()
             }));
@@ -148,6 +166,30 @@
     function clearDraft() {
         if (!current.template) return;
         try { localStorage.removeItem(draftKey(current.template.id)); } catch (e) {}
+    }
+
+    function hasMediaStep() {
+        return config.mode === 'create';
+    }
+
+    function mediaStepIndex() {
+        return current.template.questions.length;
+    }
+
+    function audienceStepIndex() {
+        return current.template.questions.length + (hasMediaStep() ? 1 : 0);
+    }
+
+    function totalStepCount() {
+        return current.template.questions.length + 1 + (hasMediaStep() ? 1 : 0);
+    }
+
+    function isMediaStep() {
+        return hasMediaStep() && current.step === mediaStepIndex();
+    }
+
+    function isAudienceStep() {
+        return current.step === audienceStepIndex();
     }
 
     function show(view) {
@@ -170,31 +212,71 @@
 
     function renderQuestion() {
         var questions = current.template.questions;
-        var question = questions[current.step];
-        var answer = current.answers[question.key];
-        stepLabel.textContent = (current.step + 1) + '단계 / ' + questions.length + '단계';
-        progressFill.style.width = Math.round(((current.step + 1) / questions.length) * 100) + '%';
+        var totalSteps = totalStepCount();
+        var mediaStep = isMediaStep();
+        var audienceStep = isAudienceStep();
+        var question = (mediaStep || audienceStep) ? null : questions[current.step];
+        var answer = audienceStep ? current.answers[audienceAnswerKey] : (question ? current.answers[question.key] : null);
+        stepLabel.textContent = (current.step + 1) + '단계 / ' + totalSteps + '단계';
+        progressFill.style.width = Math.round(((current.step + 1) / totalSteps) * 100) + '%';
         errorEl.style.display = 'none';
 
-        var html = '<p class="pt-q-label">' + escapeText(question.label)
-            + (question.required ? ' <span class="pt-q-required">*</span>' : '') + '</p>';
+        var html = '';
 
-        if (question.type === 'text') {
-            var maxAttr = question.max_length ? ' maxlength="' + question.max_length + '"' : '';
-            html += '<textarea class="js-pt-input" rows="3"' + maxAttr + ' placeholder="답변을 입력해 주세요.">' + escapeText(answer || '') + '</textarea>';
-            if (question.max_length) {
-                html += '<p class="meta" style="margin:6px 0 0;">최대 ' + question.max_length + '자</p>';
+        if (mediaStep) {
+            html += '<p class="pt-q-label">이미지 첨부 (선택)</p>';
+            html += '<div class="pt-media-controls">'
+                + '<button type="button" class="pt-media-button js-pt-media-pick">파일 선택</button>'
+                + '<input type="file" class="js-pt-media-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v" multiple hidden>'
+                + '</div>';
+            html += '<p class="pt-media-note">첨부하지 않고 다음 단계로 이동할 수 있습니다. 첨부한 미디어는 본문 최하단에 노출됩니다.</p>';
+            if (!current.mediaAssets.length) {
+                html += '<p class="meta" style="margin:0;">첨부된 파일이 없습니다.</p>';
+            } else {
+                html += '<div class="pt-media-list">';
+                current.mediaAssets.forEach(function (asset, index) {
+                    var label = asset.type === 'video' ? '영상' : '이미지';
+                    var name = asset.name || (label + ' 파일');
+                    html += '<div class="pt-media-item">'
+                        + '<div class="pt-media-name">' + escapeText(name) + '<span class="pt-media-kind">' + label + '</span></div>'
+                        + '<button type="button" class="pt-media-remove" data-media-remove-index="' + index + '">삭제</button>'
+                        + '</div>';
+                });
+                html += '</div>';
             }
+        } else if (audienceStep) {
+            var selectedScope = (answer === 'region' || answer === 'apartment') ? answer : defaultAudienceScope();
+            html += '<p class="pt-q-label">게시물 노출 범위를 선택해 주세요. <span class="pt-q-required">*</span></p>';
+            html += '<label class="pt-choice">'
+                + '<input type="radio" name="pt-audience-scope" value="region"' + (selectedScope === 'region' ? ' checked' : '') + '>'
+                + '<span>동네 (기본)</span>'
+                + '</label>';
+            html += '<label class="pt-choice">'
+                + '<input type="radio" name="pt-audience-scope" value="apartment"' + (selectedScope === 'apartment' ? ' checked' : '') + '>'
+                + '<span>단지</span>'
+                + '</label>';
+            html += '<p class="meta" style="margin:6px 0 0;">기본값은 동네이며, 선택한 범위로 게시물이 노출됩니다.</p>';
         } else {
-            var multiple = question.type === 'multiple';
-            var selected = multiple ? (Array.isArray(answer) ? answer : []) : [answer];
-            questionOptions(question).forEach(function (option, index) {
-                var checked = selected.indexOf(option.label) !== -1 ? ' checked' : '';
-                html += '<label class="pt-choice">'
-                    + '<input type="' + (multiple ? 'checkbox' : 'radio') + '" name="pt-answer" value="' + escapeAttr(option.label) + '"' + checked + '>'
-                    + '<span>' + escapeText(option.label) + '</span>'
-                    + '</label>';
-            });
+            html = '<p class="pt-q-label">' + escapeText(question.label)
+                + (question.required ? ' <span class="pt-q-required">*</span>' : '') + '</p>';
+
+            if (question.type === 'text') {
+                var maxAttr = question.max_length ? ' maxlength="' + question.max_length + '"' : '';
+                html += '<textarea class="js-pt-input" rows="3"' + maxAttr + ' placeholder="답변을 입력해 주세요.">' + escapeText(answer || '') + '</textarea>';
+                if (question.max_length) {
+                    html += '<p class="meta" style="margin:6px 0 0;">최대 ' + question.max_length + '자</p>';
+                }
+            } else {
+                var multiple = question.type === 'multiple';
+                var selected = multiple ? (Array.isArray(answer) ? answer : []) : [answer];
+                questionOptions(question).forEach(function (option, index) {
+                    var checked = selected.indexOf(option.label) !== -1 ? ' checked' : '';
+                    html += '<label class="pt-choice">'
+                        + '<input type="' + (multiple ? 'checkbox' : 'radio') + '" name="pt-answer" value="' + escapeAttr(option.label) + '"' + checked + '>'
+                        + '<span>' + escapeText(option.label) + '</span>'
+                        + '</label>';
+                });
+            }
         }
 
         questionEl.innerHTML = html;
@@ -202,11 +284,26 @@
         prevBtn.disabled = current.step === 0 && (config.mode === 'edit' || config.templates.length === 1);
         prevBtn.textContent = current.step === 0 ? '템플릿 다시 선택' : '이전 단계';
         modal.querySelector('.js-pt-next').textContent =
-            current.step === questions.length - 1 ? '미리보기' : '다음 단계';
+            current.step >= totalSteps - 1 ? '미리보기' : '다음 단계';
         show('wizard');
     }
 
     function collectAnswer() {
+        if (isMediaStep()) {
+            return current.mediaAssets;
+        }
+
+        if (isAudienceStep()) {
+            var checkedScope = questionEl.querySelector('input[name="pt-audience-scope"]:checked');
+            var scopeValue = checkedScope ? checkedScope.value : '';
+            if (scopeValue === 'region' || scopeValue === 'apartment') {
+                current.answers[audienceAnswerKey] = scopeValue;
+                return scopeValue;
+            }
+            delete current.answers[audienceAnswerKey];
+            return '';
+        }
+
         var question = current.template.questions[current.step];
         if (question.type === 'text') {
             var input = questionEl.querySelector('.js-pt-input');
@@ -228,8 +325,12 @@
 
     function startTemplate(template, restored) {
         current.template = template;
-        current.step = restored ? Math.min(restored.step || 0, template.questions.length - 1) : 0;
+        current.step = restored ? Math.min(restored.step || 0, totalStepCount() - 1) : 0;
         current.answers = restored ? (restored.answers || {}) : {};
+        current.mediaAssets = restored ? (Array.isArray(restored.mediaAssets) ? restored.mediaAssets : []) : [];
+        if (current.answers[audienceAnswerKey] !== 'region' && current.answers[audienceAnswerKey] !== 'apartment') {
+            current.answers[audienceAnswerKey] = defaultAudienceScope();
+        }
         titleEl.textContent = template.name;
         renderQuestion();
     }
@@ -269,6 +370,8 @@
 
     function requestPreview() {
         var nextBtn = modal.querySelector('.js-pt-next');
+        var previewAnswers = Object.assign({}, current.answers);
+        delete previewAnswers[audienceAnswerKey];
         nextBtn.disabled = true;
         fetch('/community/post-templates/' + current.template.id + '/preview', {
             method: 'POST',
@@ -277,7 +380,7 @@
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': csrfToken()
             },
-            body: JSON.stringify({ answers: current.answers })
+            body: JSON.stringify({ answers: previewAnswers })
         }).then(function (response) {
             return response.json().then(function (payload) { return { ok: response.ok, payload: payload }; });
         }).then(function (result) {
@@ -290,7 +393,16 @@
             }
             current.previewAnswers = result.payload.answers || current.answers;
             previewTitleEl.textContent = result.payload.title;
-            previewBodyEl.innerHTML = result.payload.body_html;
+            var mediaHtml = current.mediaAssets
+                .map(function (asset) {
+                    if (!asset || !asset.url) return '';
+                    if (asset.type === 'video') {
+                        return '<p><video controls playsinline preload="metadata" src="' + escapeAttr(asset.url) + '"></video></p>';
+                    }
+                    return '<p><img src="' + escapeAttr(asset.url) + '" alt="' + escapeAttr(asset.name || 'image') + '"></p>';
+                })
+                .join('');
+            previewBodyEl.innerHTML = (result.payload.body_html || '') + mediaHtml;
             previewErrorEl.style.display = 'none';
             titleEl.textContent = '미리보기';
             show('preview');
@@ -304,9 +416,22 @@
     function publish() {
         var templateInput = form.querySelector('input[name="post_template_id"]');
         var answersInput = form.querySelector('input[name="template_answers"]');
+        var mediaAssetsInput = form.querySelector('input[name="template_media_assets"]');
         if (!templateInput || !answersInput) return;
+
+        var selectedScope = current.answers[audienceAnswerKey];
+        if (audienceSelect && (selectedScope === 'region' || selectedScope === 'apartment')) {
+            audienceSelect.value = selectedScope;
+        }
+
+        var publishAnswers = Object.assign({}, current.previewAnswers || current.answers);
+        delete publishAnswers[audienceAnswerKey];
+
         templateInput.value = current.template.id;
-        answersInput.value = JSON.stringify(current.previewAnswers || current.answers);
+        answersInput.value = JSON.stringify(publishAnswers);
+        if (mediaAssetsInput) {
+            mediaAssetsInput.value = JSON.stringify(current.mediaAssets || []);
+        }
         clearDraft();
         // 네이티브 submit: 본문 에디터 검증(빈 내용 차단)을 우회한다 — 제목/본문은 서버가 답변으로 생성.
         HTMLFormElement.prototype.submit.call(form);
@@ -329,7 +454,17 @@
     });
 
     modal.querySelector('.js-pt-next').addEventListener('click', function () {
-        var question = current.template.questions[current.step];
+        if (questionEl.getAttribute('data-uploading') === '1') {
+            errorEl.textContent = '파일 업로드가 진행 중입니다. 잠시만 기다려 주세요.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        var mediaStep = isMediaStep();
+        var audienceStep = isAudienceStep();
+        var question = audienceStep
+            ? { required: true }
+            : (mediaStep ? { required: false } : current.template.questions[current.step]);
         var value = collectAnswer();
         var empty = !value || (Array.isArray(value) && !value.length);
         if (question.required && empty) {
@@ -338,7 +473,7 @@
             return;
         }
         saveDraft();
-        if (current.step >= current.template.questions.length - 1) {
+        if (current.step >= totalStepCount() - 1) {
             requestPreview();
             return;
         }
@@ -356,6 +491,114 @@
     // 답변 입력 시마다 임시 저장
     questionEl.addEventListener('change', function () { collectAnswer(); saveDraft(); });
     questionEl.addEventListener('input', function () { collectAnswer(); saveDraft(); });
+    questionEl.addEventListener('click', function (event) {
+        var pickButton = event.target.closest('.js-pt-media-pick');
+        if (pickButton) {
+            var mediaInput = questionEl.querySelector('.js-pt-media-input');
+            if (mediaInput) mediaInput.click();
+            return;
+        }
+
+        var removeButton = event.target.closest('[data-media-remove-index]');
+        if (removeButton) {
+            var removeIndex = parseInt(removeButton.getAttribute('data-media-remove-index') || '-1', 10);
+            if (removeIndex >= 0 && removeIndex < current.mediaAssets.length) {
+                current.mediaAssets.splice(removeIndex, 1);
+                saveDraft();
+                renderQuestion();
+            }
+        }
+    });
+
+    questionEl.addEventListener('change', function (event) {
+        var mediaInput = event.target.closest('.js-pt-media-input');
+        if (!mediaInput) {
+            return;
+        }
+
+        var files = Array.prototype.slice.call(mediaInput.files || []);
+        if (!files.length) {
+            return;
+        }
+
+        questionEl.setAttribute('data-uploading', '1');
+        errorEl.style.display = 'none';
+
+        uploadTemplateMediaFiles(files)
+            .then(function (assets) {
+                assets.forEach(function (asset) {
+                    current.mediaAssets.push(asset);
+                });
+                saveDraft();
+                renderQuestion();
+            })
+            .catch(function (error) {
+                errorEl.textContent = error && error.message ? error.message : '파일 업로드에 실패했습니다.';
+                errorEl.style.display = 'block';
+            })
+            .finally(function () {
+                mediaInput.value = '';
+                questionEl.removeAttribute('data-uploading');
+            });
+    });
+
+    async function uploadTemplateMediaFiles(files) {
+        var assets = [];
+        for (var i = 0; i < files.length; i++) {
+            assets.push(await uploadTemplateMediaFile(files[i]));
+        }
+        return assets;
+    }
+
+    async function uploadTemplateMediaFile(file) {
+        var type = String(file.type || '');
+        var endpoint = '';
+        var mediaType = '';
+
+        if (type.indexOf('image/') === 0) {
+            endpoint = '/community/editor/photos';
+            mediaType = 'image';
+        } else if (type.indexOf('video/') === 0) {
+            endpoint = '/community/editor/videos';
+            mediaType = 'video';
+        } else {
+            throw new Error('이미지 또는 영상 파일만 첨부할 수 있습니다.');
+        }
+
+        var formData = new FormData();
+        formData.append('file', file);
+
+        var response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken()
+            },
+            body: formData
+        });
+
+        var payload = {};
+        try {
+            payload = await response.json();
+        } catch (e) {
+            payload = {};
+        }
+
+        if (!response.ok || !payload.url) {
+            var message = payload && payload.message
+                ? payload.message
+                : (payload && payload.errors && payload.errors.file && payload.errors.file[0]
+                    ? payload.errors.file[0]
+                    : '파일 업로드에 실패했습니다.');
+            throw new Error(message);
+        }
+
+        return {
+            type: mediaType,
+            url: String(payload.url || ''),
+            name: String(payload.name || file.name || mediaType)
+        };
+    }
 
     Array.prototype.forEach.call(openButtons, function (button) {
         button.addEventListener('click', function () {

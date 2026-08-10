@@ -501,6 +501,7 @@
                     </div>
                     <input type="hidden" name="post_template_id" value="">
                     <input type="hidden" name="template_answers" value="">
+                    <input type="hidden" name="template_media_assets" value="">
                 @else
                     <input name="title" placeholder="제목" value="{{ old('title') }}" required>
                 @endif

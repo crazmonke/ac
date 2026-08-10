@@ -448,6 +448,7 @@ class CommunityBoardController extends Controller
         $rules = [
             'title' => [$templateSubmission ? 'nullable' : 'required', 'string', 'max:160'],
             'body' => [$templateSubmission ? 'nullable' : 'required', 'string'],
+            'template_media_assets' => ['nullable', 'json'],
             'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
             'new_topic' => ['nullable', 'string', 'max:60'],
             'audience_scope' => ['required', 'in:region,apartment'],
@@ -464,10 +465,12 @@ class CommunityBoardController extends Controller
             $rules['poll_options'] = ['required', 'string', 'max:4000'];
         }
 
+        $templateAnswers = null;
         $data = $request->validate($rules);
 
         if ($templateSubmission) {
             [, $templateAnswers, $data['title'], $data['body']] = $templateSubmission;
+            $data['body'] = $this->appendTemplateMediaToBody((string) $data['body'], (string) ($data['template_media_assets'] ?? ''));
         }
 
         $audienceScope = (string) $data['audience_scope'];
@@ -546,6 +549,7 @@ class CommunityBoardController extends Controller
         $rules = [
             'title' => [$templateSubmission ? 'nullable' : 'required', 'string', 'max:160'],
             'body' => [$templateSubmission ? 'nullable' : 'required', 'string'],
+            'template_media_assets' => ['nullable', 'json'],
             'post_topic_id' => ['nullable', 'integer', 'exists:post_topics,id'],
             'new_topic' => ['nullable', 'string', 'max:60'],
             'audience_scope' => ['required', 'in:region,apartment'],
@@ -560,10 +564,12 @@ class CommunityBoardController extends Controller
             $rules['poll_options'] = ['required', 'string', 'max:4000'];
         }
 
+        $templateAnswers = null;
         $data = $request->validate($rules);
 
         if ($templateSubmission) {
             [, $templateAnswers, $data['title'], $data['body']] = $templateSubmission;
+            $data['body'] = $this->appendTemplateMediaToBody((string) $data['body'], (string) ($data['template_media_assets'] ?? ''));
         }
 
         $audienceScope = (string) $data['audience_scope'];
@@ -1314,6 +1320,68 @@ class CommunityBoardController extends Controller
         }
 
         return null;
+    }
+
+    private function appendTemplateMediaToBody(string $bodyHtml, string $rawAssets): string
+    {
+        $mediaHtml = $this->buildTemplateMediaHtml($rawAssets);
+        if ($mediaHtml === '') {
+            return $bodyHtml;
+        }
+
+        return rtrim($bodyHtml).$mediaHtml;
+    }
+
+    private function buildTemplateMediaHtml(string $rawAssets): string
+    {
+        $rawAssets = trim($rawAssets);
+        if ($rawAssets === '') {
+            return '';
+        }
+
+        $decoded = json_decode($rawAssets, true);
+        if (! is_array($decoded)) {
+            return '';
+        }
+
+        $mediaHtmlParts = [];
+        $limit = 12;
+
+        foreach ($decoded as $asset) {
+            if ($limit <= 0) {
+                break;
+            }
+
+            if (! is_array($asset)) {
+                continue;
+            }
+
+            $url = trim((string) ($asset['url'] ?? ''));
+            $type = trim((string) ($asset['type'] ?? ''));
+            $name = trim((string) ($asset['name'] ?? ''));
+
+            if ($url === '') {
+                continue;
+            }
+
+            $isAllowedImage = Str::startsWith($url, '/uploads/editor-images/');
+            $isAllowedVideo = Str::startsWith($url, '/uploads/editor-videos/');
+
+            if (! $isAllowedImage && ! $isAllowedVideo) {
+                continue;
+            }
+
+            if ($isAllowedVideo || $type === 'video') {
+                $mediaHtmlParts[] = '<p><video controls playsinline preload="metadata" src="'.e($url).'"></video></p>';
+            } else {
+                $alt = $name !== '' ? $name : 'image';
+                $mediaHtmlParts[] = '<p><img src="'.e($url).'" alt="'.e($alt).'"></p>';
+            }
+
+            $limit--;
+        }
+
+        return implode('', $mediaHtmlParts);
     }
 
     private function resolvePostTopicId(
