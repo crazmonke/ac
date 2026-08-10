@@ -152,6 +152,10 @@ class PermissionService
 
         $scope = (string) ($post->audience_scope ?? 'all');
 
+        if ($scope === 'region' || (bool) ($post->board?->board_type === 'notice') || (bool) $post->is_notice) {
+            return true;
+        }
+
         if (! $user && $scope === 'region' && (bool) $post->is_guest_visible) {
             return true;
         }
