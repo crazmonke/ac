@@ -136,6 +136,10 @@ class CommunityBoardController extends Controller
         $currentUserId = (int) ($user?->id ?? 0);
 
         if (! $this->permissionService->canReadPostDetail($user, $post)) {
+            if (! $user) {
+                return redirect('/login?redirect='.urlencode($request->getRequestUri()));
+            }
+
             return redirect('/posts/'.$post->id.'?apartment_id='.(int) $post->apartment_id);
         }
 
@@ -187,7 +191,7 @@ class CommunityBoardController extends Controller
             ->pluck('cnt', 'comment_id');
         $myCommentLikes = \App\Models\CommentLike::query()
             ->whereIn('comment_id', $commentIds)
-            ->where('user_id', $user->id)
+            ->when($user, fn ($query) => $query->where('user_id', $user->id), fn ($query) => $query->whereRaw('1 = 0'))
             ->pluck('comment_id')
             ->flip();
 
