@@ -52,8 +52,8 @@
             right: 16px;
             bottom: calc(16px + env(safe-area-inset-bottom));
             z-index: 140;
-            width: 56px;
-            height: 56px;
+            width: 76px;
+            height: 38px;
             border-radius: 999px;
             color: #fff;
             background: linear-gradient(145deg, #2e4fb8, #0f6f67);
@@ -62,16 +62,50 @@
             align-items: center;
             justify-content: center;
             border: 0;
+            overflow: hidden;
+            transition: width 220ms ease;
         }
         .mobile-write-fab-icon {
-            width: 38px;
-            height: 38px;
-            display: block;
+            position: absolute;
+            left: 9px;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            transform: translateY(-50%);
             stroke: currentColor;
             fill: none;
-            stroke-width: 2.1;
+            stroke-width: 1.8;
             stroke-linecap: round;
             stroke-linejoin: round;
+            transition: left 220ms ease, width 220ms ease, height 220ms ease, transform 220ms ease;
+        }
+        .mobile-write-fab-label {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            font-size: 0.78rem;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            transform: translateY(-50%);
+            transition: opacity 140ms ease, transform 220ms ease;
+        }
+        .mobile-write-fab.is-compact {
+            width: 38px;
+        }
+        .mobile-write-fab.is-compact .mobile-write-fab-icon {
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+        }
+        .mobile-write-fab.is-compact .mobile-write-fab-label {
+            opacity: 0;
+            transform: translate(8px, -50%);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .mobile-write-fab,
+            .mobile-write-fab-label { transition: none; }
         }
         .sr-only {
             position: absolute;
@@ -583,15 +617,43 @@
         <a class="mobile-write-fab" href="/community/compose?apartment_id={{ $apartmentId }}&scope={{ $scope }}@if($topic !== '')&topic={{ urlencode($topic) }}@endif" aria-label="글쓰기">
     @endif
         <svg class="mobile-write-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9.2"></circle>
             <path d="M12 7.6v8.8"></path>
             <path d="M7.6 12h8.8"></path>
         </svg>
-        <span class="sr-only">글쓰기</span>
+        <span class="mobile-write-fab-label">글쓰기</span>
     </a>
 @endif
 
 <script>
+(() => {
+    const writeFab = document.querySelector('.mobile-write-fab');
+    if (!writeFab || !window.matchMedia('(max-width: 768px)').matches) {
+        return;
+    }
+
+    let lastScrollY = window.scrollY;
+    let isTicking = false;
+
+    window.addEventListener('scroll', () => {
+        if (isTicking) {
+            return;
+        }
+
+        isTicking = true;
+        window.requestAnimationFrame(() => {
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - lastScrollY;
+
+            if (Math.abs(scrollDelta) >= 6) {
+                writeFab.classList.toggle('is-compact', scrollDelta > 0 && currentScrollY > 24);
+                lastScrollY = currentScrollY;
+            }
+
+            isTicking = false;
+        });
+    }, { passive: true });
+})();
+
 (() => {
     const lightbox = document.getElementById('media-lightbox');
     const lightboxContent = document.getElementById('media-lightbox-content');
