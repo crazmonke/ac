@@ -15,7 +15,8 @@
             </button>
             <label class="comment-composer-tool comment-anonymous-toggle" aria-label="익명으로 작성">
                 <input type="checkbox" name="is_anonymous" value="1" data-comment-anonymous>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3"/><path d="M4.5 19a5.5 5.5 0 0 1 11 0"/><path d="M17.5 13.5a3.5 3.5 0 0 1 0 7"/><path d="M17.5 13.5v2.2"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="anonymous-icon-bg" cx="12" cy="12" r="10"/><circle class="anonymous-icon-person" cx="12" cy="9" r="3.4"/><path class="anonymous-icon-person" d="M5.6 19.2c.9-3.6 3.2-5.4 6.4-5.4s5.5 1.8 6.4 5.4Z"/></svg>
+                <span class="anonymous-tooltip" data-anonymous-tooltip role="status" aria-live="polite"></span>
             </label>
             <textarea name="body" rows="1" placeholder="{{ isset($parentCommentId) ? '답글을 입력해주세요.' : '댓글을 입력해주세요.' }}" data-comment-body></textarea>
             <button type="submit" class="comment-submit" data-comment-submit aria-label="등록" disabled>
@@ -39,6 +40,9 @@
     const photoImage = composer.querySelector('[data-comment-photo-image]');
     const photoRemove = composer.querySelector('[data-comment-photo-remove]');
     const submit = composer.querySelector('[data-comment-submit]');
+    const anonymousToggle = composer.querySelector('[data-comment-anonymous]');
+    const anonymousTooltip = composer.querySelector('[data-anonymous-tooltip]');
+    let anonymousTooltipTimer = null;
 
     const updateSubmitState = () => {
         const hasBody = body.value.trim().length > 0;
@@ -74,6 +78,14 @@
         photoImage.removeAttribute('src');
         photoPreview.hidden = true;
         updateSubmitState();
+    });
+    anonymousToggle.addEventListener('change', () => {
+        window.clearTimeout(anonymousTooltipTimer);
+        anonymousTooltip.textContent = anonymousToggle.checked ? '익명 설정' : '익명 해제';
+        anonymousTooltip.classList.add('visible');
+        anonymousTooltipTimer = window.setTimeout(() => {
+            anonymousTooltip.classList.remove('visible');
+        }, 1400);
     });
     form.addEventListener('submit', (event) => {
         if (submit.disabled) {

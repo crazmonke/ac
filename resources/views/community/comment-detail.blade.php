@@ -244,9 +244,15 @@
         .comment-composer-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .comment-composer-tool { flex: 0 0 34px; width: 34px; height: 34px; padding: 0; background: transparent; color: #8993a2; border-radius: 8px; }
         .comment-composer-tool svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .comment-anonymous-toggle { position: relative; display: inline-flex; align-items: center; justify-content: center; }
         .comment-anonymous-toggle input { position: absolute; opacity: 0; pointer-events: none; }
         .comment-anonymous-toggle svg { pointer-events: none; }
+        .comment-anonymous-toggle .anonymous-icon-bg { fill: currentColor; stroke: none; }
+        .comment-anonymous-toggle .anonymous-icon-person { fill: #fff; stroke: none; }
         .comment-anonymous-toggle:has(input:checked) { color: var(--brand); background: var(--brand-soft); }
+        .anonymous-tooltip { position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 2; display: block; width: max-content; max-width: 140px; padding: 6px 9px; border-radius: 7px; background: #25364f; color: #fff; font-size: 0.75rem; font-weight: 700; line-height: 1; opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity 140ms ease, transform 140ms ease; }
+        .anonymous-tooltip::after { content: ''; position: absolute; left: 50%; top: 100%; border: 5px solid transparent; border-top-color: #25364f; transform: translateX(-50%); }
+        .anonymous-tooltip.visible { opacity: 1; transform: translate(-50%, 0); }
         .comment-composer textarea { flex: 1 1 auto; min-width: 0; min-height: 42px; height: 42px; max-height: 112px; padding: 11px 14px; border: 0; border-radius: 999px; background: #f1f3f6; resize: none; line-height: 20px; }
         .comment-composer textarea:focus { outline: 2px solid rgba(47, 82, 184, 0.2); background: #fff; }
         .comment-submit { display: none; flex: 0 0 42px; width: 42px; height: 42px; padding: 0; border-radius: 50%; background: #aeb7c4; color: #fff; }
@@ -254,6 +260,7 @@
         .comment-submit:not(:disabled) { background: var(--brand); }
         .comment-submit svg { width: 22px; height: 22px; fill: currentColor; stroke: none; transform: translateX(1px); }
         @media (min-width: 741px) { .comment-composer { padding-left: 24px; padding-right: 24px; } }
+        @media (prefers-reduced-motion: reduce) { .anonymous-tooltip { transition: none; } }
         button, .btn {
             border: 0;
             border-radius: 999px;
