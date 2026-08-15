@@ -15,7 +15,7 @@
             --brand: #2f52b8;
             --brand-soft: #ebf0ff;
             --danger: #b42318;
-            --fixed-actions-height: calc(64px + env(safe-area-inset-bottom));
+            --fixed-actions-height: calc(184px + env(safe-area-inset-bottom));
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
@@ -329,50 +329,42 @@
             border-top: 1px solid var(--line);
             backdrop-filter: blur(10px);
         }
-        .comment-compose-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 60;
-            display: none;
-            align-items: flex-end;
-            justify-content: center;
-            background: rgba(12, 18, 28, 0.52);
-            padding: 12px;
-        }
-        .comment-compose-modal.open {
-            display: flex;
-        }
-        .comment-compose-sheet {
-            width: min(740px, 100%);
-            max-height: min(72vh, 620px);
-            overflow: auto;
-            border-radius: 16px;
-            border: 1px solid #d6e2f0;
-            background: #fff;
-            padding: 14px;
-            box-shadow: 0 18px 40px rgba(18, 33, 56, 0.18);
-        }
-        .comment-compose-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-        .comment-compose-title {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 900;
-        }
-        .comment-compose-close {
-            border: 1px solid #d0dcea;
+        .comment-image {
+            display: block;
+            width: min(220px, 100%);
+            margin-top: 10px;
             border-radius: 10px;
-            background: #eef3f9;
-            color: #22344d;
-            min-height: 34px;
-            padding: 6px 10px;
-            font-weight: 800;
+            border: 1px solid #e1e7f0;
         }
+        .comment-composer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 30;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+            background: rgba(255, 255, 255, 0.98);
+            border-top: 1px solid var(--line);
+            box-shadow: 0 -8px 20px rgba(20, 35, 60, 0.06);
+        }
+        .comment-composer form { max-width: 740px; margin: 0 auto; }
+        .comment-photo-preview { position: relative; width: 96px; margin: 0 0 8px; }
+        .comment-photo-preview img { display: block; width: 96px; height: 72px; object-fit: cover; border-radius: 9px; }
+        .comment-photo-remove { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; padding: 0; background: #18202c; color: #fff; border: 2px solid #fff; font-size: 17px; line-height: 1; }
+        .comment-composer-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .comment-composer-tool { flex: 0 0 34px; width: 34px; height: 34px; padding: 0; background: transparent; color: #8993a2; border-radius: 8px; }
+        .comment-composer-tool svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .comment-anonymous-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+        .comment-anonymous-toggle svg { pointer-events: none; }
+        .comment-anonymous-toggle:has(input:checked) { color: var(--brand); background: var(--brand-soft); }
+        .comment-composer textarea { flex: 1 1 auto; min-width: 0; min-height: 42px; height: 42px; max-height: 112px; padding: 11px 14px; border: 0; border-radius: 999px; background: #f1f3f6; resize: none; line-height: 20px; }
+        .comment-composer textarea:focus { outline: 2px solid rgba(47, 82, 184, 0.2); background: #fff; }
+        .comment-submit { display: none; flex: 0 0 42px; width: 42px; height: 42px; padding: 0; border-radius: 50%; background: #aeb7c4; color: #fff; }
+        .comment-composer.is-focused .comment-submit,
+        .comment-composer:focus-within .comment-submit { display: inline-flex; }
+        .comment-submit:not(:disabled) { background: var(--brand); }
+        .comment-submit svg { width: 22px; height: 22px; fill: currentColor; stroke: none; transform: translateX(1px); }
+        @media (min-width: 741px) { .comment-composer { padding-left: 24px; padding-right: 24px; } }
         .composer {
             background: transparent;
         }
@@ -602,17 +594,13 @@
         <?php endif; ?>
 
         <div class="actions">
-            @if($canComment)
-                <button type="button" class="ghost comment-compose-trigger" id="commentComposeOpen" aria-label="댓글등록">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
-                    <span class="sr-only">댓글등록</span>
-                </button>
-            @endif
             @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin))
+                <!--
                 <a class="btn icon-square-btn" href="/community/posts/{{ $post->id }}/edit" aria-label="수정">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                     <span class="sr-only">수정</span>
                 </a>
+                -->
                 <form method="post" action="/community/posts/{{ $post->id }}" data-delete-form data-delete-type="post" style="display:inline; margin:0;">
                     @csrf @method('DELETE')
                     <button class="danger icon-square-btn" type="submit" aria-label="삭제" onclick="return confirm('정말 삭제할까요?')">
@@ -643,6 +631,7 @@
                                 <div class="meta">{{ format_relative_time($bestComment->created_at) }}</div>
                             </div>
                             <div class="comment-text">{{ $bestComment->body }}</div>
+                            @if($bestComment->image_path)<img class="comment-image" src="{{ $bestComment->image_path }}" alt="첨부한 댓글 사진">@endif
 
                             <div class="comment-actions" onclick="event.stopPropagation();">
                                 @php($bCommentLiked = isset($myCommentLikes[$bestComment->id]))
@@ -662,13 +651,16 @@
                                        class="action-btn" aria-label="답글쓰기">
                                         <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
                                         <span class="action-count">{{ $bestComment->children->count() ?: '' }}</span>
+                                        &nbsp;답글쓰기
                                     </a>
                                 @endif
                                 @if($canComment && ($currentUserId === $bestComment->user_id || $isApartmentAdmin))
+                                    <!--
                                     <a href="/community/comments/{{ $bestComment->id }}/edit" class="action-btn action-text">
                                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                         <span class="sr-only">수정</span>
                                     </a>
+                                    -->
                                     <form method="post" action="/community/comments/{{ $bestComment->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">
@@ -695,6 +687,7 @@
                                                     <div class="meta">{{ format_relative_time($child->created_at) }}</div>
                                                 </div>
                                                 <div class="comment-text">{{ $child->body }}</div>
+                                                @if($child->image_path)<img class="comment-image" src="{{ $child->image_path }}" alt="첨부한 답글 사진">@endif
                                                 <div class="comment-actions">
                                                     @php($bChildLiked = isset($myCommentLikes[$child->id]))
                                                     @php($bChildLikeCount = (int)($commentLikeCounts[$child->id] ?? 0))
@@ -709,10 +702,12 @@
                                                         </button>
                                                     </form>
                                                     @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
+                                                        <!--
                                                         <a href="/community/comments/{{ $child->id }}/edit" class="action-btn action-text">
                                                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                                             <span class="sr-only">수정</span>
                                                         </a>
+                                                        -->
                                                         <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                                             @csrf @method('DELETE')
                                                             <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('답글을 삭제할까요?')">
@@ -755,6 +750,7 @@
                         <div class="meta">{{ format_relative_time($comment->created_at) }}</div>
                     </div>
                     <div class="comment-text">{{ $comment->body }}</div>
+                    @if($comment->image_path)<img class="comment-image" src="{{ $comment->image_path }}" alt="첨부한 댓글 사진">@endif
 
                     <div class="comment-actions" onclick="event.stopPropagation();">
                         {{-- 좋아요 --}}
@@ -780,10 +776,12 @@
                         @endif
                         {{-- 수정/삭제 --}}
                         @if($canComment && ($currentUserId === $comment->user_id || $isApartmentAdmin))
+                            <!--
                             <a href="/community/comments/{{ $comment->id }}/edit" class="action-btn action-text">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                 <span class="sr-only">수정</span>
                             </a>
+                            -->
                             <form method="post" action="/community/comments/{{ $comment->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="action-btn action-text danger-text" onclick="return confirm('댓글을 삭제할까요?')">
@@ -810,6 +808,7 @@
                                             <div class="meta">{{ format_relative_time($child->created_at) }}</div>
                                         </div>
                                         <div class="comment-text">{{ $child->body }}</div>
+                                        @if($child->image_path)<img class="comment-image" src="{{ $child->image_path }}" alt="첨부한 답글 사진">@endif
                                         <div class="comment-actions" onclick="event.stopPropagation();">
                                             @php($childLiked = isset($myCommentLikes[$child->id]))
                                             @php($childLikeCount = (int)($commentLikeCounts[$child->id] ?? 0))
@@ -824,10 +823,12 @@
                                                 </button>
                                             </form>
                                             @if($canComment && ($currentUserId === $child->user_id || $isApartmentAdmin))
+                                                <!--
                                                 <a href="/community/comments/{{ $child->id }}/edit" onclick="event.stopPropagation();" class="action-btn action-text">
                                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                                     <span class="sr-only">수정</span>
                                                 </a>
+                                                -->
                                                     <form method="post" action="/community/comments/{{ $child->id }}" data-delete-form data-delete-type="comment" style="display:inline; margin:0;">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="action-btn action-text danger-text" onclick="event.stopPropagation(); return confirm('답글을 삭제할까요?')">
@@ -857,26 +858,7 @@
 </div>
 
 @if($canComment)
-    <div class="comment-compose-modal" id="commentComposeModal" aria-hidden="true">
-        <div class="comment-compose-sheet" role="dialog" aria-modal="true" aria-label="댓글 등록">
-            <div class="comment-compose-head">
-                <h2 class="comment-compose-title">댓글 등록</h2>
-                <button type="button" class="comment-compose-close" id="commentComposeClose">닫기</button>
-            </div>
-            <form method="post" action="/community/posts/{{ $post->id }}/comments" id="commentComposeForm">
-                @csrf
-                <textarea name="body" placeholder="댓글을 남겨보세요" required></textarea>
-                <div class="composer-options">
-                    <label class="composer-option">
-                        <input type="checkbox" name="is_anonymous" value="1"> 익명
-                    </label>
-                </div>
-                <div class="actions" style="margin-top:10px;">
-                    <button type="submit">등록</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    @include('community.partials.comment-composer')
 @endif
 <!--
 <div class="fixed-actions">
@@ -1038,44 +1020,6 @@
             shareButton.disabled = false;
         }
     });
-
-    const commentComposeOpen = document.getElementById('commentComposeOpen');
-    const commentComposeClose = document.getElementById('commentComposeClose');
-    const commentComposeModal = document.getElementById('commentComposeModal');
-
-    if (commentComposeOpen && commentComposeModal) {
-        commentComposeOpen.addEventListener('click', () => {
-            commentComposeModal.classList.add('open');
-            commentComposeModal.setAttribute('aria-hidden', 'false');
-            const input = commentComposeModal.querySelector('textarea[name="body"]');
-            if (input) {
-                input.focus();
-            }
-        });
-    }
-
-    if (commentComposeClose && commentComposeModal) {
-        commentComposeClose.addEventListener('click', () => {
-            commentComposeModal.classList.remove('open');
-            commentComposeModal.setAttribute('aria-hidden', 'true');
-        });
-    }
-
-    if (commentComposeModal) {
-        commentComposeModal.addEventListener('click', (event) => {
-            if (event.target === commentComposeModal) {
-                commentComposeModal.classList.remove('open');
-                commentComposeModal.setAttribute('aria-hidden', 'true');
-            }
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && commentComposeModal.classList.contains('open')) {
-                commentComposeModal.classList.remove('open');
-                commentComposeModal.setAttribute('aria-hidden', 'true');
-            }
-        });
-    }
 
     // 댓글 좋아요 AJAX 처리
     document.addEventListener('submit', async (event) => {

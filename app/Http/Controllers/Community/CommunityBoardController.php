@@ -662,7 +662,8 @@ class CommunityBoardController extends Controller
         }
 
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:2000'],
+            'body' => ['nullable', 'string', 'max:2000', 'required_without:photo'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120', 'required_without:body'],
             'is_anonymous' => ['nullable', 'boolean'],
             'parent_id' => ['nullable', 'integer', 'exists:comments,id'],
         ]);
@@ -677,11 +678,27 @@ class CommunityBoardController extends Controller
             $parentId = (int) $parent->id;
         }
 
+        $imagePath = null;
+        if ($request->hasFile('photo')) {
+            $dateSegment = now()->format('Y/m/d');
+            $targetDirectory = public_path('uploads/comment-images/'.$dateSegment);
+
+            if (! is_dir($targetDirectory)) {
+                mkdir($targetDirectory, 0755, true);
+            }
+
+            $uploadedFile = $request->file('photo');
+            $storedName = (string) \Illuminate\Support\Str::uuid().'.'.$uploadedFile->extension();
+            $uploadedFile->move($targetDirectory, $storedName);
+            $imagePath = '/uploads/comment-images/'.$dateSegment.'/'.$storedName;
+        }
+
         $comment = Comment::query()->create([
             'post_id' => $post->id,
             'parent_id' => $parentId,
             'user_id' => $user->id,
-            'body' => $data['body'],
+            'body' => trim((string) ($data['body'] ?? '')),
+            'image_path' => $imagePath,
             'is_anonymous' => (bool) ($data['is_anonymous'] ?? false),
         ]);
 
