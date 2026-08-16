@@ -10,6 +10,14 @@
         .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;  margin-top: 50px;}
         .meta { color: #5b6d82; font-size: 0.92rem; }
         .scope-tabs { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .region-filter { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .region-values { position: relative; display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+        .region-filter select { min-width: 0; flex: 1 1 0; padding: 7px 30px 7px 10px; border: 1px solid #d5dfec; border-radius: 10px; background: #fff; color: #20344f; font: inherit; }
+        .region-readonly-link { flex: 1 1 auto; min-width: 0; padding: 7px 10px; border: 1px solid #d5dfec; border-radius: 10px; background: #eef2f6; color: #64748b; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .region-filter select:disabled { background: #eef2f6; color: #94a3b8; cursor: not-allowed; }
+        .region-filter.is-apartment-scope select { background: #eef2f6; color: #64748b; cursor: pointer; }
+        .region-filter.is-apartment-scope::after { content: '지역 게시글로 돌아가려면 지역을 선택하세요'; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+        .region-filter .scope-tab { flex: 0 0 auto; }
         .scope-tab { border: 1px solid #d5dfec; border-radius: 999px; padding: 6px 11px; text-decoration: none; color: #20344f; background: #fff; font-size: 0.92rem; padding: 6px 11px; line-height: 1.15; }
         .scope-tab.active { background: #0f6f67; border-color: #0f6f67; color: #fff; }
         .board-tabs-container { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
@@ -431,9 +439,28 @@
         @endif
     </div>
 
-    <div class="scope-tabs">
-        <a class="scope-tab {{ $scope === 'all' ? 'active' : '' }}" href="{{ $scopeTabUrls['all'] }}">전국</a>
-        <a class="scope-tab {{ $scope === 'region' ? 'active' : '' }}" href="{{ $scopeTabUrls['region'] }}">동네</a>
+            <div class="region-filter {{ $scope === 'apartment' ? 'is-apartment-scope' : '' }}" data-region-filter
+                @if($scope === 'apartment') tabindex="0" aria-label="선택한 지역 게시글 보기" @endif
+            data-scope="{{ $scope }}"
+             data-region-url="{{ $scopeTabUrls['all'] }}"
+         data-sido="{{ $regionSido }}"
+         data-sigungu="{{ $regionSigungu }}">
+        <div class="region-values">
+            @if($scope === 'apartment')
+                <a class="region-readonly-link" href="{{ $scopeTabUrls['all'] }}" aria-label="선택한 지역 게시글 보기">
+                    {{ $regionSido !== '' ? $regionSido : '전체' }} | {{ $regionSigungu !== '' ? $regionSigungu : '시/군/구' }}
+                </a>
+            @else
+                <label class="sr-only" for="communitySido">도/특별시/광역시</label>
+                <select id="communitySido">
+                    <option value="">전체</option>
+                </select>
+                <label class="sr-only" for="communitySigungu">시/군/구</label>
+                <select id="communitySigungu" disabled>
+                    <option value="">시/군/구</option>
+                </select>
+            @endif
+        </div>
         <a class="scope-tab {{ $scope === 'apartment' ? 'active' : '' }}" href="{{ $scopeTabUrls['apartment'] }}">공동주택</a>
     </div>
     @if($topicFacets->isNotEmpty())
@@ -1343,6 +1370,82 @@ if (topicScroll) {
     }, { rootMargin: '240px 0px' });
 
     observer.observe(loader);
+})();
+
+(function () {
+    const filter = document.querySelector('[data-region-filter]');
+    if (!filter) return;
+
+    const sidoSelect = document.getElementById('communitySido');
+    const sigunguSelect = document.getElementById('communitySigungu');
+    if (!sidoSelect || !sigunguSelect) return;
+    const initial = {
+        sido: filter.dataset.sido || '',
+        sigungu: filter.dataset.sigungu || '',
+    };
+
+    function setOptions(select, placeholder, values, selected = '') {
+        select.innerHTML = '';
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = placeholder;
+        select.appendChild(placeholderOption);
+        values.forEach((value) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            option.selected = value === selected;
+            select.appendChild(option);
+        });
+    }
+
+    async function loadRegions(params) {
+        const response = await fetch('/apartments/regions?' + new URLSearchParams(params), {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) return [];
+        return (await response.json()).data || [];
+    }
+
+    function navigate() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('scope', 'all');
+        url.searchParams.delete('page');
+        if (sidoSelect.value) {
+            url.searchParams.set('sido', sidoSelect.value);
+            url.searchParams.delete('region');
+        } else {
+            url.searchParams.delete('sido');
+            url.searchParams.delete('sigungu');
+            url.searchParams.set('region', 'all');
+        }
+        if (sigunguSelect.value) url.searchParams.set('sigungu', sigunguSelect.value);
+        else url.searchParams.delete('sigungu');
+        window.location.assign(url.toString());
+    }
+
+    async function updateSigungu(selected = '') {
+        sigunguSelect.disabled = !sidoSelect.value;
+        if (!sidoSelect.value) {
+            setOptions(sigunguSelect, '시/군/구', []);
+            return;
+        }
+        setOptions(sigunguSelect, '시/군/구', await loadRegions({ level: 'sigungu', sido: sidoSelect.value }), selected);
+    }
+
+    async function initialize() {
+        const sidos = await loadRegions({ level: 'sido' });
+        setOptions(sidoSelect, '전체', sidos, initial.sido);
+        await updateSigungu(initial.sigungu);
+    }
+
+    sidoSelect.addEventListener('change', async () => {
+        await updateSigungu();
+        navigate();
+    });
+    sigunguSelect.addEventListener('change', navigate);
+
+    initialize();
 })();
 </script>
 </body>

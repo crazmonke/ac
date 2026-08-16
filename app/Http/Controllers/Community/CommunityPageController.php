@@ -42,6 +42,11 @@ class CommunityPageController extends Controller
         $preferredApartmentId = $this->resolveUserApartmentId($user);
         $preferredResidenceComplexId = (int) ($user?->preferred_residence_complex_id ?? 0);
         $scope = (string) $request->query('scope', 'all');
+        $regionReset = $request->query('region') === 'all';
+        $hasRegionQuery = $regionReset || $request->hasAny(['sido', 'sigungu']);
+        $regionSido = trim((string) ($hasRegionQuery ? $request->query('sido', '') : ($user?->home_sido ?? '')));
+        $regionSigungu = trim((string) ($hasRegionQuery ? $request->query('sigungu', '') : ($user?->home_sigungu ?? '')));
+        $hasSelectedRegion = $regionSido !== '' || $regionSigungu !== '';
         $topic = trim((string) $request->query('topic', ''));
         $searchQuery = trim((string) $request->query('q', ''));
         $selectedTopicName = $topic !== ''
@@ -85,16 +90,17 @@ class CommunityPageController extends Controller
         }
 
         if ($canQueryCommunityFeed && $scope === 'all') {
-            // 전국 탭: 전국 동네 게시글 최신순.
             if ($hasAudienceScopeColumn) {
                 $postsQuery->whereIn('audience_scope', ['region', 'all']);
             }
+            if ($hasSelectedRegion) {
+                $this->applyRegionFilter($postsQuery, $regionSido, $regionSigungu);
+            }
         } elseif ($canQueryCommunityFeed && $scope === 'region') {
-            // 동네 탭: 로그인 회원의 내 지역 동네 게시글만 노출.
             if ($hasAudienceScopeColumn) {
                 $postsQuery->where('audience_scope', 'region');
             }
-            $this->applyNeighborhoodFilter($postsQuery, $user);
+            $this->applyRegionFilter($postsQuery, $regionSido, $regionSigungu);
         } elseif ($canQueryCommunityFeed && $scope === 'apartment') {
             // 공동주택 탭: 인증 회원의 내 공동주택 게시글만 노출.
             if ($hasAudienceScopeColumn) {
@@ -153,18 +159,21 @@ class CommunityPageController extends Controller
         $topicFacets = collect();
         if ($canQueryCommunityFeed && Schema::hasTable('post_topics')) {
             $topicsQuery = PostTopic::query()
-                ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId, $hasAudienceScopeColumn) {
+                ->whereHas('posts', function ($query) use ($scope, $user, $isVerified, $preferredApartmentId, $preferredResidenceComplexId, $hasAudienceScopeColumn, $hasSelectedRegion, $regionSido, $regionSigungu) {
                     $query->where('visibility', '!=', 'deleted');
 
                     if ($scope === 'all') {
                         if ($hasAudienceScopeColumn) {
                             $query->whereIn('audience_scope', ['region', 'all']);
                         }
+                        if ($hasSelectedRegion) {
+                            $this->applyRegionFilter($query, $regionSido, $regionSigungu);
+                        }
                     } elseif ($scope === 'region') {
                         if ($hasAudienceScopeColumn) {
                             $query->where('audience_scope', 'region');
                         }
-                        $this->applyNeighborhoodFilter($query, $user);
+                        $this->applyRegionFilter($query, $regionSido, $regionSigungu);
                     } elseif ($scope === 'apartment') {
                         if ($hasAudienceScopeColumn) {
                             $query->where('audience_scope', 'apartment');
@@ -276,11 +285,19 @@ class CommunityPageController extends Controller
         $encodedTopic = $topic !== '' ? urlencode($topic) : '';
         
         // Build helper function for URL construction with preserved parameters
-        $buildUrl = function (array $overrides = []) use ($apartmentId, $scope, $topic, $selectedBoardSlug, $encodedTopic) {
+        $buildUrl = function (array $overrides = []) use ($apartmentId, $scope, $topic, $selectedBoardSlug, $encodedTopic, $regionSido, $regionSigungu, $regionReset) {
             $params = [
                 'scope' => $overrides['scope'] ?? $scope,
                 'apartment_id' => $apartmentId,
             ];
+            foreach (['sido' => $regionSido, 'sigungu' => $regionSigungu] as $key => $value) {
+                if (($overrides[$key] ?? $value) !== '') {
+                    $params[$key] = $overrides[$key] ?? $value;
+                }
+            }
+            if ($regionReset) {
+                $params['region'] = 'all';
+            }
             if (!empty($overrides['topic'] ?? $topic)) {
                 $params['topic'] = $overrides['topic'] ?? $encodedTopic;
             }
@@ -365,6 +382,8 @@ class CommunityPageController extends Controller
             'regionLabel' => $regionLabel !== '' ? $regionLabel : '우리 동네',
             'posts' => $posts,
             'scope' => $scope,
+            'regionSido' => $regionSido,
+            'regionSigungu' => $regionSigungu,
             'topic' => $topic,
             'searchQuery' => $searchQuery,
             'isVerified' => $isVerified,
@@ -521,6 +540,36 @@ class CommunityPageController extends Controller
         }
 
         return (int) ($user->preferred_apartment_id ?? 0);
+    }
+
+    private function applyRegionFilter(Builder $query, string $sido, string $sigungu): void
+    {
+        $query->where(function (Builder $postQuery) use ($sido, $sigungu) {
+            $postQuery->where(function (Builder $regionQuery) use ($sido, $sigungu) {
+                $this->applyRegionColumns($regionQuery, 'region_', $sido, $sigungu);
+            })->orWhereHas('apartment', function (Builder $apartmentQuery) use ($sido, $sigungu) {
+                $this->applyRegionColumns($apartmentQuery, '', $sido, $sigungu);
+            });
+        });
+    }
+
+    private function applyRegionColumns(Builder $query, string $prefix, string $sido, string $sigungu): void
+    {
+        if ($sido !== '') {
+            $query->where($prefix.'sido', 'like', '%'.$sido.'%');
+        }
+
+        if ($sigungu !== '') {
+            $column = $prefix.'sigungu';
+            $query->where(function (Builder $sigunguQuery) use ($column, $sigungu) {
+                $sigunguQuery->where($column, 'like', '%'.$sigungu.'%');
+                $compactSigungu = str_replace([' ', '시'], '', $sigungu);
+                if ($compactSigungu !== '') {
+                    $sigunguQuery->orWhereRaw("REPLACE(REPLACE(COALESCE({$column}, ''), ' ', ''), '시', '') LIKE ?", ['%'.$compactSigungu.'%']);
+                }
+            });
+        }
+
     }
 
     private function applyNeighborhoodFilter(Builder $query, ?User $user): void
