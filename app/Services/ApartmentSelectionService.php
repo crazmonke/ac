@@ -332,6 +332,11 @@ class ApartmentSelectionService
         }
 
         if ($selectedComplex && $selectedBuilding) {
+            ApartmentMatchReview::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->delete();
+
             $selectedUnit = $this->resolveUnit($selectedBuilding, $unitDong, $unitHo);
             $regionSnapshot = $this->extractResidenceRegionSnapshot($selectedComplex, $selectedBuilding);
 
@@ -396,15 +401,6 @@ class ApartmentSelectionService
                 }
             }
 
-            ApartmentMatchReview::query()
-                ->where('user_id', $user->id)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'resolved',
-                    'resolved_apartment_id' => $selectedApartment?->id,
-                    'resolved_at' => now(),
-                ]);
-
             $this->queueMergeCandidates($selectedComplex);
             $this->operationalMetricsService->log('residence_selected', $user->id, $selectedComplex->id, $selectedBuilding->id, [
                 'source' => $source,
@@ -414,6 +410,11 @@ class ApartmentSelectionService
             // 직접 주소로 가입한 경우 - home_apartment_name에 저장
             $user->home_apartment_name = $query;
             $user->preferred_apartment_id = null;
+
+            ApartmentMatchReview::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->delete();
             
             // GPS 좌표가 있으면 근처 공동주택을 찾아서 자동 매칭 시도
             $autoVerified = false;
@@ -464,7 +465,11 @@ class ApartmentSelectionService
                 ],
                 [
                     'source' => $source,
-                    'raw_region' => null,
+                    'raw_region' => trim(implode(' ', array_filter([
+                        $user->home_sido,
+                        $user->home_sigungu,
+                        $user->home_eupmyeondong,
+                    ]))) ?: null,
                     'road_address' => $roadAddress,
                     'latitude' => $latitude,
                     'longitude' => $longitude,

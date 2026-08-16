@@ -52,6 +52,7 @@ class AccountSettingsController extends Controller
             : false;
         $hasResidentRole = $hasResidentRole || (bool) UserResidence::query()
             ->where('user_id', $user->id)
+            ->where('complex_id', $user->preferred_residence_complex_id)
             ->where('verification_status', 'verified')
             ->exists();
 
@@ -123,7 +124,15 @@ class AccountSettingsController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'apartment_query' => ['nullable', 'string', 'max:120'],
-            'apartment_id' => ['nullable', 'integer', 'exists:apartments,id'],
+            'apartment_id' => [
+                'nullable',
+                'integer',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ((int) $value !== 0 && ! Apartment::query()->whereKey($value)->exists()) {
+                        $fail('선택한 공동주택을 확인해 주세요.');
+                    }
+                },
+            ],
             'residence_building_id' => ['nullable', 'integer', 'exists:residence_buildings,id'],
             'residence_dong' => ['nullable', 'string', 'max:40'],
             'residence_ho' => ['nullable', 'string', 'max:40'],
@@ -241,6 +250,7 @@ class AccountSettingsController extends Controller
         if (! $hasResidentRole) {
             $hasResidentRole = UserResidence::query()
                 ->where('user_id', $user->id)
+                ->where('complex_id', $user->preferred_residence_complex_id)
                 ->where('verification_status', 'verified')
                 ->exists();
         }
