@@ -602,12 +602,11 @@
 
         <div class="actions">
             @if($canWrite && ($currentUserId === $post->user_id || $isApartmentAdmin))
-                <!--
+                
                 <a class="btn icon-square-btn" href="/community/posts/{{ $post->id }}/edit" aria-label="수정">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                     <span class="sr-only">수정</span>
                 </a>
-                -->
                 <form method="post" action="/community/posts/{{ $post->id }}" data-delete-form data-delete-type="post" style="display:inline; margin:0;">
                     @csrf @method('DELETE')
                     <button class="danger icon-square-btn" type="submit" aria-label="삭제" onclick="return confirm('정말 삭제할까요?')">
