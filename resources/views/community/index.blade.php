@@ -386,6 +386,11 @@
         .empty-box { border: 1px solid #ffd7b5; background: #fff4e9; color: #7f4310; border-radius: 10px; padding: 12px; }
         .empty-box a { color: #0f6f67; font-weight: 700; text-decoration: none; }
 
+        #communitySido,
+        #communitySigungu {
+            background-color: #0f6f67;
+            color: #ffffff;
+        }
         @media (max-width: 768px) {
             .wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
             .post-row { gap: 10px; }
