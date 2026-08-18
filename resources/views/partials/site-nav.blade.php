@@ -443,18 +443,21 @@
                 </svg>
             </a>
             <div class="site-actions-scroll" data-site-actions-scroll>
+            
             <a class="site-icon-link" href="/community?apartment_id={{ $apartmentId }}" aria-label="커뮤니티">
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><circle cx="7" cy="9" r="2"/><circle cx="12" cy="7.5" r="2"/><circle cx="17" cy="9" r="2"/><path d="M4.5 18a2.8 2.8 0 0 1 5.5 0"/><path d="M9 18a3.4 3.4 0 0 1 6.8 0"/><path d="M14 18a2.8 2.8 0 0 1 5.5 0"/></svg>
                 </span>
                 <span class="site-icon-label">커뮤니티</span>
             </a>
+            <!--
             <a class="site-icon-link" href="/community?scope=region&apartment_id={{ $apartmentId }}" aria-label="동네">
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M3 11.5 8 7l3 2.7L15 6l6 5.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M6.5 20v-4h3v4"/><path d="M16.5 20v-6h3v6"/></svg>
                 </span>
                 <span class="site-icon-label">동네</span>
             </a>
+            -->
             <a class="site-icon-link" href="/community?scope=apartment&apartment_id={{ $apartmentId }}" aria-label="공동주택">
                 <span class="site-icon-box" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="17" rx="1.6"/><path d="M3 20h18"/><path d="M9 7h2M13 7h2M9 10h2M13 10h2M9 13h2M13 13h2"/><path d="M11 20v-4h2v4"/></svg>

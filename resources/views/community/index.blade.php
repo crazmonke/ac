@@ -152,6 +152,7 @@
         .author-line { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
         .author-line strong { font-size: 0.93rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .author-line .meta { font-size: 0.8rem; }
+        .verified-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: 0 0 16px; border-radius: 50%; background: #149ee3; color: #fff; font-size: 0.72rem; font-weight: 900; line-height: 1; }
         .split-section { margin-top: 10px; border: 1px solid #d7e2f1; border-radius: 12px; overflow: hidden; background: #fbfdff; }
         .split-head { padding: 10px 12px; background: linear-gradient(180deg, #eef4ff, #f7faff); border-bottom: 1px solid #d7e2f1; }
         .split-title { margin: 0; font-size: 0.98rem; font-weight: 900; color: #173662; letter-spacing: -0.01em; }
@@ -531,7 +532,7 @@
                     .'<span class="author-avatar">'.e($post['author_initial']).'</span>'
                     .'<div class="post-main">'
                     .'<div class="post-head">'
-                    .'<div class="author-line"><strong>'.e($post['author_name']).'</strong><span class="meta">· '.e($post['created_label']).'</span></div>'
+                    .'<div class="author-line"><strong>'.e($post['author_name']).'</strong>'.(!empty($post['author_is_verified']) ? '<span class="verified-badge" aria-label="공동주택 인증 회원">✓</span>' : '').'<span class="meta">· '.e($post['created_label']).'</span></div>'
                     .'</div>'
                     .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.$titleDisplay.'</a>'
                     .($bodyPreview !== '' ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="body-preview">'.$bodyPreviewDisplay.'</div></a>' : '')

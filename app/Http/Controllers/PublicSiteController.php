@@ -244,6 +244,7 @@ class PublicSiteController extends Controller
             'display_date' => $this->formatDisplayDate($post->created_at),
             'author_name' => $authorName,
             'author_initial' => mb_strtoupper($authorInitial),
+            'author_is_verified' => $post->user !== null && $this->permissionService->hasVerifiedRole($post->user),
             'board_name' => $post->board->name,
             'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
             'poll_question' => (string) ($pollPreview['question'] ?? ''),

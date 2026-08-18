@@ -54,6 +54,23 @@
 
     .btn-primary { background: var(--brand); color: #fff; }
     .btn-soft { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+    .onboarding { position: fixed; inset: 0; z-index: 1200; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(18, 30, 43, 0.46); }
+    .onboarding.is-open { display: flex; }
+    .onboarding-card { width: min(460px, 100%); border: 1px solid #c9d9e5; border-radius: 12px; background: #fff; box-shadow: 0 20px 44px rgba(18, 30, 43, 0.28); overflow: hidden; }
+    .onboarding-progress { height: 5px; background: #e8eff4; }
+    .onboarding-progress-bar { display: block; width: 25%; height: 100%; background: var(--brand); transition: width 180ms ease; }
+    .onboarding-body { padding: 24px 24px 18px; }
+    .onboarding-step { margin: 0; color: var(--brand); font-size: 0.82rem; font-weight: 800; }
+    .onboarding-title { margin: 8px 0 10px; color: var(--ink); font-size: 1.35rem; line-height: 1.35; }
+    .onboarding-message { margin: 0; color: #40536a; font-size: 0.96rem; line-height: 1.65; white-space: pre-line; }
+    .onboarding-focus { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--brand); background: #eef8f7; color: #175a54; font-size: 0.85rem; font-weight: 700; line-height: 1.45; }
+    .onboarding-footer { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid #e3ebf1; }
+    .onboarding-footer .onboarding-skip { margin-right: auto; border: 0; padding: 7px 2px; background: transparent; color: #687b90; font: inherit; font-size: 0.86rem; cursor: pointer; }
+    .onboarding-footer button:not(.onboarding-skip) { border: 1px solid #b9cad9; border-radius: 8px; padding: 8px 12px; background: #fff; color: #20344f; font: inherit; font-weight: 700; cursor: pointer; }
+    .onboarding-footer .onboarding-next { border-color: var(--brand) !important; background: var(--brand) !important; color: #fff !important; }
+    .onboarding-dismiss { display: flex; align-items: center; gap: 7px; padding: 0 18px 16px; color: #5b6d82; font-size: 0.82rem; }
+    .onboarding-dismiss input { width: 16px; height: 16px; accent-color: var(--brand); }
+    @media (max-width: 480px) { .onboarding { padding: 12px; } .onboarding-body { padding: 21px 18px 16px; } .onboarding-footer { padding: 12px 14px; gap: 7px; } .onboarding-footer button:not(.onboarding-skip) { padding: 8px 10px; } }
 
     /* --- [배너 부모 영역: 모바일 5:4 비율 완벽 대응] --- */
     .hero {
@@ -218,6 +235,7 @@
     .avatar { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(145deg, #2e4fb8, #0f6f67); color: #fff; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 20px; }
     .feed-main { flex: 1 1 auto; min-width: 0; }
     .author { display: inline-flex; align-items: center; gap: 6px; }
+    .verified-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: 0 0 16px; border-radius: 50%; background: #149ee3; color: #fff; font-size: 0.72rem; font-weight: 900; line-height: 1; }
     .author strong { font-size: 0.92rem; }
     .title-link { color: var(--ink); text-decoration: none; font-weight: 700; line-height: 1.45; display: block; margin-top: 4px; }
     .body-preview { margin-top: 6px; color: #233145; font-size: 0.92rem; line-height: 1.5; }
@@ -383,7 +401,7 @@
                         <div class="feed-row">
                             <span class="avatar">{{ $item['author_initial'] }}</span>
                             <div class="feed-main">
-                                <div class="author"><strong>{{ $item['author_name'] }}</strong><span class="meta">· {{ $item['created_label'] }}</span></div>
+                                <div class="author"><strong>{{ $item['author_name'] }}</strong>@if($item['author_is_verified'])<span class="verified-badge" aria-label="공동주택 인증 회원">✓</span>@endif<span class="meta">· {{ $item['created_label'] }}</span></div>
                                 <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                                 @if(!empty($item['body_preview']))
                                     <a class="body-link" href="{{ $item['url'] }}"><div class="body-preview">{{ $item['body_preview'] }}</div></a>
@@ -508,6 +526,23 @@
         <span class="mobile-write-fab-label">글쓰기</span>
     </a>
 @endif
+<section class="onboarding" id="home-onboarding" aria-modal="true" aria-labelledby="home-onboarding-title" role="dialog" hidden>
+    <div class="onboarding-card">
+        <div class="onboarding-progress"><span class="onboarding-progress-bar" id="home-onboarding-progress"></span></div>
+        <div class="onboarding-body">
+            <p class="onboarding-step" id="home-onboarding-step"></p>
+            <h2 class="onboarding-title" id="home-onboarding-title"></h2>
+            <p class="onboarding-message" id="home-onboarding-message"></p>
+            <p class="onboarding-focus" id="home-onboarding-focus"></p>
+        </div>
+        <label class="onboarding-dismiss"><input id="home-onboarding-dismiss" type="checkbox"> 다시 보지 않기</label>
+        <div class="onboarding-footer">
+            <button class="onboarding-skip" id="home-onboarding-skip" type="button">건너뛰기</button>
+            <button id="home-onboarding-prev" type="button">이전</button>
+            <button class="onboarding-next" id="home-onboarding-next" type="button">다음</button>
+        </div>
+    </div>
+</section>
 <script>
 (() => {
     const writeFab = document.querySelector('.mobile-write-fab');
@@ -1235,6 +1270,68 @@
     viewport.addEventListener('touchend', startAutoPlay);
 
     startAutoPlay();
+})();
+</script>
+<script>
+(() => {
+    const onboarding = document.getElementById('home-onboarding');
+    if (!onboarding) return;
+
+    const permanentKey = 'community-onboarding-hidden-v1';
+    const dismiss = document.getElementById('home-onboarding-dismiss');
+    const previous = document.getElementById('home-onboarding-prev');
+    const next = document.getElementById('home-onboarding-next');
+    const skip = document.getElementById('home-onboarding-skip');
+    const stepLabel = document.getElementById('home-onboarding-step');
+    const title = document.getElementById('home-onboarding-title');
+    const message = document.getElementById('home-onboarding-message');
+    const focus = document.getElementById('home-onboarding-focus');
+    const progress = document.getElementById('home-onboarding-progress');
+    const slides = [
+        ['우리 동네 커뮤니티 시작하기', '아파트인은 우리 동네 주민들과 소통하는 공간입니다.\n위치 정보와 동네 인증을 완료하면 정상적으로 서비스를 이용할 수 있습니다.', '위치 정보와 동네 인증 상태를 먼저 확인해 보세요.'],
+        ['안전하고 자유로운 익명 소통', '동네 인증을 완료한 주민들과 안전하게 소통해 보세요.\n검증된 주민 간의 안전한 익명성을 지켜드립니다.', '익명 프로필과 동네 인증 표시를 확인할 수 있습니다.'],
+        ['글쓰기가 쉬워지는 설문 템플릿', '복잡한 글 작성은 잠시 내려두세요.\n질문에 답하듯 템플릿을 선택하면 몇 번의 입력만으로 게시글이 완성됩니다.', '글쓰기에서 게시글 작성 템플릿을 사용해 보세요.'],
+        ['우리 아파트와 동네 소식 한눈에', '내 주변 공동주택과 동네의 다양한 소식, 정보, 설문을 실시간으로 확인하고 참여해 보세요.', '상단 메뉴에서 지역과 공동주택 피드를 살펴보세요.'],
+    ];
+    let index = 0;
+
+    const hidden = () => {
+        try { return localStorage.getItem(permanentKey) === '1'; } catch (error) { return false; }
+    };
+    const close = () => {
+        if (dismiss.checked) {
+            try { localStorage.setItem(permanentKey, '1'); } catch (error) {}
+        }
+        onboarding.classList.remove('is-open');
+        onboarding.hidden = true;
+    };
+    const render = () => {
+        const [slideTitle, slideMessage, slideFocus] = slides[index];
+        stepLabel.textContent = `Step ${index + 1} / ${slides.length}`;
+        title.textContent = slideTitle;
+        message.textContent = slideMessage;
+        focus.textContent = slideFocus;
+        progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+        previous.hidden = index === 0;
+        next.textContent = index === slides.length - 1 ? '시작하기' : '다음';
+    };
+
+    previous.addEventListener('click', () => { index = Math.max(0, index - 1); render(); });
+    next.addEventListener('click', () => {
+        if (index === slides.length - 1) return close();
+        index += 1;
+        render();
+    });
+    skip.addEventListener('click', close);
+    onboarding.addEventListener('click', (event) => { if (event.target === onboarding) close(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !onboarding.hidden) close(); });
+
+    if (!hidden()) {
+        render();
+        onboarding.hidden = false;
+        onboarding.classList.add('is-open');
+        next.focus();
+    }
 })();
 </script>
 </body>
