@@ -14,6 +14,8 @@
         .region-values { position: relative; display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
         .region-filter select { min-width: 0; flex: 1 1 0; padding: 7px 30px 7px 10px; border: 1px solid #d5dfec; border-radius: 10px; background: #fff; color: #20344f; font: inherit; }
         .region-readonly-link { flex: 1 1 auto; min-width: 0; padding: 7px 10px; border: 1px solid #d5dfec; border-radius: 10px; background: #eef2f6; color: #64748b; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .region-return-tooltip { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 5; max-width: min(300px, 78vw); padding: 8px 10px; border: 1px solid #bfd9d6; border-radius: 8px; background: #f0faf8; color: #145b55; font-size: 0.8rem; font-weight: 700; line-height: 1.35; box-shadow: 0 5px 14px rgba(15, 67, 61, 0.12); }
+        .region-return-tooltip::after { content: ''; position: absolute; left: 18px; top: 100%; border: 6px solid transparent; border-top-color: #f0faf8; }
         .region-filter select:disabled { background: #eef2f6; color: #94a3b8; cursor: not-allowed; }
         .region-filter.is-apartment-scope select { background: #eef2f6; color: #64748b; cursor: pointer; }
         .region-filter.is-apartment-scope::after { content: '지역 게시글로 돌아가려면 지역을 선택하세요'; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
@@ -452,6 +454,7 @@
          data-sigungu="{{ $regionSigungu }}">
         <div class="region-values">
             @if($scope === 'apartment')
+                <div class="region-return-tooltip" role="status">동네/지역 게시글로 돌아가려면 아래 지역을 눌러주세요.</div>
                 <a class="region-readonly-link" href="{{ $scopeTabUrls['all'] }}" aria-label="선택한 지역 게시글 보기">
                     {{ $regionSido !== '' ? $regionSido : '전체' }} | {{ $regionSigungu !== '' ? $regionSigungu : '시/군/구' }}
                 </a>
