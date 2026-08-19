@@ -46,6 +46,17 @@
     .pt-preview-box { border: 1px solid #d9e3ef; border-radius: 14px; padding: 14px; background: #f8fafd; }
     .pt-preview-title { margin: 0 0 10px; font-size: 1.05rem; color: #18283d; }
     .pt-preview-body p { margin: 0 0 10px; line-height: 1.6; color: #22344d; }
+    .pt-preview-body img,
+    .pt-preview-body video {
+        display: block;
+        max-width: 100% !important;
+        width: auto;
+        height: auto;
+        border-radius: 10px;
+    }
+    .pt-preview-body video {
+        width: 100%;
+    }
     .pt-preview-note { font-size: 0.85rem; color: #607086; margin-top: 10px; }
 </style>
 
