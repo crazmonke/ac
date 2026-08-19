@@ -1307,7 +1307,7 @@
     const onboarding = document.getElementById('home-onboarding');
     if (!onboarding) return;
 
-    const permanentKey = 'community-onboarding-hidden-v1';
+    const permanentKey = 'community-onboarding-hidden-v2';
     const dismiss = document.getElementById('home-onboarding-dismiss');
     const previous = document.getElementById('home-onboarding-prev');
     const next = document.getElementById('home-onboarding-next');
