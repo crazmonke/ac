@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\PointPolicy;
 use App\Models\ResidentVerificationRequest;
+use App\Models\User;
 use App\Models\UserRole;
 use App\Models\UserResidence;
 use App\Services\ApartmentSelectionService;
@@ -89,6 +90,10 @@ class AccountSettingsController extends Controller
             return redirect($redirect)->withErrors(['nickname' => '현재 닉네임과 동일합니다.']);
         }
 
+        if ($this->nicknameExists($newName, $user->id)) {
+            return redirect($redirect)->withInput()->withErrors(['nickname' => '이미 다른 회원이 사용 중인 닉네임입니다.']);
+        }
+
         $policy = PointPolicy::getPolicy();
         $cost = (int) $policy->nickname_change_points;
 
@@ -103,6 +108,39 @@ class AccountSettingsController extends Controller
         return redirect($redirect)->with('status', $cost > 0
             ? "닉네임이 변경되었습니다. ({$cost}P 차감)"
             : '닉네임이 변경되었습니다.');
+    }
+
+    public function checkNicknameAvailability(Request $request)
+    {
+        $user = $request->user();
+        $name = trim((string) $request->query('name', ''));
+
+        if ($name === '') {
+            return response()->json(['available' => false, 'message' => '닉네임을 입력해 주세요.']);
+        }
+
+        if (mb_strlen($name) > 120) {
+            return response()->json(['available' => false, 'message' => '닉네임은 120자 이하로 입력해 주세요.']);
+        }
+
+        if ($name === (string) $user->name) {
+            return response()->json(['available' => false, 'message' => '현재 닉네임과 동일합니다.']);
+        }
+
+        $available = ! $this->nicknameExists($name, $user->id);
+
+        return response()->json([
+            'available' => $available,
+            'message' => $available ? '사용 가능한 닉네임입니다.' : '이미 다른 회원이 사용 중인 닉네임입니다.',
+        ]);
+    }
+
+    private function nicknameExists(string $name, int $exceptUserId): bool
+    {
+        return User::query()
+            ->where('id', '!=', $exceptUserId)
+            ->whereRaw('LOWER(name) = LOWER(?)', [$name])
+            ->exists();
     }
 
     public function updateProfile(Request $request)

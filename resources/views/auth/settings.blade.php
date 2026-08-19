@@ -111,6 +111,13 @@
             font-size: 0.86rem;
             font-weight: 600;
         }
+        .availability {
+            margin-top: 6px;
+            font-size: 0.86rem;
+            font-weight: 600;
+        }
+        .availability.ok { color: var(--ok-ink); }
+        .availability.fail { color: var(--danger); }
         .meta {
             color: var(--muted);
             font-size: 0.85rem;
@@ -260,17 +267,18 @@
                 <span class="meta">(포인트는 {{ number_format((int) $pointPolicy->min_spend_points) }}P 이상 보유 시 사용 가능)</span>
             @endif
         </p>
-        <form method="post" action="/settings/nickname" class="form-grid two"
+          <form id="nicknameForm" method="post" action="/settings/nickname" class="form-grid two"
               @if($nicknameCost > 0) onsubmit="return confirm('닉네임을 변경하면 {{ number_format($nicknameCost) }}P가 차감됩니다. 진행할까요?');" @endif>
             @csrf
             @method('put')
             <input type="hidden" name="apartment_id" value="{{ $apartmentId }}">
             <label>
                 새 닉네임
-                <input name="name" value="{{ old('name') }}" maxlength="120" placeholder="현재: {{ $user->name }}" required>
+                <input id="nicknameInput" name="name" value="{{ old('name') }}" maxlength="120" placeholder="현재: {{ $user->name }}" required autocomplete="off">
+                <div id="nicknameAvailability" class="availability" aria-live="polite"></div>
             </label>
             <div class="row" style="align-items:end;">
-                <button class="btn btn-primary" type="submit">
+                <button id="nicknameSubmit" class="btn btn-primary" type="submit" disabled>
                     @if($nicknameCost > 0)
                         {{ number_format($nicknameCost) }}P 사용하고 변경
                     @else
@@ -382,6 +390,50 @@
 
 <script>
 (function () {
+    const nicknameForm = document.getElementById('nicknameForm');
+    const nicknameInput = document.getElementById('nicknameInput');
+    const nicknameAvailability = document.getElementById('nicknameAvailability');
+    const nicknameSubmit = document.getElementById('nicknameSubmit');
+    let nicknameCheckTimer;
+    let nicknameCheckToken = 0;
+
+    function setNicknameAvailability(message, available) {
+        if (!nicknameAvailability || !nicknameSubmit) return;
+        nicknameAvailability.textContent = message;
+        nicknameAvailability.className = 'availability ' + (available ? 'ok' : 'fail');
+        nicknameSubmit.disabled = !available;
+    }
+
+    async function checkNickname() {
+        const name = nicknameInput?.value.trim() || '';
+        const token = ++nicknameCheckToken;
+        if (!name) {
+            setNicknameAvailability('닉네임을 입력해 주세요.', false);
+            return;
+        }
+        setNicknameAvailability('중복 확인 중…', false);
+        try {
+            const response = await fetch('/settings/nickname-availability?' + new URLSearchParams({ name }), { headers: { Accept: 'application/json' } });
+            const result = await response.json();
+            if (token === nicknameCheckToken) setNicknameAvailability(result.message, result.available === true);
+        } catch (error) {
+            if (token === nicknameCheckToken) setNicknameAvailability('닉네임 중복 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.', false);
+        }
+    }
+
+    if (nicknameInput) {
+        nicknameInput.addEventListener('input', () => {
+            clearTimeout(nicknameCheckTimer);
+            nicknameCheckTimer = setTimeout(checkNickname, 300);
+        });
+        if (nicknameInput.value.trim()) checkNickname();
+    }
+    if (nicknameForm) {
+        nicknameForm.addEventListener('submit', (event) => {
+            if (nicknameSubmit?.disabled) event.preventDefault();
+        });
+    }
+
     // ── GPS 공통 헬퍼 ──────────────────────────────────────────────────────────
     function _appGetPosition(success, error, options) {
         if (typeof AppGeoBridge !== 'undefined') {
