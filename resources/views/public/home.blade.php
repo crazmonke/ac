@@ -5,6 +5,7 @@
     $adsenseHomeFeedLayoutKey = trim((string) config('services.adsense.home_feed_layout_key'));
     $adsenseHomeFeedInterval = max(0, (int) config('services.adsense.home_feed_interval', 5));
     $adsenseEnabled = $adsenseClientId !== '' && ($adsenseHomeHeroSlot !== '' || $adsenseHomeFeedSlot !== '');
+    $onboardingAssetBase = asset('assets/onboarding');
 @endphp
 <!DOCTYPE html>
 <html lang="ko">
@@ -54,23 +55,27 @@
 
     .btn-primary { background: var(--brand); color: #fff; }
     .btn-soft { background: #fff; border: 1px solid var(--line); color: var(--ink); }
-    .onboarding { position: fixed; inset: 0; z-index: 1200; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(18, 30, 43, 0.46); }
+    .onboarding { position: fixed; inset: 0; z-index: 1200; display: none; align-items: stretch; justify-content: stretch; padding: 0; background: #fff; }
     .onboarding.is-open { display: flex; }
-    .onboarding-card { width: min(460px, 100%); border: 1px solid #c9d9e5; border-radius: 12px; background: #fff; box-shadow: 0 20px 44px rgba(18, 30, 43, 0.28); overflow: hidden; }
+    .onboarding-card { width: 100vw; height: 100dvh; min-height: 100vh; border: 0; border-radius: 0; background: #fff; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; }
     .onboarding-progress { height: 5px; background: #e8eff4; }
     .onboarding-progress-bar { display: block; width: 25%; height: 100%; background: var(--brand); transition: width 180ms ease; }
-    .onboarding-body { padding: 24px 24px 18px; }
+    .onboarding-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: clamp(20px, 4vw, 48px) clamp(18px, 7vw, 96px) 24px; display: flex; flex-direction: column; }
     .onboarding-step { margin: 0; color: var(--brand); font-size: 0.82rem; font-weight: 800; }
-    .onboarding-title { margin: 8px 0 10px; color: var(--ink); font-size: 1.35rem; line-height: 1.35; }
-    .onboarding-message { margin: 0; color: #40536a; font-size: 0.96rem; line-height: 1.65; white-space: pre-line; }
+    .onboarding-title { margin: 8px 0 16px; color: var(--ink); font-size: clamp(1.35rem, 3vw, 2.25rem); line-height: 1.35; }
+    .onboarding-images { display: flex; flex: 1 1 auto; min-height: 180px; max-height: min(58vh, 720px); gap: 12px; align-items: center; justify-content: center; margin: 0 0 18px; }
+    .onboarding-image { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; border-radius: 10px; }
+    .onboarding-images.is-multiple .onboarding-image { width: calc(50% - 6px); }
+    .onboarding-image[hidden] { display: none; }
+    .onboarding-message { margin: 0; color: #40536a; font-size: clamp(0.96rem, 1.8vw, 1.1rem); line-height: 1.65; white-space: pre-line; }
     .onboarding-focus { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--brand); background: #eef8f7; color: #175a54; font-size: 0.85rem; font-weight: 700; line-height: 1.45; }
-    .onboarding-footer { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid #e3ebf1; }
+    .onboarding-footer { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 14px clamp(18px, 7vw, 96px) max(14px, env(safe-area-inset-bottom)); border-top: 1px solid #e3ebf1; }
     .onboarding-footer .onboarding-skip { margin-right: auto; border: 0; padding: 7px 2px; background: transparent; color: #687b90; font: inherit; font-size: 0.86rem; cursor: pointer; }
     .onboarding-footer button:not(.onboarding-skip) { border: 1px solid #b9cad9; border-radius: 8px; padding: 8px 12px; background: #fff; color: #20344f; font: inherit; font-weight: 700; cursor: pointer; }
     .onboarding-footer .onboarding-next { border-color: var(--brand) !important; background: var(--brand) !important; color: #fff !important; }
     .onboarding-dismiss { display: flex; align-items: center; gap: 7px; padding: 0 18px 16px; color: #5b6d82; font-size: 0.82rem; }
     .onboarding-dismiss input { width: 16px; height: 16px; accent-color: var(--brand); }
-    @media (max-width: 480px) { .onboarding { padding: 12px; } .onboarding-body { padding: 21px 18px 16px; } .onboarding-footer { padding: 12px 14px; gap: 7px; } .onboarding-footer button:not(.onboarding-skip) { padding: 8px 10px; } }
+    @media (max-width: 600px) { .onboarding-body { padding: 21px 18px 16px; } .onboarding-images { min-height: 150px; max-height: 52vh; } .onboarding-images.is-multiple { flex-direction: column; } .onboarding-images.is-multiple .onboarding-image { width: 100%; height: calc(50% - 6px); } .onboarding-footer { padding-left: 14px; padding-right: 14px; gap: 7px; } .onboarding-footer button:not(.onboarding-skip) { padding: 8px 10px; } }
 
     /* --- [배너 부모 영역: 모바일 5:4 비율 완벽 대응] --- */
     .hero {
@@ -553,6 +558,10 @@
         <div class="onboarding-body">
             <p class="onboarding-step" id="home-onboarding-step"></p>
             <h2 class="onboarding-title" id="home-onboarding-title"></h2>
+            <div class="onboarding-images" id="home-onboarding-images" aria-label="온보딩 화면 이미지">
+                <img class="onboarding-image" id="home-onboarding-image-1" alt="">
+                <img class="onboarding-image" id="home-onboarding-image-2" alt="" hidden>
+            </div>
             <p class="onboarding-message" id="home-onboarding-message"></p>
             <p class="onboarding-focus" id="home-onboarding-focus"></p>
         </div>
@@ -1305,14 +1314,18 @@
     const skip = document.getElementById('home-onboarding-skip');
     const stepLabel = document.getElementById('home-onboarding-step');
     const title = document.getElementById('home-onboarding-title');
+    const images = document.getElementById('home-onboarding-images');
+    const imageOne = document.getElementById('home-onboarding-image-1');
+    const imageTwo = document.getElementById('home-onboarding-image-2');
     const message = document.getElementById('home-onboarding-message');
     const focus = document.getElementById('home-onboarding-focus');
     const progress = document.getElementById('home-onboarding-progress');
+    const onboardingImageBase = @json(rtrim($onboardingAssetBase, '/'));
     const slides = [
-        ['우리 동네 커뮤니티 시작하기', '아파트인은 우리 동네 주민들과 소통하는 공간입니다.\n위치 정보와 동네 인증을 완료하면 정상적으로 서비스를 이용할 수 있습니다.', '위치 정보와 동네 인증 상태를 먼저 확인해 보세요.'],
-        ['안전하고 자유로운 익명 소통', '동네 인증을 완료한 주민들과 안전하게 소통해 보세요.\n검증된 주민 간의 안전한 익명성을 지켜드립니다.', '익명 프로필과 동네 인증 표시를 확인할 수 있습니다.'],
-        ['글쓰기가 쉬워지는 설문 템플릿', '복잡한 글 작성은 잠시 내려두세요.\n질문에 답하듯 템플릿을 선택하면 몇 번의 입력만으로 게시글이 완성됩니다.', '글쓰기에서 게시글 작성 템플릿을 사용해 보세요.'],
-        ['우리 아파트와 동네 소식 한눈에', '내 주변 공동주택과 동네의 다양한 소식, 정보, 설문을 실시간으로 확인하고 참여해 보세요.', '상단 메뉴에서 지역과 공동주택 피드를 살펴보세요.'],
+        ['우리 동네 커뮤니티 시작하기', '아파인드는 우리 동네 주민들과 소통하는 공간입니다.\n위치 정보와 동네 인증을 완료하면 정상적으로 서비스를 이용할 수 있습니다.', '위치 정보와 동네 인증 상태를 먼저 확인해 보세요.', [`${onboardingImageBase}/step1.jpg`, `${onboardingImageBase}/step1_1.jpg`]],
+        ['안전하고 자유로운 익명 소통', '동네 인증을 완료한 주민들과 안전하게 소통해 보세요.\n검증된 주민 간의 안전한 익명성을 지켜드립니다.', '익명 프로필과 동네 인증 표시를 확인할 수 있습니다.', [`${onboardingImageBase}/step2.jpg`]],
+        ['글쓰기가 쉬워지는 설문 템플릿', '복잡한 글 작성은 잠시 내려두세요.\n질문에 답하듯 템플릿을 선택하면 몇 번의 입력만으로 게시글이 완성됩니다.', '글쓰기에서 게시글 작성 템플릿을 사용해 보세요.', [`${onboardingImageBase}/step3.gif`]],
+        ['우리 아파트와 동네 소식 한눈에', '내 주변 공동주택과 동네의 다양한 소식, 정보, 설문을 실시간으로 확인하고 참여해 보세요.', '상단 메뉴에서 지역과 공동주택 피드를 살펴보세요.', [`${onboardingImageBase}/step4.gif`]],
     ];
     let index = 0;
 
@@ -1327,11 +1340,22 @@
         onboarding.hidden = true;
     };
     const render = () => {
-        const [slideTitle, slideMessage, slideFocus] = slides[index];
+        const [slideTitle, slideMessage, slideFocus, slideImages] = slides[index];
         stepLabel.textContent = `Step ${index + 1} / ${slides.length}`;
         title.textContent = slideTitle;
         message.textContent = slideMessage;
         focus.textContent = slideFocus;
+        images.classList.toggle('is-multiple', slideImages.length > 1);
+        imageOne.src = slideImages[0];
+        imageOne.alt = `${slideTitle} 안내 이미지`;
+        imageTwo.hidden = !slideImages[1];
+        if (slideImages[1]) {
+            imageTwo.src = slideImages[1];
+            imageTwo.alt = `${slideTitle} 추가 안내 이미지`;
+        } else {
+            imageTwo.removeAttribute('src');
+            imageTwo.alt = '';
+        }
         progress.style.width = `${((index + 1) / slides.length) * 100}%`;
         previous.hidden = index === 0;
         next.textContent = index === slides.length - 1 ? '시작하기' : '다음';

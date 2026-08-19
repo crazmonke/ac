@@ -157,6 +157,74 @@ git push origin main
 3. main 브랜치에 실제 push가 있었는지 확인
 4. 필요한 Secrets가 누락되지 않았는지 확인
 
+## 정적 자산과 사용자 업로드 정책
+
+사이트 버전에 포함되는 정적 자산과 사용자가 업로드하는 데이터는 저장 위치와 수명 주기가 다르므로 반드시 분리합니다.
+
+### 정적 자산
+
+- 소스에 포함되어 배포되어야 하는 이미지, 아이콘, 온보딩 자료는 `public/assets/` 아래에 둡니다.
+- 현재 온보딩 이미지는 다음 경로를 사용합니다.
+
+```text
+public/assets/onboarding/step1.jpg
+public/assets/onboarding/step1_1.jpg
+public/assets/onboarding/step2.jpg
+public/assets/onboarding/step3.gif
+public/assets/onboarding/step4.gif
+```
+
+- 브라우저 URL은 Laravel의 `asset()` 기준으로 생성합니다.
+
+```text
+https://apaind.mycafe24.com/assets/onboarding/step1.jpg
+```
+
+- 정적 자산은 Git에 포함시켜야 합니다. 이미지 추가 후 다음 명령으로 추적 상태를 확인합니다.
+
+```bash
+git status --short public/assets/onboarding
+git add public/assets/onboarding
+```
+
+- `public/assets/`는 사용자 업로드 영역이 아니므로 정리 작업이나 업로드 용량 정책의 대상에 포함하지 않습니다.
+
+### 사용자 업로드 데이터
+
+- 사용자가 올린 이미지·동영상·댓글 첨부 등 변경성 데이터는 기존 `public/uploads/` 아래에 둡니다.
+- 대표 하위 경로는 `public/uploads/editor-images/`, `public/uploads/editor-videos/`, `public/uploads/comment-images/`, `public/uploads/banners/`입니다.
+- 사용자 업로드 파일은 소스 저장소에 커밋하지 않습니다. 운영 서버의 파일 보존, 백업, 삭제 정책으로 관리합니다.
+- `public/uploads/` 전체를 정적 사이트 자산 보관소로 사용하지 않습니다.
+
+### Cafe24 배포 시 확인
+
+1. 온보딩 이미지 5개가 `public/assets/onboarding/`에 실제로 존재하는지 확인합니다.
+2. 이미지 파일이 Git 변경 목록에 포함되는지 확인합니다.
+3. `main`에 머지하고 push하여 Cafe24 자동 배포를 실행합니다.
+4. 배포 후 아래 URL을 직접 열어 파일이 `200`으로 응답하는지 확인합니다.
+
+```text
+/assets/onboarding/step1.jpg
+/assets/onboarding/step1_1.jpg
+/assets/onboarding/step2.jpg
+/assets/onboarding/step3.gif
+/assets/onboarding/step4.gif
+```
+
+5. Blade 또는 설정을 변경한 배포에서는 운영 서버에서 캐시를 반영합니다.
+
+```bash
+php artisan optimize:clear
+php artisan view:cache
+```
+
+### OSS/CDN 사용 원칙
+
+- 현재 운영 구조에서는 온보딩 정적 자산에 OSS나 별도 CDN을 사용하지 않습니다.
+- `public/assets/`의 상대 경로와 `asset()` URL을 기본 계약으로 유지합니다.
+- 향후 CDN을 도입할 때는 이미지 경로만 임시로 바꾸지 말고, 공개 권한·도메인·캐시 무효화·로컬 개발 fallback·배포 문서를 함께 변경합니다.
+- OSS에 파일만 업로드하고 애플리케이션 URL을 변경하지 않으면 화면에는 적용되지 않습니다.
+
 ## 자주 쓰는 개발 명령어
 
 ### DB
