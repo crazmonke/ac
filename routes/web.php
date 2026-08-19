@@ -187,11 +187,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/', [AdminDashboardController::class, 'index']);
     Route::get('/review-queue', [AdminDashboardController::class, 'reviewQueue']);
     Route::put('/review-queue/matches/{id}', [AdminDashboardController::class, 'updateMatchReview']);
+    Route::post('/review-queue/matches/bulk', [AdminDashboardController::class, 'bulkUpdateMatchReviews']);
     Route::put('/review-queue/verifications/{id}', [AdminDashboardController::class, 'updateVerificationRequest']);
+    Route::post('/review-queue/verifications/bulk', [AdminDashboardController::class, 'bulkUpdateVerificationRequests']);
     Route::put('/review-queue/residence-verifications/{id}', [AdminDashboardController::class, 'updateResidenceVerification']);
     Route::post('/review-queue/residence-verifications/{id}/retry', [AdminDashboardController::class, 'retryResidenceVerification']);
     Route::post('/review-queue/residence-verifications/bulk-auto-approve', [AdminDashboardController::class, 'bulkAutoApproveResidenceVerifications']);
     Route::put('/review-queue/merges/{id}', [AdminDashboardController::class, 'updateMergeCandidate']);
+    Route::post('/review-queue/merges/bulk', [AdminDashboardController::class, 'bulkUpdateMergeCandidates']);
     Route::get('/boards', [AdminDashboardController::class, 'boards']);
     Route::get('/users', [AdminDashboardController::class, 'users']);
     Route::put('/users/{id}/verification', [AdminDashboardController::class, 'updateUserVerification']);

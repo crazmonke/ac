@@ -32,6 +32,19 @@
         .apt-search-option:hover { background: #f4f8ff; }
         .apt-search-option.selected { background: #e3efff; }
         .apt-search-no-results { padding: 10px 9px; color: #607086; text-align: center; }
+        .table-wrap { overflow-x: auto; margin-top: 12px; background: #fff; border: 1px solid #dce4ef; border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; min-width: 980px; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #e8edf5; text-align: left; vertical-align: top; }
+        th { background: #f7f9fc; color: #455a8f; font-size: 0.82rem; white-space: nowrap; }
+        tr:last-child td { border-bottom: 0; }
+        .check-col { width: 38px; text-align: center; }
+        .cell-muted { color: #607086; font-size: 0.86rem; }
+        .cell-stack { display: grid; gap: 5px; min-width: 150px; }
+        .cell-stack input, .cell-stack textarea { box-sizing: border-box; min-width: 150px; }
+        .cell-stack textarea { min-height: 58px; }
+        .bulk-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #1a2a44; color: #fff; padding: 10px 12px; border-radius: 10px; margin-top: 12px; }
+        .bulk-bar select, .bulk-bar input { width: auto; padding: 7px 9px; }
+        .bulk-count { font-weight: 700; margin-right: auto; }
     </style>
 </head>
 <body>
@@ -49,39 +62,31 @@
 
     <section class="section">
         <h2>공동주택 매칭 검수</h2>
-        <div class="grid" style="margin-top:12px;">
+        <form id="bulk-match-form" method="post" action="/admin/review-queue/matches/bulk">
+            @csrf
+            <div class="bulk-bar">
+                <span class="bulk-count"><span data-bulk-count="match">0</span>개 선택</span>
+                <input type="text" name="admin_note" maxlength="2000" placeholder="일괄 처리 메모(선택)">
+                <button class="btn btn-primary" type="submit" name="status" value="resolved" onclick="return confirm('선택한 매칭 요청을 일괄 승인할까요?');">선택 승인</button>
+                <button class="btn btn-danger" type="submit" name="status" value="rejected" onclick="return confirm('선택한 매칭 요청을 일괄 반려할까요?');">선택 반려</button>
+            </div>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th class="check-col"><input type="checkbox" data-check-all="match" title="전체 선택"></th><th>신청자</th><th>신청 공동주택명 / 주소</th><th>자동 제안</th><th>공동주택 지정</th><th>검수 메모</th><th>처리</th></tr></thead>
+                <tbody>
             @forelse($matchReviews as $review)
-                <article class="card">
-                    <h3>{{ $review->raw_apartment_name }}</h3>
-                    <p class="meta">요청 사용자: {{ $review->user->name ?? '미지정' }} · 상태 <span class="status">{{ $review->status }}</span></p>
-                    
-                    @if($review->latitude && $review->longitude)
-                        <p class="meta">📍 GPS 좌표: {{ number_format($review->latitude, 6) }}, {{ number_format($review->longitude, 6) }}</p>
-                    @endif
-                    
-                    @if($review->road_address)
-                        <p class="meta">📮 도로명주소: {{ $review->road_address }}</p>
-                    @endif
-                    
-                    @if($review->user?->home_sido)
-                        <p class="meta">지역: {{ $review->user->home_sido }} {{ $review->user->home_sigungu }} {{ $review->user->home_eupmyeondong }}</p>
-                    @endif
-                    
-                    @if($review->suggestedApartment)
-                        <p class="meta">자동 제안: {{ $review->suggestedApartment->name }}</p>
-                    @endif
-                    
-                    <div class="suggestions">
-                        @foreach(($matchSuggestions[$review->id] ?? collect()) as $suggestion)
-                            <span>{{ $suggestion['label'] }}</span>
-                        @endforeach
-                    </div>
-                    
-                    <form method="post" action="/admin/review-queue/matches/{{ $review->id }}" class="form-grid">
+                <tr>
+                    <td class="check-col"><input type="checkbox" name="ids[]" value="{{ $review->id }}" form="bulk-match-form" data-bulk-item="match"></td>
+                    <td><strong>{{ $review->user->name ?? '미지정' }}</strong><div class="cell-muted">{{ $review->user->email ?? '-' }}</div><span class="status">{{ $review->status }}</span></td>
+                    <td><strong>{{ $review->raw_apartment_name }}</strong><div class="cell-muted">{{ $review->road_address ?: '-' }}</div><div class="cell-muted">{{ $review->raw_region ?: ($review->user?->home_sido . ' ' . $review->user?->home_sigungu . ' ' . $review->user?->home_eupmyeondong) }}</div></td>
+                    <td><div class="cell-stack">@if($review->suggestedApartment)<strong>{{ $review->suggestedApartment->name }}</strong>@else<span class="cell-muted">없음</span>@endif<div class="cell-muted">{{ $review->latitude && $review->longitude ? number_format($review->latitude, 6) . ', ' . number_format($review->longitude, 6) : 'GPS 없음' }}</div></div></td>
+                    <td>
+                        <form method="post" action="/admin/review-queue/matches/{{ $review->id }}" class="cell-stack">
                         @csrf
                         @method('put')
                         <div class="apt-search-wrapper">
-                            <input type="text" class="apt-search-input" name="custom_apartment_name" placeholder="공동주택명 검색" data-review-id="{{ $review->id }}" data-sido="{{ $review->user?->home_sido ?? '' }}" data-sigungu="{{ $review->user?->home_sigungu ?? '' }}" data-eupmyeondong="{{ $review->user?->home_eupmyeondong ?? '' }}" autocomplete="off">
+                            <input type="text" class="apt-search-input" name="custom_apartment_name" value="{{ $review->raw_apartment_name }}" placeholder="공동주택명 검색" data-review-id="{{ $review->id }}" data-sido="{{ $review->user?->home_sido ?? '' }}" data-sigungu="{{ $review->user?->home_sigungu ?? '' }}" data-eupmyeondong="{{ $review->user?->home_eupmyeondong ?? '' }}" autocomplete="off">
                             <input type="hidden" class="apt-search-hidden-id" name="resolved_apartment_id">
                             <div class="apt-search-dropdown"></div>
                         </div>
@@ -97,25 +102,30 @@
                             <button class="btn btn-primary" type="submit" name="status" value="resolved">매칭 확정</button>
                             <button class="btn btn-danger" type="submit" name="status" value="rejected">반려</button>
                         </div>
-                    </form>
-                </article>
+                        </form>
+                    </td>
+                    <td class="cell-muted">{{ $review->admin_note ?: '-' }}</td>
+                    <td class="cell-muted">단건 처리 가능</td>
+                </tr>
             @empty
-                <article class="card">대기 중인 공동주택 매칭 검수 요청이 없습니다.</article>
+                <tr><td colspan="7">대기 중인 공동주택 매칭 검수 요청이 없습니다.</td></tr>
             @endforelse
+                </tbody>
+            </table>
         </div>
     </section>
 
     <section class="section">
         <h2>입주민 인증 검수</h2>
-        <div class="grid" style="margin-top:12px;">
+        <form id="bulk-verification-form" method="post" action="/admin/review-queue/verifications/bulk">
+            @csrf
+            <div class="bulk-bar"><span class="bulk-count"><span data-bulk-count="verification">0</span>개 선택</span><input type="text" name="admin_note" maxlength="2000" placeholder="일괄 처리 메모(선택)"><button class="btn btn-primary" type="submit" name="status" value="approved" onclick="return confirm('선택한 인증 요청을 일괄 승인할까요?');">선택 승인</button><button class="btn btn-danger" type="submit" name="status" value="rejected" onclick="return confirm('선택한 인증 요청을 일괄 반려할까요?');">선택 반려</button></div>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th class="check-col"><input type="checkbox" data-check-all="verification" title="전체 선택"></th><th>신청자</th><th>공동주택</th><th>신청 메모</th><th>관리자 메모</th><th>처리</th></tr></thead><tbody>
             @forelse($verificationRequests as $requestItem)
-                <article class="card">
-                    <h3>{{ $requestItem->user->name }} · {{ $requestItem->apartment->name }}</h3>
-                    <p class="meta">이메일: {{ $requestItem->user->email }} · 상태 <span class="status">{{ $requestItem->status }}</span></p>
-                    @if($requestItem->request_note)
-                        <p class="meta">요청 메모: {{ $requestItem->request_note }}</p>
-                    @endif
-                    <form method="post" action="/admin/review-queue/verifications/{{ $requestItem->id }}" class="form-grid">
+                <tr><td class="check-col"><input type="checkbox" name="ids[]" value="{{ $requestItem->id }}" form="bulk-verification-form" data-bulk-item="verification"></td><td><strong>{{ $requestItem->user->name }}</strong><div class="cell-muted">{{ $requestItem->user->email }}</div><span class="status">{{ $requestItem->status }}</span></td><td>{{ $requestItem->apartment->name ?? '미지정' }}</td><td class="cell-muted">{{ $requestItem->request_note ?: '-' }}</td><td class="cell-muted">{{ $requestItem->admin_note ?: '-' }}</td><td><form method="post" action="/admin/review-queue/verifications/{{ $requestItem->id }}" class="actions">
                         @csrf
                         @method('put')
                         <textarea name="admin_note" placeholder="승인/반려 메모">{{ $requestItem->admin_note }}</textarea>
@@ -123,11 +133,11 @@
                             <button class="btn btn-primary" type="submit" name="status" value="approved">승인</button>
                             <button class="btn btn-danger" type="submit" name="status" value="rejected">반려</button>
                         </div>
-                    </form>
-                </article>
+                    </form></td></tr>
             @empty
-                <article class="card">대기 중인 입주민 인증 요청이 없습니다.</article>
+                <tr><td colspan="6">대기 중인 입주민 인증 요청이 없습니다.</td></tr>
             @endforelse
+                </tbody></table>
         </div>
     </section>
 
@@ -202,32 +212,48 @@
 
     <section class="section">
         <h2>중복 공동주택 병합 검수</h2>
-        <div class="grid" style="margin-top:12px;">
+        <form id="bulk-merge-form" method="post" action="/admin/review-queue/merges/bulk">
+            @csrf
+            <div class="bulk-bar"><span class="bulk-count"><span data-bulk-count="merge">0</span>개 선택</span><button class="btn btn-primary" type="submit" name="status" value="approved" onclick="return confirm('선택한 병합 후보를 일괄 승인할까요?');">선택 승인</button><button class="btn btn-danger" type="submit" name="status" value="rejected" onclick="return confirm('선택한 병합 후보를 일괄 반려할까요?');">선택 반려</button></div>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th class="check-col"><input type="checkbox" data-check-all="merge" title="전체 선택"></th><th>유사도</th><th>병합 원본</th><th>병합 대상</th><th>판정 근거</th><th>처리</th></tr></thead><tbody>
             @forelse($mergeCandidates as $candidate)
-                <article class="card">
-                    <h3>유사도 {{ number_format($candidate->score, 2) }}</h3>
-                    <p class="meta">source: {{ $candidate->sourceComplex?->displayName() ?? '-' }}</p>
-                    <p class="meta">target: {{ $candidate->targetComplex?->displayName() ?? '-' }}</p>
-                    @if(is_array($candidate->reason))
-                        <p class="meta">distance_m: {{ $candidate->reason['distance_m'] ?? '-' }} · name_similarity: {{ $candidate->reason['name_similarity'] ?? '-' }}</p>
-                    @endif
-                    <form method="post" action="/admin/review-queue/merges/{{ $candidate->id }}" class="form-grid">
+                <tr><td class="check-col"><input type="checkbox" name="ids[]" value="{{ $candidate->id }}" form="bulk-merge-form" data-bulk-item="merge"></td><td><strong>{{ number_format($candidate->score, 2) }}</strong><div class="status">{{ $candidate->status }}</div></td><td>{{ $candidate->sourceComplex?->displayName() ?? '-' }}</td><td>{{ $candidate->targetComplex?->displayName() ?? '-' }}</td><td class="cell-muted">@if(is_array($candidate->reason))distance_m: {{ $candidate->reason['distance_m'] ?? '-' }}<br>name_similarity: {{ $candidate->reason['name_similarity'] ?? '-' }}@else-@endif</td><td><form method="post" action="/admin/review-queue/merges/{{ $candidate->id }}" class="actions">
                         @csrf
                         @method('put')
                         <div class="actions">
                             <button class="btn btn-primary" type="submit" name="status" value="approved">병합 승인</button>
                             <button class="btn btn-danger" type="submit" name="status" value="rejected">병합 반려</button>
                         </div>
-                    </form>
-                </article>
+                    </form></td></tr>
             @empty
-                <article class="card">검토할 중복 병합 후보가 없습니다.</article>
+                <tr><td colspan="6">검토할 중복 병합 후보가 없습니다.</td></tr>
             @endforelse
+                </tbody></table>
         </div>
     </section>
 </div>
 
 <script>
+document.querySelectorAll('[data-check-all]').forEach(toggle => {
+    toggle.addEventListener('change', () => {
+        document.querySelectorAll(`[data-bulk-item="${toggle.dataset.checkAll}"]`).forEach(item => {
+            item.checked = toggle.checked;
+        });
+        updateBulkCounts();
+    });
+});
+document.querySelectorAll('[data-bulk-item]').forEach(item => item.addEventListener('change', updateBulkCounts));
+function updateBulkCounts() {
+    ['match', 'verification', 'merge'].forEach(type => {
+        const count = document.querySelectorAll(`[data-bulk-item="${type}"]:checked`).length;
+        const output = document.querySelector(`[data-bulk-count="${type}"]`);
+        if (output) output.textContent = count;
+    });
+}
+
 document.querySelectorAll('.apt-search-input').forEach(input => {
     input.addEventListener('input', async (e) => {
         const query = e.target.value.trim();

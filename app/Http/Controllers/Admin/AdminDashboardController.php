@@ -882,6 +882,134 @@ class AdminDashboardController extends Controller
         return redirect('/admin/review-queue')->with('status', '입주민 인증 검수 상태가 업데이트되었습니다.');
     }
 
+    public function bulkUpdateMatchReviews(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            'status' => ['required', 'in:resolved,rejected'],
+            'admin_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $reviews = ApartmentMatchReview::query()->with('user')->whereIn('id', $data['ids'])->where('status', 'pending')->get();
+        $processed = 0;
+
+        foreach ($reviews as $review) {
+            DB::transaction(function () use ($request, $review, $data) {
+                $resolvedApartmentId = null;
+                $adminNote = trim((string) ($data['admin_note'] ?? ''));
+                if ($data['status'] === 'resolved') {
+                    $resolvedApartmentId = $review->suggested_apartment_id;
+                    if (! $resolvedApartmentId) {
+                        $newApartment = Apartment::create([
+                            'name' => $review->raw_apartment_name,
+                            'road_address' => $review->road_address ?: $review->raw_apartment_name,
+                            'sido' => $review->user?->home_sido ?: '기타',
+                            'sigungu' => $review->user?->home_sigungu ?: '기타',
+                            'eupmyeondong' => $review->user?->home_eupmyeondong ?: '기타',
+                            'source' => 'admin_bulk_direct_input',
+                            'is_active' => true,
+                        ]);
+                        $resolvedApartmentId = $newApartment->id;
+                        $adminNote = '[신청 공동주택명 저장] ' . $review->raw_apartment_name . ($adminNote ? "\n{$adminNote}" : '');
+                    }
+                }
+                $review->fill([
+                    'status' => $data['status'],
+                    'resolved_apartment_id' => $resolvedApartmentId,
+                    'admin_note' => $adminNote,
+                    'resolved_by' => $request->user()->id,
+                    'resolved_at' => now(),
+                ])->save();
+                if ($data['status'] === 'resolved' && $resolvedApartmentId && $review->user) {
+                    $review->user->forceFill(['preferred_apartment_id' => $resolvedApartmentId])->save();
+                    UserRole::query()->firstOrCreate(['user_id' => $review->user->id, 'apartment_id' => $resolvedApartmentId, 'role' => 'resident']);
+                }
+            });
+            $processed++;
+        }
+
+        return redirect('/admin/review-queue')->with('status', "공동주택 매칭 검수 {$processed}건을 일괄 처리했습니다.");
+    }
+
+    public function bulkUpdateVerificationRequests(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            'status' => ['required', 'in:approved,rejected'],
+            'admin_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+        $requests = ResidentVerificationRequest::query()->whereIn('id', $data['ids'])->where('status', 'pending')->get();
+        $processed = 0;
+
+        foreach ($requests as $verificationRequest) {
+            DB::transaction(function () use ($request, $verificationRequest, $data) {
+                $target = ResidentVerificationRequest::query()->firstOrCreate([
+                    'user_id' => $verificationRequest->user_id,
+                    'apartment_id' => $verificationRequest->apartment_id,
+                    'status' => $data['status'],
+                ], ['request_note' => $verificationRequest->request_note]);
+                $target->fill(['admin_note' => $data['admin_note'] ?? null, 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()])->save();
+                if ((int) $verificationRequest->id !== (int) $target->id) {
+                    $verificationRequest->delete();
+                }
+                if ($data['status'] === 'approved') {
+                    UserRole::query()->firstOrCreate([
+                        'user_id' => $verificationRequest->user_id,
+                        'apartment_id' => $verificationRequest->apartment_id,
+                        'role' => 'resident',
+                    ], ['granted_at' => now(), 'granted_by' => $request->user()->id]);
+                    ResidentVerificationRequest::query()
+                        ->where('user_id', $verificationRequest->user_id)
+                        ->where('apartment_id', $verificationRequest->apartment_id)
+                        ->where('status', 'pending')
+                        ->where('id', '!=', $target->id)
+                        ->delete();
+                }
+                if ($verificationRequest->residence_complex_id) {
+                    UserResidence::query()->where('user_id', $verificationRequest->user_id)->where('complex_id', $verificationRequest->residence_complex_id)->update([
+                        'verification_status' => $data['status'] === 'approved' ? 'verified' : 'rejected',
+                        'verification_method' => 'admin',
+                    ]);
+                }
+            });
+            $processed++;
+        }
+        return redirect('/admin/review-queue')->with('status', "입주민 인증 검수 {$processed}건을 일괄 처리했습니다.");
+    }
+
+    public function bulkUpdateMergeCandidates(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            'status' => ['required', 'in:approved,rejected'],
+        ]);
+        $candidates = ResidenceMergeCandidate::query()->with(['sourceComplex', 'targetComplex'])->whereIn('id', $data['ids'])->where('status', 'pending')->get();
+        $processed = 0;
+        foreach ($candidates as $candidate) {
+            DB::transaction(function () use ($request, $candidate, $data) {
+                $candidate->fill(['status' => $data['status'], 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()])->save();
+                if ($data['status'] !== 'approved') {
+                    return;
+                }
+                $source = $candidate->sourceComplex;
+                $target = $candidate->targetComplex;
+                if (! $source || ! $target || $source->id === $target->id) {
+                    return;
+                }
+                $source->fill(['status' => 'merged', 'merged_into_id' => $target->id])->save();
+                UserResidence::query()->where('complex_id', $source->id)->update(['complex_id' => $target->id]);
+                User::query()->where('preferred_residence_complex_id', $source->id)->update(['preferred_residence_complex_id' => $target->id]);
+                ResidentVerificationRequest::query()->where('residence_complex_id', $source->id)->update(['residence_complex_id' => $target->id]);
+                ResidenceComplex::query()->where('merged_into_id', $source->id)->update(['merged_into_id' => $target->id]);
+            });
+            $processed++;
+        }
+        return redirect('/admin/review-queue')->with('status', "중복 공동주택 병합 검수 {$processed}건을 일괄 처리했습니다.");
+    }
+
     public function updateUserVerification(Request $request, int $id)
     {
         $user = User::query()->with(['preferredApartment', 'preferredResidenceComplex', 'preferredResidenceBuilding', 'preferredResidenceUnit'])->findOrFail($id);
