@@ -251,6 +251,18 @@
     .media-strip { margin-top: 8px; display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
     .media-card { flex: 0 0 min(340px, 78vw); border-radius: 12px; overflow: hidden; border: 1px solid #d9e1ec; background: #edf2f8; scroll-snap-align: start; }
     .media-card img, .media-card video { width: 100%; height: 220px; object-fit: cover; display: block; }
+    .media-lightbox { position: fixed; inset: 0; z-index: 2000; background: rgba(10, 14, 20, 0.96); display: none; align-items: center; justify-content: center; padding: 24px 16px; }
+    .media-lightbox.open { display: flex; }
+    .media-lightbox-close { position: absolute; top: 16px; right: 16px; z-index: 5; width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(20, 24, 32, 0.78); color: #fff; font-size: 1.4rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    .media-lightbox-content { max-width: min(980px, 96vw); max-height: calc(100vh - 84px); width: 100%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; overflow: hidden; touch-action: pan-y; overscroll-behavior: contain; }
+    .media-lightbox-track { width: 100%; height: 100%; display: flex; transform: translate3d(-100%, 0, 0); will-change: transform; }
+    .media-lightbox-frame { flex: 0 0 100%; width: 100%; max-width: 100%; display: flex; align-items: center; justify-content: center; min-height: 1px; }
+    .media-lightbox-frame img, .media-lightbox-frame video { max-width: 100%; max-height: calc(100vh - 84px); width: auto; height: auto; border-radius: 10px; background: #0f141d; }
+    .media-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(20, 24, 32, 0.78); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    .media-lightbox-nav.prev { left: 16px; }
+    .media-lightbox-nav.next { right: 16px; }
+    .media-lightbox-nav.hidden { display: none; }
+    .media-lightbox-counter { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 4; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(20, 24, 32, 0.64); }
     .feed-ad-shell { border: 1px solid #dfe7f1; border-radius: 14px; background: linear-gradient(180deg, #fcfdff, #f7faff); padding: 12px; }
     .feed-ad-slot { margin-top: 10px; min-height: 160px; }
     .actions { margin-top: 9px; display: flex; gap: 10px; align-items: center; }
@@ -517,6 +529,15 @@
         <div class="footer-copy">© {{ now()->year }} 아파인드 (Apaind)</div>
     </footer>
 </div>
+
+<div class="media-lightbox" id="media-lightbox" aria-hidden="true">
+    <button type="button" class="media-lightbox-close" id="media-lightbox-close" aria-label="닫기">×</button>
+    <button type="button" class="media-lightbox-nav prev hidden" id="media-lightbox-prev" aria-label="이전">‹</button>
+    <button type="button" class="media-lightbox-nav next hidden" id="media-lightbox-next" aria-label="다음">›</button>
+    <div class="media-lightbox-content" id="media-lightbox-content"></div>
+    <div class="media-lightbox-counter" id="media-lightbox-counter" hidden></div>
+</div>
+
 @if($isVerifiedUser)
     <a class="mobile-write-fab" href="/community/compose?apartment_id={{ $apartment->id }}&scope=all" aria-label="글쓰기">
         <svg class="mobile-write-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
