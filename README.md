@@ -287,6 +287,21 @@ php artisan migrate --force
 php artisan optimize:clear
 ```
 
+### 운영 문의 이메일 설정
+
+운영 문의 페이지(`/support`)에 표시할 이메일은 로컬 `.env`가 아니라 GitHub Actions의 Repository Secret으로 설정해야 합니다. Cafe24 배포 워크플로우가 배포할 때 운영 서버의 `.env`를 다시 생성하기 때문입니다.
+
+1. GitHub 저장소에서 `Settings` → `Secrets and variables` → `Actions`로 이동합니다.
+2. `New repository secret`을 선택합니다.
+3. 이름을 정확히 `SUPPORT_EMAIL`로 입력하고 값에 운영 이메일을 입력합니다.
+
+```text
+Name: SUPPORT_EMAIL
+Value: kysloving@gmail.com
+```
+
+이후 `main` 브랜치에 push하여 `Deploy to Cafe24` 워크플로우를 실행하면 운영 서버 `.env`에 `SUPPORT_EMAIL`이 반영되고, 배포 과정의 `php artisan optimize:clear` 및 `config:cache`가 설정 캐시를 갱신합니다. 운영 페이지에서 `/support`를 열어 이메일 표시를 확인하세요.
+
 ### 개발(Local)에서만 사용
 
 - `php artisan migrate:fresh --seed`

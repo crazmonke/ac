@@ -94,6 +94,7 @@ jobs:
             DEPLOY_PATH='${{ secrets.CAFE24_DEPLOY_PATH }}' \
             APP_KEY='${{ secrets.APP_KEY }}' \
             APP_URL='${{ secrets.APP_URL }}' \
+            SUPPORT_EMAIL='${{ secrets.SUPPORT_EMAIL }}' \
             DB_HOST='${{ secrets.CAFE24_DB_HOST }}' \
             DB_PORT='${{ secrets.CAFE24_DB_PORT }}' \
             DB_NAME='${{ secrets.CAFE24_DB_NAME }}' \
@@ -168,6 +169,11 @@ jobs:
             echo "CACHE_STORE=file"
             echo "SESSION_DRIVER=file"
           } > .env
+
+          RESOLVED_SUPPORT_EMAIL="${SUPPORT_EMAIL:-$(read_prev_env SUPPORT_EMAIL)}"
+          if [ -n "$RESOLVED_SUPPORT_EMAIL" ]; then
+            echo "SUPPORT_EMAIL=$RESOLVED_SUPPORT_EMAIL" >> .env
+          fi
 
           RESOLVED_GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-$(read_prev_env GOOGLE_MAPS_API_KEY)}"
           RESOLVED_APARTMENT_SYNC_SOURCE_URL="${APARTMENT_SYNC_SOURCE_URL:-$(read_prev_env APARTMENT_SYNC_SOURCE_URL)}"
