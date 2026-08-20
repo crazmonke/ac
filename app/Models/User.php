@@ -23,6 +23,9 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'is_adult',
+        'terms_agreed_at',
+        'privacy_agreed_at',
         'preferred_apartment_id',
         'preferred_residence_complex_id',
         'preferred_residence_building_id',
@@ -58,6 +61,9 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_adult' => 'boolean',
+            'terms_agreed_at' => 'datetime',
+            'privacy_agreed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'access_allowed' => 'boolean',
             'withdrawn_at' => 'datetime',
@@ -110,6 +116,11 @@ class User extends Authenticatable
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
+    }
+
+    public function hiddenPosts(): HasMany
+    {
+        return $this->hasMany(PostHide::class);
     }
 
     public function comments(): HasMany

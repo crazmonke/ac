@@ -23,7 +23,7 @@
 
     <div class="card">
         <h1 style="margin:0 0 8px;">신고 접수</h1>
-        <p class="meta">게시글/댓글 ID를 입력해 신고할 수 있습니다. 허위 신고는 운영 정책에 따라 제한될 수 있습니다.</p>
+        <p class="meta">게시글 또는 댓글의 신고 버튼에서 바로 접수할 수 있습니다. 접수된 신고는 운영팀이 24시간 이내 검토하고 필요한 조치를 진행합니다. 문의가 필요하면 <a href="/support">문의 및 신고 안내</a>를 확인해 주세요.</p>
 
         <form method="post" action="/reports">
             @csrf

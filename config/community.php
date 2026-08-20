@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'support_email' => env('SUPPORT_EMAIL'),
     'roles' => [
         'guest' => 0,
         'member' => 1,

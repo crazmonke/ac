@@ -114,6 +114,22 @@
             <div id="pwMatchHint" class="email-status" style="display:none;"></div>
         </label>
 
+        <fieldset style="border:0; padding:0; margin:18px 0 0; display:grid; gap:10px;">
+            <legend style="font-weight:700; margin-bottom:4px;">필수 동의</legend>
+            <label style="display:flex; gap:8px; align-items:flex-start;">
+                <input type="checkbox" name="is_adult" value="1" @checked(old('is_adult')) required style="width:auto; margin-top:4px;">
+                <span>만 18세 이상입니다.</span>
+            </label>
+            <label style="display:flex; gap:8px; align-items:flex-start;">
+                <input type="checkbox" name="terms_agreed" value="1" @checked(old('terms_agreed')) required style="width:auto; margin-top:4px;">
+                <span><a href="/terms" target="_blank" rel="noopener">이용약관</a>에 동의합니다.</span>
+            </label>
+            <label style="display:flex; gap:8px; align-items:flex-start;">
+                <input type="checkbox" name="privacy_agreed" value="1" @checked(old('privacy_agreed')) required style="width:auto; margin-top:4px;">
+                <span><a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>에 동의합니다.</span>
+            </label>
+        </fieldset>
+
         @if ($errors->any())
             <div class="err">{{ $errors->first() }}</div>
         @endif

@@ -523,8 +523,8 @@
 
     <footer class="footer">
         <div class="footer-links">
-            <a href="/posts/13">개인정보</a>
-            <a href="/posts/14">이용약관</a>
+            <a href="/privacy">개인정보</a>
+            <a href="/terms">이용약관</a>
             @if(!$isVerifiedUser)
                 <a href="/register">나의 공동주택 찾기</a>
                 <a href="/posts/15">가입안내</a>

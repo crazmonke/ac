@@ -205,15 +205,17 @@
         .post-like-center {
             margin-top: 16px;
             display: flex;
+            align-items: center;
+            gap: 16px;
             justify-content: center;
         }
         .like-toggle-form { display: inline-flex; }
         .like-toggle-btn {
-            border: 1px solid #d7e1ee;
-            background: #fff;
+            border: 0;
+            background: transparent;
             color: #24364e;
-            border-radius: 999px;
-            padding: 8px 14px;
+            border-radius: 10px;
+            padding: 8px;
             display: inline-flex;
             align-items: center;
             gap: 7px;
@@ -221,8 +223,8 @@
             cursor: pointer;
         }
         .like-toggle-btn svg {
-            width: 18px;
-            height: 18px;
+            width: 28px;
+            height: 28px;
             stroke: currentColor;
             fill: none;
             stroke-width: 1.9;
@@ -230,14 +232,58 @@
             stroke-linejoin: round;
         }
         .like-toggle-btn.hearted {
-            color: #d01e39;
-            border-color: #efc0c8;
-            background: #fff6f8;
+            color: #2f52b8;
+            background: #ebf0ff;
         }
         .like-toggle-btn.hearted svg {
             fill: currentColor;
-            stroke: currentColor;
         }
+        .post-action-icon {
+            width: 44px;
+            height: 44px;
+            padding: 8px;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: #4b4d4c;
+        }
+        .post-action-icon:hover,
+        .post-action-icon:focus-visible,
+        .like-toggle-btn:hover,
+        .like-toggle-btn:focus-visible { background: #eef1f3; outline: none; }
+        .post-action-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .like-count { font-size: 0.88rem; font-weight: 800; }
+        .post-settings { position: relative; display: inline-flex; }
+        .post-settings-menu {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            z-index: 20;
+            min-width: 150px;
+            padding: 6px;
+            border: 1px solid #d7e1ee;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 12px 28px rgba(20, 35, 60, 0.16);
+        }
+        .post-settings-menu[hidden] { display: none; }
+        .post-settings-menu a,
+        .post-settings-menu button {
+            width: 100%;
+            justify-content: flex-start;
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 11px;
+            background: transparent;
+            color: #24364e;
+            font: inherit;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .post-settings-menu a:hover,
+        .post-settings-menu button:hover { background: #eef1f3; }
+        .post-settings-menu .menu-danger { color: #b42318; }
         .comment { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid #edf1f7; cursor: pointer; transition: background 0.2s ease; padding: 12px; margin: -12px; }
         .comment:hover { background: rgba(47, 82, 184, 0.04); border-radius: 10px; }
         .comment:first-child { border-top: 0; }
@@ -517,16 +563,33 @@
                         @method('DELETE')
                     @endif
                     <button class="like-toggle-btn {{ $likedByMe ? 'hearted' : '' }}" type="submit" aria-label="좋아요">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a4.98 4.98 0 0 0-7.05 0L12 6.4l-1.79-1.79a4.98 4.98 0 0 0-7.05 7.05L12 20.5l8.84-8.84a4.98 4.98 0 0 0 0-7.05Z"/></svg>
-                        <span data-like-count>{{ $likeCount }}</span>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Z"/><path d="M7 20h9.2a2 2 0 0 0 1.9-1.4l1.5-5A2 2 0 0 0 17.7 11H14l.8-3.2A2.2 2.2 0 0 0 12.7 5L7 10v10Z"/></svg>
+                        <span class="like-count" data-like-count>{{ $likeCount }}</span>
                     </button>
                 </form>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             @endauth
-            <button class="ghost" type="button" id="shareButton" aria-label="공유">
-                <svg class="bottom-bar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5"/><path d="M15.4 6.5 8.6 10.5"/></svg>
+            <button class="post-action-icon" type="button" id="shareButton" aria-label="공유">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg>
                 <span class="sr-only">공유</span>
             </button>
+            @auth
+                @if($currentUserId !== $post->user_id)
+                    <div class="post-settings">
+                        <button class="post-action-icon" type="button" id="postSettingsButton" aria-label="설정" aria-expanded="false" aria-controls="postSettingsMenu">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65-2-3.46-2.49 1a7.2 7.2 0 0 0-1.69-.98L15 3h-4l-.38 2.93c-.61.25-1.18.58-1.69.98l-2.49-1-2 3.46 2.11 1.65c-.04.32-.08.65-.08.98s.03.66.08.98l-2.11 1.65 2 3.46 2.49-1c.51.4 1.08.73 1.69.98L11 21h4l.38-2.93c.61-.25 1.18-.58 1.69-.98l2.49 1 2-3.46-2.13-1.65Z"/><circle cx="13" cy="12" r="3"/></svg>
+                            <span class="sr-only">설정</span>
+                        </button>
+                        <div class="post-settings-menu" id="postSettingsMenu" role="menu" hidden>
+                            <a href="/reports/new?type=post&id={{ $post->id }}&apartment_id={{ $apartmentId }}" role="menuitem">신고</a>
+                            <form method="post" action="/community/posts/{{ $post->id }}/hide" style="margin:0;">
+                                @csrf
+                                <input type="hidden" name="redirect" value="/community?apartment_id={{ $apartmentId }}">
+                                <button class="menu-danger" type="submit" role="menuitem">숨기기</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            @endauth
         </div>
 
         <?php if ($post->board->board_type === 'poll' && $post->poll): ?>
@@ -955,6 +1018,30 @@
             form.dataset.loading = '0';
         }
     });
+
+    const settingsButton = document.getElementById('postSettingsButton');
+    const settingsMenu = document.getElementById('postSettingsMenu');
+    if (settingsButton && settingsMenu) {
+        const closeSettingsMenu = () => {
+            settingsMenu.hidden = true;
+            settingsButton.setAttribute('aria-expanded', 'false');
+        };
+
+        settingsButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const isOpen = !settingsMenu.hidden;
+            settingsMenu.hidden = isOpen;
+            settingsButton.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+
+        settingsMenu.addEventListener('click', (event) => event.stopPropagation());
+        document.addEventListener('click', closeSettingsMenu);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeSettingsMenu();
+            }
+        });
+    }
 
     const shareButton = document.getElementById('shareButton');
     if (!shareButton) return;

@@ -87,6 +87,15 @@ class CommunityPageController extends Controller
             if ($hasPostLikesTable) {
                 $postsQuery->withCount('likes');
             }
+
+            if ($user && Schema::hasTable('post_hides')) {
+                $postsQuery->whereNotExists(function ($query) use ($user) {
+                    $query->selectRaw('1')
+                        ->from('post_hides')
+                        ->whereColumn('post_hides.post_id', 'posts.id')
+                        ->where('post_hides.user_id', $user->id);
+                });
+            }
         }
 
         if ($canQueryCommunityFeed && $scope === 'all') {

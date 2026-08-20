@@ -17,7 +17,7 @@
     <a href="/">← 메인으로</a>
     <section class="panel" style="margin-top:10px;">
         <h1 style="margin-top:0;">{{ $title }}</h1>
-        <p style="line-height:1.7;">{{ $content }}</p>
+        <div style="line-height:1.85; white-space:pre-line;">{{ $content }}</div>
     </section>
 </div>
 </body>

@@ -13,12 +13,14 @@ use App\Models\PostLike;
 use App\Models\PostTopic;
 use App\Models\PostFile;
 use App\Models\Post;
+use App\Models\PostHide;
 use App\Models\PostTemplate;
 use App\Models\User;
 use App\Services\PermissionService;
 use App\Services\PostTemplateRenderer;
 use App\Services\UserNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -53,6 +55,15 @@ class CommunityBoardController extends Controller
             ->with(['user', 'topic', 'files'])
             ->where('board_id', $board->id)
             ->where('visibility', '!=', 'deleted');
+
+        if ($user && Schema::hasTable('post_hides')) {
+            $postsQuery->whereNotExists(function ($query) use ($user) {
+                $query->selectRaw('1')
+                    ->from('post_hides')
+                    ->whereColumn('post_hides.post_id', 'posts.id')
+                    ->where('post_hides.user_id', $user->id);
+            });
+        }
 
         if ($topic !== '') {
             $postsQuery->whereHas('topic', function ($query) use ($topic, $selectedTopicName) {
@@ -213,6 +224,19 @@ class CommunityBoardController extends Controller
             'commentLikeCounts' => $commentLikeCounts,
             'myCommentLikes' => $myCommentLikes,
         ]);
+    }
+
+    public function hidePost(Request $request, int $id)
+    {
+        $post = Post::query()->findOrFail($id);
+
+        PostHide::query()->firstOrCreate([
+            'user_id' => $request->user()->id,
+            'post_id' => $post->id,
+        ]);
+
+        return redirect($request->input('redirect', '/community?apartment_id='.(int) $post->apartment_id))
+            ->with('status', '게시글을 숨겼습니다. 피드에서 더 이상 표시되지 않습니다.');
     }
 
     public function editPost(Request $request, int $id)

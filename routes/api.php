@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
     Route::post('/posts/{id}/like', [PostLikeController::class, 'toggle'])
         ->middleware('throttle:60,1');
+    Route::post('/posts/{id}/hide', [PostController::class, 'hide']);
 
     Route::get('/posts/{postId}/comments', [CommentController::class, 'index']);
     Route::post('/posts/{postId}/comments', [CommentController::class, 'store'])

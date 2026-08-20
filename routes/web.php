@@ -105,6 +105,9 @@ Route::view('/service/signup-guide', 'placeholder', [
 ]);
 Route::get('/terms', [PublicSiteController::class, 'terms']);
 Route::get('/privacy', [PublicSiteController::class, 'privacy']);
+Route::view('/support', 'support', [
+    'title' => '문의 및 신고 안내',
+]);
 
 Route::view('/apartments', 'placeholder', [
     'title' => '공동주택 검색',
@@ -162,6 +165,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/community/posts/{id}/comments', [CommunityBoardController::class, 'storeComment']);
     Route::post('/community/posts/{id}/likes', [CommunityBoardController::class, 'likePost']);
     Route::delete('/community/posts/{id}/likes', [CommunityBoardController::class, 'unlikePost']);
+    Route::post('/community/posts/{id}/hide', [CommunityBoardController::class, 'hidePost']);
     Route::post('/community/comments/{id}/likes', [CommunityBoardController::class, 'likeComment']);
     Route::delete('/community/comments/{id}/likes', [CommunityBoardController::class, 'unlikeComment']);
     Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);

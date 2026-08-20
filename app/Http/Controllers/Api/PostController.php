@@ -26,6 +26,12 @@ class PostController extends Controller
         $posts = Post::query()
             ->where('board_id', $boardId)
             ->where('visibility', '!=', 'deleted')
+            ->whereNotExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('post_hides')
+                    ->whereColumn('post_hides.post_id', 'posts.id')
+                    ->where('post_hides.user_id', request()->user()->id);
+            })
             ->latest()
             ->paginate(20);
 
@@ -76,6 +82,18 @@ class PostController extends Controller
         }
 
         return response()->json(['data' => $post], 201);
+    }
+
+    public function hide(Request $request, int $id)
+    {
+        $post = Post::query()->findOrFail($id);
+
+        \App\Models\PostHide::query()->firstOrCreate([
+            'user_id' => $request->user()->id,
+            'post_id' => $post->id,
+        ]);
+
+        return response()->json(['message' => 'Post hidden from your feed.']);
     }
 
     public function show(Request $request, int $id)

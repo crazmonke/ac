@@ -134,6 +134,9 @@ class WebAuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'is_adult' => ['accepted'],
+            'terms_agreed' => ['accepted'],
+            'privacy_agreed' => ['accepted'],
             'apartment_id' => ['required', 'integer'],
             'apartment_query' => ['nullable', 'string', 'max:120'],
             'home_sido' => ['required', 'string', 'max:40'],
@@ -148,6 +151,9 @@ class WebAuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[\W_]).+$/', 'confirmed'],
         ], [
             'email.unique' => '이미 가입된 이메일입니다.',
+            'is_adult.accepted' => '만 18세 이상만 가입할 수 있습니다.',
+            'terms_agreed.accepted' => '이용약관 동의가 필요합니다.',
+            'privacy_agreed.accepted' => '개인정보처리방침 동의가 필요합니다.',
             'password.min' => '비밀번호는 최소 8자 이상이어야 합니다.',
             'password.regex' => '비밀번호는 영문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
         ]);
@@ -169,6 +175,9 @@ class WebAuthController extends Controller
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'is_adult' => true,
+            'terms_agreed_at' => now(),
+            'privacy_agreed_at' => now(),
             'preferred_apartment_id' => ((int) $data['apartment_id'] > 0) ? (int) $data['apartment_id'] : null,
             'home_sido' => $data['home_sido'],
             'home_sigungu' => $data['home_sigungu'],

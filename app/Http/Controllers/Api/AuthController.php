@@ -15,12 +15,18 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'is_adult' => ['accepted'],
+            'terms_agreed' => ['accepted'],
+            'privacy_agreed' => ['accepted'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'is_adult' => true,
+            'terms_agreed_at' => now(),
+            'privacy_agreed_at' => now(),
             'password' => $data['password'],
         ]);
 
