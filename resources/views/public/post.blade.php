@@ -71,7 +71,7 @@
             <div class="body">{!! $post->body !!}</div>
 
             @auth
-                <a class="btn" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">댓글/첨부 포함 전체 화면으로 이동</a>
+                <!--<a class="btn" href="/community/posts/{{ $post->id }}?apartment_id={{ $apartmentId }}">댓글/첨부 포함 전체 화면으로 이동</a>-->
             @endauth
         @else
             <div class="gate">
