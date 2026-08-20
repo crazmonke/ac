@@ -565,9 +565,9 @@
             <p class="onboarding-message" id="home-onboarding-message"></p>
             <p class="onboarding-focus" id="home-onboarding-focus"></p>
         </div>
-        <label class="onboarding-dismiss"><input id="home-onboarding-dismiss" type="checkbox"> 다시 보지 않기</label>
+        <label class="onboarding-dismiss"><input id="home-onboarding-dismiss" type="checkbox" checked> 다시 보지 않기</label>
         <div class="onboarding-footer">
-            <button class="onboarding-skip" id="home-onboarding-skip" type="button">건너뛰기</button>
+            <button class="onboarding-skip" id="home-onboarding-skip" type="button">닫기</button>
             <button id="home-onboarding-prev" type="button">이전</button>
             <button class="onboarding-next" id="home-onboarding-next" type="button">다음</button>
         </div>
