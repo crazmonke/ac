@@ -105,6 +105,7 @@ Route::view('/service/signup-guide', 'placeholder', [
 ]);
 Route::get('/terms', [PublicSiteController::class, 'terms']);
 Route::get('/privacy', [PublicSiteController::class, 'privacy']);
+Route::get('/memberinfo', [PublicSiteController::class, 'memberinfo']);
 Route::view('/support', 'support', [
     'title' => '문의 및 신고 안내',
 ]);

@@ -527,7 +527,7 @@
             <a href="/terms">이용약관</a>
             @if(!$isVerifiedUser)
                 <a href="/register">나의 공동주택 찾기</a>
-                <a href="/posts/15">가입안내</a>
+                <a href="/memberinfo">가입안내</a>
             @endif
             <a href="/reports/new?apartment_id={{ $apartment->id }}">신고접수</a>
         </div>
