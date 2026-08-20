@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Board;
+use App\Models\BlockedUser;
 use App\Models\Post;
 use App\Models\PostTemplate;
 use App\Services\PermissionService;
@@ -26,6 +27,11 @@ class PostController extends Controller
         $posts = Post::query()
             ->where('board_id', $boardId)
             ->where('visibility', '!=', 'deleted')
+            ->whereNotIn('user_id', function ($query) {
+                $query->select('blocked_id')
+                    ->from('blocked_users')
+                    ->where('blocker_id', request()->user()->id);
+            })
             ->whereNotExists(function ($query) {
                 $query->selectRaw('1')
                     ->from('post_hides')

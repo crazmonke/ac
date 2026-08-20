@@ -183,6 +183,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages', [MessageWebController::class, 'inbox']);
     Route::get('/messages/compose', [MessageWebController::class, 'compose']);
     Route::get('/messages/users/search', [MessageWebController::class, 'searchUsers']);
+    Route::post('/users/{id}/block', [CommunityBoardController::class, 'blockUser'])->whereNumber('id');
     Route::post('/messages', [MessageWebController::class, 'store'])->middleware('throttle:60,1');
     Route::get('/messages/{peerId}', [MessageWebController::class, 'conversation'])->whereNumber('peerId');
     Route::delete('/messages/conversations/{peerId}', [MessageWebController::class, 'deleteConversation'])->whereNumber('peerId');

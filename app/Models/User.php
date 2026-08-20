@@ -123,6 +123,16 @@ class User extends Authenticatable
         return $this->hasMany(PostHide::class);
     }
 
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(BlockedUser::class, 'blocker_id');
+    }
+
+    public function blockedByUsers(): HasMany
+    {
+        return $this->hasMany(BlockedUser::class, 'blocked_id');
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);

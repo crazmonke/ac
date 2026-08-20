@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Community;
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\Board;
+use App\Models\BlockedUser;
 use App\Models\Comment;
 use App\Models\Poll;
 use App\Models\PollOption;
@@ -62,6 +63,14 @@ class CommunityBoardController extends Controller
                     ->from('post_hides')
                     ->whereColumn('post_hides.post_id', 'posts.id')
                     ->where('post_hides.user_id', $user->id);
+            });
+        }
+
+        if ($user && Schema::hasTable('blocked_users')) {
+            $postsQuery->whereNotIn('user_id', function ($query) use ($user) {
+                $query->select('blocked_id')
+                    ->from('blocked_users')
+                    ->where('blocker_id', $user->id);
             });
         }
 
@@ -128,6 +137,11 @@ class CommunityBoardController extends Controller
 
     public function showPost(Request $request, int $id)
     {
+        $user = $request->user();
+        $blockedUserIds = $user && Schema::hasTable('blocked_users')
+            ? BlockedUser::query()->where('blocker_id', $user->id)->pluck('blocked_id')
+            : collect();
+
         $post = Post::query()
             ->with([
                 'board',
@@ -143,7 +157,29 @@ class CommunityBoardController extends Controller
             ])
             ->findOrFail($id);
 
-        $user = $request->user();
+        if ($blockedUserIds->contains((int) $post->user_id)) {
+            abort(404);
+        }
+
+        if ($blockedUserIds->isNotEmpty()) {
+            $post->setRelation(
+                'comments',
+                $post->comments
+                    ->reject(fn ($comment) => $blockedUserIds->contains((int) $comment->user_id))
+                    ->map(function ($comment) use ($blockedUserIds) {
+                        $comment->setRelation(
+                            'children',
+                            $comment->children
+                                ->reject(fn ($child) => $blockedUserIds->contains((int) $child->user_id))
+                                ->values()
+                        );
+
+                        return $comment;
+                    })
+                    ->values()
+            );
+        }
+
         $currentUserId = (int) ($user?->id ?? 0);
 
         if (! $this->permissionService->canReadPostDetail($user, $post)) {
@@ -237,6 +273,22 @@ class CommunityBoardController extends Controller
 
         return redirect($request->input('redirect', '/community?apartment_id='.(int) $post->apartment_id))
             ->with('status', '게시글을 숨겼습니다. 피드에서 더 이상 표시되지 않습니다.');
+    }
+
+    public function blockUser(Request $request, int $id)
+    {
+        $blockedUser = User::query()->findOrFail($id);
+
+        if ((int) $blockedUser->id === (int) $request->user()->id) {
+            return back()->withErrors(['block' => '본인 계정은 차단할 수 없습니다.']);
+        }
+
+        BlockedUser::query()->firstOrCreate([
+            'blocker_id' => $request->user()->id,
+            'blocked_id' => $blockedUser->id,
+        ]);
+
+        return redirect('/community')->with('status', $blockedUser->name.'님을 차단했습니다.');
     }
 
     public function editPost(Request $request, int $id)
@@ -1148,6 +1200,11 @@ class CommunityBoardController extends Controller
 
     public function showCommentDetail(Request $request, int $postId, int $commentId)
     {
+        $user = $request->user();
+        $blockedUserIds = Schema::hasTable('blocked_users')
+            ? BlockedUser::query()->where('blocker_id', $user->id)->pluck('blocked_id')
+            : collect();
+
         $post = Post::query()
             ->with([
                 'board',
@@ -1157,11 +1214,26 @@ class CommunityBoardController extends Controller
             ])
             ->findOrFail($postId);
 
+        if ($blockedUserIds->contains((int) $post->user_id)) {
+            abort(404);
+        }
+
         $comment = Comment::query()
             ->with(['user', 'children.user'])
             ->findOrFail($commentId);
 
-        $user = $request->user();
+        if ($blockedUserIds->contains((int) $comment->user_id)) {
+            abort(404);
+        }
+
+        if ($blockedUserIds->isNotEmpty()) {
+            $comment->setRelation(
+                'children',
+                $comment->children
+                    ->reject(fn ($child) => $blockedUserIds->contains((int) $child->user_id))
+                    ->values()
+            );
+        }
 
         // 포스트 접근 권한 확인
         if (! $this->permissionService->canReadPostDetail($user, $post)) {

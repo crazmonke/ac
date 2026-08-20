@@ -1265,6 +1265,21 @@
         text-decoration: none;
     }
     .msg-popup-menu a:hover { background: #f2f7ff; }
+    .msg-popup-menu .msg-block-form { margin: 0; border-top: 1px solid #edf1f7; }
+    .msg-popup-menu .msg-block-button {
+        display: block;
+        width: 100%;
+        padding: 10px 14px;
+        border: 0;
+        background: #fff;
+        color: #b42318;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+    }
+    .msg-popup-menu .msg-block-button:hover { background: #fff1f0; }
 </style>
 <script>
 (function () {
@@ -1298,6 +1313,31 @@
         link.href = href;
         link.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2e4fb8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4.5 7 7.5 6 7.5-6"/></svg><span>쪽지보내기</span>';
         popup.appendChild(link);
+
+        if (isLoggedIn) {
+            var blockForm = document.createElement('form');
+            blockForm.className = 'msg-block-form';
+            blockForm.method = 'post';
+            blockForm.action = '/users/' + encodeURIComponent(userId) + '/block';
+
+            var csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '_token';
+            csrf.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            blockForm.appendChild(csrf);
+
+            var blockButton = document.createElement('button');
+            blockButton.type = 'submit';
+            blockButton.className = 'msg-block-button';
+            blockButton.textContent = '차단하기';
+            blockButton.addEventListener('click', function (event) {
+                if (!window.confirm(userName + '님을 차단할까요?')) {
+                    event.preventDefault();
+                }
+            });
+            blockForm.appendChild(blockButton);
+            popup.appendChild(blockForm);
+        }
 
         document.body.appendChild(popup);
 

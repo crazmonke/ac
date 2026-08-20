@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Community;
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\Board;
+use App\Models\BlockedUser;
 use App\Models\Post;
 use App\Models\PostFile;
 use App\Models\PostLike;
@@ -94,6 +95,14 @@ class CommunityPageController extends Controller
                         ->from('post_hides')
                         ->whereColumn('post_hides.post_id', 'posts.id')
                         ->where('post_hides.user_id', $user->id);
+                });
+            }
+
+            if ($user && Schema::hasTable('blocked_users')) {
+                $postsQuery->whereNotIn('user_id', function ($query) use ($user) {
+                    $query->select('blocked_id')
+                        ->from('blocked_users')
+                        ->where('blocker_id', $user->id);
                 });
             }
         }

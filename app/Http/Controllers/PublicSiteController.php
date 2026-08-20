@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Apartment;
 use App\Models\Banner;
 use App\Models\Board;
+use App\Models\BlockedUser;
 use App\Models\Post;
 use App\Models\PostFile;
 use App\Models\PostLike;
@@ -66,6 +67,14 @@ class PublicSiteController extends Controller
 
             if ($hasAudienceScopeColumn) {
                 $query->whereIn('audience_scope', ['region', 'all']);
+            }
+
+            if ($user && Schema::hasTable('blocked_users')) {
+                $query->whereNotIn('user_id', function ($blockedQuery) use ($user) {
+                    $blockedQuery->select('blocked_id')
+                        ->from('blocked_users')
+                        ->where('blocker_id', $user->id);
+                });
             }
 
             $feedPaginator = $query->paginate(20)->withQueryString();
@@ -153,6 +162,13 @@ class PublicSiteController extends Controller
         $posts = Post::query()
             ->where('board_id', $board->id)
             ->where('visibility', '!=', 'deleted')
+            ->when($user && Schema::hasTable('blocked_users'), function ($query) use ($user) {
+                $query->whereNotIn('user_id', function ($blockedQuery) use ($user) {
+                    $blockedQuery->select('blocked_id')
+                        ->from('blocked_users')
+                        ->where('blocker_id', $user->id);
+                });
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -177,13 +193,21 @@ class PublicSiteController extends Controller
             ->with(['board', 'apartment', 'user'])
             ->findOrFail($id);
 
-        $canRead = $this->canReadPost($request->user(), $post);
+        $user = $request->user();
+        if ($user && Schema::hasTable('blocked_users') && BlockedUser::query()
+            ->where('blocker_id', $user->id)
+            ->where('blocked_id', $post->user_id)
+            ->exists()) {
+            abort(404);
+        }
+
+        $canRead = $this->canReadPost($user, $post);
 
         return view('public.post', [
             'post' => $post,
             'canRead' => $canRead,
             'apartmentId' => (int) $post->apartment_id,
-            'isLoggedIn' => (bool) $request->user(),
+            'isLoggedIn' => (bool) $user,
         ]);
     }
 
