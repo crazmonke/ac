@@ -31,6 +31,7 @@ class CommunityBoardController extends Controller
         private readonly PermissionService $permissionService,
         private readonly UserNotificationService $userNotificationService,
         private readonly PostTemplateRenderer $postTemplateRenderer,
+        private readonly \App\Services\ContentModerationService $contentModerationService,
     )
     {
     }
@@ -558,6 +559,8 @@ class CommunityBoardController extends Controller
             $data['body'] = $this->appendTemplateMediaToBody((string) $data['body'], (string) ($data['template_media_assets'] ?? ''));
         }
 
+        $this->contentModerationService->validateContent(($data['title'] ?? '').' '.($data['body'] ?? ''));
+
         $audienceScope = (string) $data['audience_scope'];
         $canUseApartmentScope = $writerResidenceComplexId > 0
             ? $this->permissionService->hasVerifiedResidenceComplex($user, $writerResidenceComplexId)
@@ -657,6 +660,8 @@ class CommunityBoardController extends Controller
             $data['body'] = $this->appendTemplateMediaToBody((string) $data['body'], (string) ($data['template_media_assets'] ?? ''));
         }
 
+        $this->contentModerationService->validateContent(($data['title'] ?? '').' '.($data['body'] ?? ''));
+
         $audienceScope = (string) $data['audience_scope'];
         $canUseApartmentScope = (int) ($post->residence_complex_id ?? 0) > 0
             ? $this->permissionService->hasVerifiedResidenceComplex($request->user(), (int) $post->residence_complex_id)
@@ -743,6 +748,8 @@ class CommunityBoardController extends Controller
             'is_anonymous' => ['nullable', 'boolean'],
             'parent_id' => ['nullable', 'integer', 'exists:comments,id'],
         ]);
+
+        $this->contentModerationService->validateContent($data['body'] ?? null);
 
         $parentId = null;
 
@@ -952,6 +959,8 @@ class CommunityBoardController extends Controller
             'body' => ['required', 'string', 'max:2000'],
             'is_anonymous' => ['nullable', 'boolean'],
         ]);
+
+        $this->contentModerationService->validateContent($data['body']);
 
         $comment->fill([
             'body' => $data['body'],

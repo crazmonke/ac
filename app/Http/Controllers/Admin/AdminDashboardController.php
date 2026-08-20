@@ -12,6 +12,8 @@ use App\Models\ResidenceComplex;
 use App\Models\ResidenceMergeCandidate;
 use App\Models\ResidentVerificationRequest;
 use App\Models\Report;
+use App\Models\ModerationSetting;
+use App\Services\ContentModerationService;
 use App\Models\User;
 use App\Models\UserResidence;
 use App\Models\UserRole;
@@ -443,7 +445,28 @@ class AdminDashboardController extends Controller
             'q' => $keyword,
             'boardId' => $boardId,
             'visibilityFilter' => $visibility,
+            'blockedTerms' => (string) (ModerationSetting::query()->where('key', 'blocked_terms')->value('value') ?? config('community.blocked_terms', '')),
         ]);
+    }
+
+    public function updateBlockedTerms(Request $request)
+    {
+        $data = $request->validate([
+            'blocked_terms' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $terms = collect(preg_split('/[,\r\n]+/u', (string) ($data['blocked_terms'] ?? '')) ?: [])
+            ->map(fn (string $term) => trim($term))
+            ->filter()
+            ->unique()
+            ->implode(',');
+
+        ModerationSetting::query()->updateOrCreate(
+            ['key' => 'blocked_terms'],
+            ['value' => $terms]
+        );
+
+        return redirect('/admin/posts')->with('status', '금칙어 설정이 저장되었습니다.');
     }
 
     public function bulkPostAction(Request $request)
@@ -700,7 +723,7 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    public function updateReport(Request $request, int $id)
+    public function updateReport(Request $request, int $id, ContentModerationService $contentModerationService)
     {
         $report = Report::query()->findOrFail($id);
 
@@ -713,6 +736,7 @@ class AdminDashboardController extends Controller
         $report->admin_note = $data['admin_note'] ?? null;
         $report->reviewed_at = now();
         $report->save();
+        $contentModerationService->applyReportAction($report->load('reportable'));
 
         return redirect('/admin/reports')->with('status', '신고 상태가 업데이트되었습니다.');
     }

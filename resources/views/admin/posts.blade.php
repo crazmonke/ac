@@ -16,6 +16,7 @@
         .btn-primary { background: #2e4fb8; color: #fff; }
         .btn-danger { background: #b42318; color: #fff; }
         .btn-muted { background: #e7edf7; color: #22344f; }
+        .blocked-terms-trigger { background: #fff4e8; color: #8d4a1c; border: 1px solid #f2c99e; }
         .btn-sm { padding: 5px 9px; font-size: 0.82rem; }
         .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
         .table-wrap { overflow-x: auto; margin-top: 10px; }
@@ -31,6 +32,13 @@
         .bulk-bar { display: flex; gap: 8px; align-items: center; background: #1a2a44; color: #fff; padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; }
         .bulk-bar select { background: #2e4fb8; color: #fff; border-color: #4a6fd8; padding: 6px 10px; }
         .bulk-count { font-weight: 700; min-width: 60px; }
+        .blocked-terms-dialog { width: min(520px, calc(100vw - 32px)); border: 0; border-radius: 14px; padding: 0; box-shadow: 0 20px 60px rgba(20, 35, 60, 0.24); }
+        .blocked-terms-dialog::backdrop { background: rgba(17, 28, 48, 0.42); }
+        .blocked-terms-dialog-inner { padding: 22px; }
+        .blocked-terms-dialog h2 { margin: 0 0 8px; font-size: 1.15rem; }
+        .blocked-terms-dialog p { color: #607086; font-size: 0.88rem; line-height: 1.55; }
+        .blocked-terms-dialog textarea { width: 100%; min-height: 150px; box-sizing: border-box; resize: vertical; border: 1px solid #c8d5e7; border-radius: 10px; padding: 10px; font: inherit; }
+        .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
     </style>
 </head>
 <body>
@@ -60,11 +68,27 @@
             </select>
             <input type="text" name="q" value="{{ $q }}" placeholder="제목/본문 검색">
             <button class="btn btn-primary" type="submit">검색</button>
+            <button class="btn blocked-terms-trigger" type="button" id="blockedTermsButton">금칙어</button>
             @if($q || $boardId || $visibilityFilter)
                 <a href="/admin/posts" class="btn btn-muted">초기화</a>
             @endif
         </form>
     </section>
+
+    <dialog class="blocked-terms-dialog" id="blockedTermsDialog">
+        <div class="blocked-terms-dialog-inner">
+            <h2>금칙어 설정</h2>
+            <p>게시글과 댓글의 제목·본문에 포함되면 등록 또는 수정이 차단됩니다. 금칙어는 쉼표 또는 줄바꿈으로 구분해 입력하세요.</p>
+            <form method="post" action="/admin/posts/blocked-terms">
+                @csrf
+                <textarea name="blocked_terms" aria-label="금칙어 목록">{{ $blockedTerms }}</textarea>
+                <div class="dialog-actions">
+                    <button class="btn btn-muted" type="button" id="blockedTermsCancel">취소</button>
+                    <button class="btn btn-primary" type="submit">저장</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
 
     <form id="bulkForm" method="post" action="/admin/posts/bulk">
         @csrf
@@ -144,6 +168,17 @@
     const bulkBar = document.getElementById('bulkBar');
     const checkedCount = document.getElementById('checkedCount');
     const bulkAction = document.getElementById('bulkAction');
+    const blockedTermsButton = document.getElementById('blockedTermsButton');
+    const blockedTermsDialog = document.getElementById('blockedTermsDialog');
+    const blockedTermsCancel = document.getElementById('blockedTermsCancel');
+
+    blockedTermsButton.addEventListener('click', () => blockedTermsDialog.showModal());
+    blockedTermsCancel.addEventListener('click', () => blockedTermsDialog.close());
+    blockedTermsDialog.addEventListener('click', (event) => {
+        if (event.target === blockedTermsDialog) {
+            blockedTermsDialog.close();
+        }
+    });
 
     function updateBulkBar() {
         const checked = document.querySelectorAll('.row-cb:checked');

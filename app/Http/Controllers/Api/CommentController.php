@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Services\PermissionService;
 use App\Services\UserNotificationService;
+use App\Services\ContentModerationService;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
@@ -15,6 +16,7 @@ class CommentController extends Controller
     public function __construct(
         private readonly PermissionService $permissionService,
         private readonly UserNotificationService $userNotificationService,
+        private readonly ContentModerationService $contentModerationService,
     ) {
     }
 
@@ -47,6 +49,8 @@ class CommentController extends Controller
             'body' => ['required', 'string'],
             'is_anonymous' => ['sometimes', 'boolean'],
         ]);
+
+        $this->contentModerationService->validateContent($data['body']);
 
         $data['post_id'] = $post->id;
         $data['user_id'] = $request->user()->id;
@@ -94,6 +98,8 @@ class CommentController extends Controller
             'body' => ['required', 'string'],
             'is_anonymous' => ['sometimes', 'boolean'],
         ]);
+
+        $this->contentModerationService->validateContent($data['body']);
 
         $comment->fill($data)->save();
 

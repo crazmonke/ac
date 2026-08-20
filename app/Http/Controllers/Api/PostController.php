@@ -10,6 +10,7 @@ use App\Models\PostTemplate;
 use App\Services\PermissionService;
 use App\Services\FcmMessagingService;
 use App\Services\PostTemplateRenderer;
+use App\Services\ContentModerationService;
 use Illuminate\Http\Request;
 use App\Models\User;
 
@@ -19,6 +20,7 @@ class PostController extends Controller
         private readonly PermissionService $permissionService,
         private readonly FcmMessagingService $fcmMessagingService,
         private readonly PostTemplateRenderer $postTemplateRenderer,
+        private readonly ContentModerationService $contentModerationService,
     ) {
     }
 
@@ -63,6 +65,8 @@ class PostController extends Controller
             $data['post_template_id'] = $template->id;
             $data['template_answers'] = $answers;
         }
+
+        $this->contentModerationService->validateContent(($data['title'] ?? '').' '.($data['body'] ?? ''));
 
         $data['user_id'] = $request->user()->id;
         $data['board_id'] = $board->id;
@@ -140,6 +144,8 @@ class PostController extends Controller
             $data['post_template_id'] = $template->id;
             $data['template_answers'] = $answers;
         }
+
+        $this->contentModerationService->validateContent(($data['title'] ?? '').' '.($data['body'] ?? ''));
 
         $post->fill($data)->save();
 

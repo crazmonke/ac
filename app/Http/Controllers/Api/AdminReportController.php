@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Report;
+use App\Services\ContentModerationService;
 use Illuminate\Http\Request;
 
 class AdminReportController extends Controller
@@ -19,7 +20,7 @@ class AdminReportController extends Controller
         return response()->json($query->paginate(30));
     }
 
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id, ContentModerationService $contentModerationService)
     {
         $report = Report::query()->findOrFail($id);
 
@@ -32,6 +33,7 @@ class AdminReportController extends Controller
         $report->admin_note = $data['admin_note'] ?? null;
         $report->reviewed_at = now();
         $report->save();
+        $contentModerationService->applyReportAction($report->load('reportable'));
 
         return response()->json(['data' => $report]);
     }
