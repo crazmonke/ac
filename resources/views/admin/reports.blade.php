@@ -14,6 +14,13 @@
         button { border: 0; border-radius: 8px; background: #0f6f67; color: #fff; padding: 8px 10px; font-weight: 700; cursor: pointer; }
         .flash { background: #e8f6f1; border: 1px solid #bee6d9; color: #166b53; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .detail-cell { max-width: 220px; white-space: pre-wrap; word-break: break-word; color: #33465f; font-size: 0.88rem; }
+        .target-cell { max-width: 220px; }
+        .target-label { display: block; font-weight: 700; margin-bottom: 2px; }
+        .target-preview { display: block; color: #33465f; font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; }
+        .target-preview:hover { text-decoration: underline; }
+        .content-modal-meta { color: #607086; font-size: 0.82rem; margin-bottom: 8px; }
+        .content-modal-title { font-weight: 700; margin-bottom: 6px; }
+        .content-modal-body { white-space: pre-wrap; word-break: break-word; line-height: 1.55; max-height: 50vh; overflow-y: auto; }
         .bulk-bar { display: flex; gap: 8px; align-items: center; background: #1a2a44; color: #fff; padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; }
         .bulk-bar select { width: auto; background: #2e4fb8; color: #fff; border-color: #4a6fd8; padding: 6px 10px; }
         .bulk-count { font-weight: 700; min-width: 60px; }
@@ -73,10 +80,23 @@
             <tbody>
             @forelse($reports as $report)
                 @php($reportTargetLabel = class_basename($report->reportable_type) === 'Post' ? '게시글' : ($report->reportable?->parent_id ? '답글' : '댓글'))
+                @php($reportTarget = $report->reportable)
+                @php($reportIsPost = class_basename($report->reportable_type) === 'Post')
+                @php($reportTitle = $reportIsPost ? ($reportTarget->title ?? null) : ($reportTarget?->post?->title ?? null))
+                @php($reportBody = $reportTarget ? trim(strip_tags($reportTarget->body)) : '(삭제되어 원문을 확인할 수 없습니다)')
+                @php($reportAuthor = $reportTarget?->user?->name ?? '알 수 없음')
+                @php($reportPreview = \Illuminate\Support\Str::limit($reportBody, 50))
                 <tr>
                     <td class="cb-col"><input type="checkbox" name="ids[]" value="{{ $report->id }}" class="row-cb"></td>
                     <td>{{ $report->id }}</td>
-                    <td>{{ $reportTargetLabel }}#{{ $report->reportable_id }}</td>
+                    <td class="target-cell">
+                        <span class="target-label">{{ $reportTargetLabel }}#{{ $report->reportable_id }}</span>
+                        <a href="#" class="target-preview report-content-link"
+                           data-type="{{ $reportTargetLabel }}"
+                           data-author="{{ $reportAuthor }}"
+                           data-title="{{ $reportTitle }}"
+                           data-body="{{ $reportBody }}">{{ $reportPreview !== '' ? $reportPreview : '(내용 없음)' }}</a>
+                    </td>
                     <td>{{ $reasonLabels[$report->reason] ?? $report->reason }}</td>
                     <td class="detail-cell">{{ $report->detail ?: '-' }}</td>
                     <td>{{ $statusLabels[$report->status] ?? $report->status }}</td>
@@ -92,6 +112,17 @@
             </tbody>
         </table>
     </form>
+
+    {{-- 신고된 원문 전체보기 팝업 --}}
+    <dialog id="contentDialog" style="border:0; border-radius: 12px; padding: 16px; width: min(560px, 90vw);">
+        <h3 style="margin:0 0 8px;" id="contentModalType"></h3>
+        <div class="content-modal-meta">작성자: <span id="contentModalAuthor"></span></div>
+        <div class="content-modal-title" id="contentModalTitle"></div>
+        <div class="content-modal-body" id="contentModalBody"></div>
+        <div style="display:flex; justify-content:flex-end; margin-top:14px;">
+            <button type="button" onclick="document.getElementById('contentDialog').close()">닫기</button>
+        </div>
+    </dialog>
 
     {{-- 개별 상태 변경용 폼 (bulkForm 중첩 방지) --}}
     <dialog id="editDialog" style="border:0; border-radius: 12px; padding: 0; width: min(420px, 90vw);">
@@ -164,6 +195,19 @@
         link.addEventListener('click', function (event) {
             event.preventDefault();
             editReport(link.dataset.reportId, link.dataset.status, link.dataset.adminNote);
+        });
+    });
+
+    const contentDialog = document.getElementById('contentDialog');
+    document.querySelectorAll('.report-content-link').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            document.getElementById('contentModalType').textContent = link.dataset.type + ' 원문';
+            document.getElementById('contentModalAuthor').textContent = link.dataset.author;
+            document.getElementById('contentModalTitle').textContent = link.dataset.title || '';
+            document.getElementById('contentModalTitle').style.display = link.dataset.title ? 'block' : 'none';
+            document.getElementById('contentModalBody').textContent = link.dataset.body;
+            contentDialog.showModal();
         });
     });
 

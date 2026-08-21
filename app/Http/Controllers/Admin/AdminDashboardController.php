@@ -7,6 +7,7 @@ use App\Models\Apartment;
 use App\Models\ApartmentMatchReview;
 use App\Models\Board;
 use App\Models\BoardCategory;
+use App\Models\Comment;
 use App\Models\Post;
 use App\Models\ResidenceComplex;
 use App\Models\ResidenceMergeCandidate;
@@ -719,7 +720,16 @@ class AdminDashboardController extends Controller
     public function reports()
     {
         return view('admin.reports', [
-            'reports' => Report::query()->with('reportable')->latest()->limit(100)->get(),
+            'reports' => Report::query()
+                ->with(['reportable' => function ($morphTo) {
+                    $morphTo->constrain([
+                        Post::class => fn ($query) => $query->withTrashed()->with('user'),
+                        Comment::class => fn ($query) => $query->withTrashed()->with(['user', 'post']),
+                    ]);
+                }])
+                ->latest()
+                ->limit(100)
+                ->get(),
         ]);
     }
 
