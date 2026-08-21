@@ -741,6 +741,30 @@ class AdminDashboardController extends Controller
         return redirect('/admin/reports')->with('status', '신고 상태가 업데이트되었습니다.');
     }
 
+    public function bulkUpdateReports(Request $request, ContentModerationService $contentModerationService)
+    {
+        $data = $request->validate([
+            'action' => ['required', 'in:hide,dismiss'],
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $status = $data['action'] === 'hide' ? 'hidden' : 'dismissed';
+
+        $reports = Report::query()->with('reportable')->whereIn('id', $data['ids'])->get();
+
+        foreach ($reports as $report) {
+            $report->status = $status;
+            $report->reviewed_at = now();
+            $report->save();
+            $contentModerationService->applyReportAction($report);
+        }
+
+        $label = $data['action'] === 'hide' ? '숨김 처리' : '반려';
+
+        return redirect('/admin/reports')->with('status', count($reports).'건의 신고를 ['.$label.'] 처리했습니다.');
+    }
+
     public function updateMatchReview(Request $request, int $id)
     {
         $review = ApartmentMatchReview::query()->with('user')->findOrFail($id);

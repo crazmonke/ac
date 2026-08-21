@@ -5,16 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Report;
-use App\Services\PermissionService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class ReportWebController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissionService)
-    {
-    }
-
     public function create(Request $request)
     {
         return view('reports.create', [
@@ -41,14 +36,6 @@ class ReportWebController extends Controller
 
         if (! $target) {
             return back()->withErrors(['reportable_id' => '신고 대상이 존재하지 않습니다.'])->withInput();
-        }
-
-        $apartmentId = $data['reportable_type'] === 'post'
-            ? (int) $target->apartment_id
-            : (int) $target->post?->apartment_id;
-
-        if (! $apartmentId || ! $this->permissionService->hasApartmentRole($request->user(), $apartmentId, 'resident')) {
-            return back()->withErrors(['reportable_id' => '해당 단지의 입주민 인증 후 신고할 수 있습니다.'])->withInput();
         }
 
         if ((int) $target->user_id === (int) $request->user()->id) {

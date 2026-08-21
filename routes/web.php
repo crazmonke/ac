@@ -215,6 +215,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/boards/{id}', [AdminDashboardController::class, 'destroyBoard']);
     Route::get('/reports', [AdminDashboardController::class, 'reports']);
     Route::put('/reports/{id}', [AdminDashboardController::class, 'updateReport']);
+    Route::post('/reports/bulk', [AdminDashboardController::class, 'bulkUpdateReports']);
     Route::get('/notifications', [AdminDashboardController::class, 'notifications']);
     Route::post('/notifications', [AdminDashboardController::class, 'sendNotification']);
     Route::get('/posts', [AdminDashboardController::class, 'posts']);
