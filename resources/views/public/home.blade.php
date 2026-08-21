@@ -87,11 +87,9 @@
         
         /* [핵심] 가로(100vw) 기준으로 세로 높이를 정확히 80vw로 설정 (100:80 = 5:4) */
         width: 100vw;
-        height: 40vw; 
+        height: 42vw; 
         max-height: none; /* 화면이 커져도 비율이 유지되도록 기존 500px 제한 해제 */
-        
         margin-left: calc(-50vw + 50%);
-        margin-top: 30px;
     }
 
     .flicking-viewport {
