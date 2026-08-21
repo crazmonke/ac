@@ -12,6 +12,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Apaind</title>
     @if($adsenseEnabled)
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ $adsenseClientId }}" crossorigin="anonymous"></script>
@@ -416,7 +417,8 @@
                         <div class="feed-row">
                             <span class="avatar">{{ $item['author_initial'] }}</span>
                             <div class="feed-main">
-                                <div class="author"><strong>{{ $item['author_name'] }}</strong>@if($item['author_is_verified'])<span class="verified-badge" aria-label="공동주택 인증 회원">✓</span>@endif<span class="meta">· {{ $item['created_label'] }}</span></div>
+                                @php($feedAuthorMsgId = ($isVerifiedUser && !empty($item['author_user_id']) && $item['author_user_id'] !== auth()->id()) ? $item['author_user_id'] : null)
+                                <div class="author"><strong class="{{ $feedAuthorMsgId ? 'msg-target' : '' }}" @if($feedAuthorMsgId) data-msg-user-id="{{ $feedAuthorMsgId }}" data-msg-user-name="{{ $item['author_name'] }}" @endif>{{ $item['author_name'] }}</strong>@if($item['author_is_verified'])<span class="verified-badge" aria-label="공동주택 인증 회원">✓</span>@endif<span class="meta">· {{ $item['created_label'] }}</span></div>
                                 <a class="title-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                                 @if(!empty($item['body_preview']))
                                     <a class="body-link" href="{{ $item['url'] }}"><div class="body-preview">{{ $item['body_preview'] }}</div></a>
@@ -1377,5 +1379,8 @@
     }
 })();
 </script>
+
+{{-- 작성자 이름 클릭 → 쪽지보내기 팝업 메뉴 --}}
+@include('community.partials.message-popup')
 </body>
 </html>

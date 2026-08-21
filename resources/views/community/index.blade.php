@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $apartmentName }} 커뮤니티</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f7f9; color: #171717; }
@@ -496,7 +497,7 @@
 
     <section class="panel">
         @php
-            $renderPostItem = function (array $post) use ($searchQuery) {
+            $renderPostItem = function (array $post) use ($searchQuery, $isVerified) {
                 $titleClass = !auth()->check() && !$post['can_read'] ? 'requires-signup' : '';
                 $signupAttr = !auth()->check() && !$post['can_read'] ? 'data-signup-url="'.e($post['url']).'"' : '';
                 $isLiked = (bool) ($post['liked_by_me'] ?? false);
@@ -526,13 +527,18 @@
                 $titleDisplay = $highlightText(e($post['title']), $searchQuery);
                 $bodyPreviewDisplay = $highlightText(e($bodyPreview), $searchQuery);
 
+                $msgId = ($isVerified && ! empty($post['author_user_id']) && $post['author_user_id'] !== auth()->id())
+                    ? $post['author_user_id']
+                    : null;
+                $msgClass = $msgId ? 'msg-target' : '';
+                $msgAttrs = $msgId ? ' data-msg-user-id="'.e((string) $msgId).'" data-msg-user-name="'.e($post['author_name']).'"' : '';
 
                 return '<li class="post-item">'
                     .'<div class="post-row">'
                     .'<span class="author-avatar">'.e($post['author_initial']).'</span>'
                     .'<div class="post-main">'
                     .'<div class="post-head">'
-                    .'<div class="author-line"><strong>'.e($post['author_name']).'</strong>'.(!empty($post['author_is_verified']) ? '<span class="verified-badge" aria-label="공동주택 인증 회원">✓</span>' : '').'<span class="meta">· '.e($post['created_label']).'</span></div>'
+                    .'<div class="author-line"><strong class="'.$msgClass.'"'.$msgAttrs.'>'.e($post['author_name']).'</strong>'.(!empty($post['author_is_verified']) ? '<span class="verified-badge" aria-label="공동주택 인증 회원">✓</span>' : '').'<span class="meta">· '.e($post['created_label']).'</span></div>'
                     .'</div>'
                     .'<a class="post-title '.$titleClass.'" href="'.e($post['url']).'" '.$signupAttr.'>'.$titleDisplay.'</a>'
                     .($bodyPreview !== '' ? '<a class="body-link" href="'.e($post['url']).'" '.$signupAttr.'><div class="body-preview">'.$bodyPreviewDisplay.'</div></a>' : '')
@@ -1457,5 +1463,8 @@ if (topicScroll) {
     initialize();
 })();
 </script>
+
+{{-- 작성자 이름 클릭 → 쪽지보내기 팝업 메뉴 --}}
+@include('community.partials.message-popup', ['isVerifiedUser' => $isVerified])
 </body>
 </html>

@@ -263,6 +263,7 @@ class CommunityPageController extends Controller
                 'author_name' => $authorName,
                 'author_initial' => mb_strtoupper($authorInitial),
                 'author_is_verified' => $post->user !== null && $this->permissionService->hasVerifiedRole($post->user),
+                'author_user_id' => (! $post->is_anonymous && $post->user) ? (int) $post->user_id : null,
                 'board_name' => $post->board->name,
                 'is_poll' => (bool) ($pollPreview['is_poll'] ?? false),
                 'poll_question' => (string) ($pollPreview['question'] ?? ''),

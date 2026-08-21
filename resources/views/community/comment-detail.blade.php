@@ -400,9 +400,10 @@
             <div class="author-row">
                 <div class="author">
                     @php($postAuthorName = $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음'))
+                    @php($postAuthorMsgId = (($isVerifiedUser ?? false) && ! $post->is_anonymous && $post->user && $post->user->id !== $currentUserId) ? $post->user->id : null)
                     <div class="avatar">{{ $avatarInitial($postAuthorName) }}</div>
                     <div>
-                        <div class="author-name">{{ $postAuthorName }}</div>
+                        <div class="author-name {{ $postAuthorMsgId ? 'msg-target' : '' }}" @if($postAuthorMsgId) data-msg-user-id="{{ $postAuthorMsgId }}" data-msg-user-name="{{ $postAuthorName }}" @endif>{{ $postAuthorName }}</div>
                         <div class="meta">{{ $post->created_at }}</div>
                     </div>
                 </div>
@@ -475,11 +476,12 @@
 
         <article class="comment">
             @php($commentAuthorName = $comment->is_anonymous ? '익명' : ($comment->user->name ?? '알 수 없음'))
+            @php($commentMsgId = (($isVerifiedUser ?? false) && ! $comment->is_anonymous && $comment->user && $comment->user->id !== $currentUserId) ? $comment->user->id : null)
             <div class="avatar">{{ $avatarInitial($commentAuthorName) }}</div>
             <div class="comment-body">
                 <div class="comment-head">
                     <div>
-                        <div class="comment-name">{{ $commentAuthorName }}</div>
+                        <div class="comment-name {{ $commentMsgId ? 'msg-target' : '' }}" @if($commentMsgId) data-msg-user-id="{{ $commentMsgId }}" data-msg-user-name="{{ $commentAuthorName }}" @endif>{{ $commentAuthorName }}</div>
                         <div class="comment-meta">{{ format_relative_time($comment->created_at) }}</div>
                     </div>
                 </div>
@@ -532,11 +534,12 @@
                 @foreach($comment->children as $child)
                     <article class="comment">
                         @php($childAuthorName = $child->is_anonymous ? '익명' : ($child->user->name ?? '알 수 없음'))
+                        @php($childMsgId = (($isVerifiedUser ?? false) && ! $child->is_anonymous && $child->user && $child->user->id !== $currentUserId) ? $child->user->id : null)
                         <div class="avatar small">{{ $avatarInitial($childAuthorName) }}</div>
                         <div class="comment-body">
                             <div class="comment-head">
                                 <div>
-                                    <div class="comment-name">{{ $childAuthorName }}</div>
+                                    <div class="comment-name {{ $childMsgId ? 'msg-target' : '' }}" @if($childMsgId) data-msg-user-id="{{ $childMsgId }}" data-msg-user-name="{{ $childAuthorName }}" @endif>{{ $childAuthorName }}</div>
                                     <div class="comment-meta">{{ format_relative_time($child->created_at) }}</div>
                                 </div>
                             </div>
@@ -774,5 +777,8 @@
     };
 })();
 </script>
+
+{{-- 작성자 이름 클릭 → 쪽지보내기 팝업 메뉴 --}}
+@include('community.partials.message-popup')
 </body>
 </html>

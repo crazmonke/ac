@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $board->name }}</title>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f8fb; color: #17263d; }
@@ -207,7 +208,9 @@
                             @endif
                         </h3>
                         <div class="meta">
-                            작성자: {{ $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음') }}
+                            @php($postAuthorName = $post->is_anonymous ? '익명' : ($post->user->name ?? '알 수 없음'))
+                            @php($postAuthorMsgId = (($isVerifiedUser ?? false) && ! $post->is_anonymous && $post->user && $post->user->id !== $currentUserId) ? $post->user->id : null)
+                            작성자: <span class="{{ $postAuthorMsgId ? 'msg-target' : '' }}" @if($postAuthorMsgId) data-msg-user-id="{{ $postAuthorMsgId }}" data-msg-user-name="{{ $postAuthorName }}" @endif>{{ $postAuthorName }}</span>
                             · 댓글 {{ $post->comment_count }}
                             · 조회 {{ $post->view_count }}
                             · {{ format_relative_time($post->created_at) }}
@@ -246,5 +249,8 @@
         </div>
     </nav>
 @endif
+
+{{-- 작성자 이름 클릭 → 쪽지보내기 팝업 메뉴 --}}
+@include('community.partials.message-popup')
 </body>
 </html>
