@@ -108,7 +108,7 @@
         width: 100vw;
         margin-left: calc(50% - 50vw);
         margin-right: calc(50% - 50vw);
-        margin-bottom: 14px;
+        margin-bottom: 45px;
         background: rgba(245, 247, 251, 0.96);
         border-bottom: 1px solid #d6e0ea;
         backdrop-filter: blur(10px);
