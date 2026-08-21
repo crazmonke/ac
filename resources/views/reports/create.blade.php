@@ -32,11 +32,11 @@
             <label>신고 대상 유형
                 <select name="reportable_type" required>
                     <option value="post" @selected(old('reportable_type', $defaultType) === 'post')>게시글</option>
-                    <option value="comment" @selected(old('reportable_type', $defaultType) === 'comment')>댓글</option>
+                    <option value="comment" @selected(old('reportable_type', $defaultType) === 'comment')>댓글/답글</option>
                 </select>
             </label>
 
-            <label>신고 대상 게시글 번호
+            <label>신고 대상 {{ old('reportable_type', $defaultType) === 'comment' ? '댓글/답글' : '게시글' }} 번호
                 <input type="number" name="reportable_id" min="1" value="{{ old('reportable_id', $defaultId > 0 ? $defaultId : '') }}" required>
             </label>
 

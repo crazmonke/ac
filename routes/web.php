@@ -169,6 +169,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/community/posts/{id}/hide', [CommunityBoardController::class, 'hidePost']);
     Route::post('/community/comments/{id}/likes', [CommunityBoardController::class, 'likeComment']);
     Route::delete('/community/comments/{id}/likes', [CommunityBoardController::class, 'unlikeComment']);
+    Route::post('/community/comments/{id}/hide', [CommunityBoardController::class, 'hideComment']);
     Route::get('/community/comments/{id}/edit', [CommunityBoardController::class, 'editComment']);
     Route::put('/community/comments/{id}', [CommunityBoardController::class, 'updateComment']);
     Route::delete('/community/comments/{id}', [CommunityBoardController::class, 'destroyComment']);

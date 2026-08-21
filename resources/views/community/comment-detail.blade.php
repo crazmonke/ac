@@ -522,6 +522,7 @@
                             </button>
                         </form>
                     @endif
+                    @include('community.partials.comment-report-menu', ['commentId' => $comment->id, 'commentUserId' => $comment->user_id, 'apartmentId' => $apartmentId, 'currentUserId' => $currentUserId, 'redirectUrl' => '/community/posts/'.$post->id.'?apartment_id='.$apartmentId])
                 </div>
             </div>
         </article>
@@ -574,6 +575,7 @@
                                         </button>
                                     </form>
                                 @endif
+                                @include('community.partials.comment-report-menu', ['commentId' => $child->id, 'commentUserId' => $child->user_id, 'apartmentId' => $apartmentId, 'currentUserId' => $currentUserId, 'redirectUrl' => '/community/posts/'.$post->id.'?apartment_id='.$apartmentId])
                             </div>
                         </div>
                     </article>

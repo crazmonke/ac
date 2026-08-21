@@ -38,12 +38,13 @@
         </thead>
         <tbody>
         @forelse($reports as $report)
+            @php($reportTargetLabel = class_basename($report->reportable_type) === 'Post' ? '게시글' : ($report->reportable?->parent_id ? '답글' : '댓글'))
             <tr>
                 <form method="post" action="/admin/reports/{{ $report->id }}">
                     @csrf
                     @method('PUT')
                     <td>{{ $report->id }}</td>
-                    <td>{{ class_basename($report->reportable_type) }}#{{ $report->reportable_id }}</td>
+                    <td>{{ $reportTargetLabel }}#{{ $report->reportable_id }}</td>
                     <td>{{ $report->reason }}</td>
                     <td>
                         <select name="status" required>

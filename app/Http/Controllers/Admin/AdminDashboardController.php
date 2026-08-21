@@ -44,7 +44,7 @@ class AdminDashboardController extends Controller
             'pendingReportsCount' => Report::query()->where('status', 'pending')->count(),
             'pendingMatchReviewsCount' => ApartmentMatchReview::query()->where('status', 'pending')->count(),
             'pendingVerificationCount' => ResidentVerificationRequest::query()->where('status', 'pending')->count(),
-            'latestReports' => Report::query()->latest()->limit(10)->get(),
+            'latestReports' => Report::query()->with('reportable')->latest()->limit(10)->get(),
         ]);
     }
 
@@ -719,7 +719,7 @@ class AdminDashboardController extends Controller
     public function reports()
     {
         return view('admin.reports', [
-            'reports' => Report::query()->latest()->limit(100)->get(),
+            'reports' => Report::query()->with('reportable')->latest()->limit(100)->get(),
         ]);
     }
 

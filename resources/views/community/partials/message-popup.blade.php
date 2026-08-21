@@ -44,6 +44,39 @@
         cursor: pointer;
     }
     .msg-popup-menu .msg-block-button:hover { background: #fff1f0; }
+    .comment-menu { position: relative; display: inline-flex; }
+    .comment-menu-dropdown {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 6px);
+        z-index: 25;
+        width: 120px;
+        padding: 6px;
+        border: 1px solid #d7e1ee;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(20, 35, 60, 0.16);
+    }
+    .comment-menu-dropdown[hidden] { display: none; }
+    .comment-menu-dropdown a,
+    .comment-menu-dropdown button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: transparent;
+        color: #24364e;
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .comment-menu-dropdown a:hover,
+    .comment-menu-dropdown button:hover { background: #eef1f3; }
+    .comment-menu-dropdown .menu-danger { color: #b42318; }
 </style>
 <script>
 (function () {
@@ -131,3 +164,71 @@
     window.addEventListener('scroll', closePopup, { passive: true });
 })();
 </script>
+
+{{-- 댓글/답글 신고·숨기기 드롭다운 메뉴 --}}
+<script>
+(function () {
+    function closeAllCommentMenus() {
+        document.querySelectorAll('[data-comment-menu-dropdown]').forEach(function (menu) {
+            menu.hidden = true;
+        });
+    }
+
+    function positionMenu(toggle, menu) {
+        // overflow:hidden 조상(.comment-body)에 가려지지 않도록 body로 옮겨 뷰포트 기준 고정 배치한다.
+        if (menu.parentElement !== document.body) {
+            document.body.appendChild(menu);
+        }
+
+        menu.style.position = 'fixed';
+        menu.style.visibility = 'hidden';
+        menu.hidden = false;
+
+        var rect = toggle.getBoundingClientRect();
+        var maxLeft = document.documentElement.clientWidth - menu.offsetWidth - 8;
+        var left = Math.max(8, Math.min(rect.right - menu.offsetWidth, maxLeft));
+        var top = rect.bottom + 6;
+        var maxTop = window.innerHeight - menu.offsetHeight - 8;
+
+        if (top > maxTop) {
+            top = rect.top - menu.offsetHeight - 6;
+        }
+
+        menu.style.left = left + 'px';
+        menu.style.top = Math.max(8, top) + 'px';
+        menu.style.visibility = 'visible';
+    }
+
+    document.addEventListener('click', function (event) {
+        var toggle = event.target.closest('[data-comment-menu-toggle]');
+
+        if (toggle) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var menu = toggle.__menuEl || toggle.parentElement.querySelector('[data-comment-menu-dropdown]');
+            if (!menu) {
+                return;
+            }
+            toggle.__menuEl = menu;
+
+            var isOpen = !menu.hidden;
+            closeAllCommentMenus();
+            toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+
+            if (!isOpen) {
+                positionMenu(toggle, menu);
+            }
+
+            return;
+        }
+
+        if (!event.target.closest('[data-comment-menu-dropdown]')) {
+            closeAllCommentMenus();
+        }
+    }, true);
+
+    window.addEventListener('scroll', closeAllCommentMenus, { passive: true });
+})();
+</script>
+

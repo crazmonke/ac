@@ -7,6 +7,7 @@ use App\Models\Apartment;
 use App\Models\Board;
 use App\Models\BlockedUser;
 use App\Models\Comment;
+use App\Models\CommentHide;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
@@ -143,6 +144,9 @@ class CommunityBoardController extends Controller
         $blockedUserIds = $user && Schema::hasTable('blocked_users')
             ? BlockedUser::query()->where('blocker_id', $user->id)->pluck('blocked_id')
             : collect();
+        $hiddenCommentIds = $user
+            ? CommentHide::query()->where('user_id', $user->id)->pluck('comment_id')
+            : collect();
 
         $post = Post::query()
             ->with([
@@ -163,16 +167,16 @@ class CommunityBoardController extends Controller
             abort(404);
         }
 
-        if ($blockedUserIds->isNotEmpty()) {
+        if ($blockedUserIds->isNotEmpty() || $hiddenCommentIds->isNotEmpty()) {
             $post->setRelation(
                 'comments',
                 $post->comments
-                    ->reject(fn ($comment) => $blockedUserIds->contains((int) $comment->user_id))
-                    ->map(function ($comment) use ($blockedUserIds) {
+                    ->reject(fn ($comment) => $blockedUserIds->contains((int) $comment->user_id) || $hiddenCommentIds->contains((int) $comment->id))
+                    ->map(function ($comment) use ($blockedUserIds, $hiddenCommentIds) {
                         $comment->setRelation(
                             'children',
                             $comment->children
-                                ->reject(fn ($child) => $blockedUserIds->contains((int) $child->user_id))
+                                ->reject(fn ($child) => $blockedUserIds->contains((int) $child->user_id) || $hiddenCommentIds->contains((int) $child->id))
                                 ->values()
                         );
 
@@ -292,6 +296,19 @@ class CommunityBoardController extends Controller
         ]);
 
         return redirect('/community')->with('status', $blockedUser->name.'님을 차단했습니다.');
+    }
+
+    public function hideComment(Request $request, int $id)
+    {
+        $comment = Comment::query()->findOrFail($id);
+
+        CommentHide::query()->firstOrCreate([
+            'user_id' => $request->user()->id,
+            'comment_id' => $comment->id,
+        ]);
+
+        return redirect($request->input('redirect', '/community/posts/'.$comment->post_id))
+            ->with('status', '댓글을 숨겼습니다. 더 이상 표시되지 않습니다.');
     }
 
     public function editPost(Request $request, int $id)
@@ -1215,6 +1232,7 @@ class CommunityBoardController extends Controller
         $blockedUserIds = Schema::hasTable('blocked_users')
             ? BlockedUser::query()->where('blocker_id', $user->id)->pluck('blocked_id')
             : collect();
+        $hiddenCommentIds = CommentHide::query()->where('user_id', $user->id)->pluck('comment_id');
 
         $post = Post::query()
             ->with([
@@ -1237,11 +1255,11 @@ class CommunityBoardController extends Controller
             abort(404);
         }
 
-        if ($blockedUserIds->isNotEmpty()) {
+        if ($blockedUserIds->isNotEmpty() || $hiddenCommentIds->isNotEmpty()) {
             $comment->setRelation(
                 'children',
                 $comment->children
-                    ->reject(fn ($child) => $blockedUserIds->contains((int) $child->user_id))
+                    ->reject(fn ($child) => $blockedUserIds->contains((int) $child->user_id) || $hiddenCommentIds->contains((int) $child->id))
                     ->values()
             );
         }
