@@ -10,7 +10,7 @@
         table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dce4ef; border-radius: 12px; overflow: hidden; }
         th, td { padding: 8px; border-bottom: 1px solid #edf1f7; text-align: left; vertical-align: top; }
         a { color: #0f6f67; text-decoration: none; font-weight: 600; }
-        select, input, textarea { width: 100%; border: 1px solid #c9d5e8; border-radius: 8px; padding: 7px; font: inherit; }
+        select, input, textarea { width: 95%; border: 1px solid #c9d5e8; border-radius: 8px; padding: 7px; font: inherit; }
         button { border: 0; border-radius: 8px; background: #0f6f67; color: #fff; padding: 8px 10px; font-weight: 700; cursor: pointer; }
         .flash { background: #e8f6f1; border: 1px solid #bee6d9; color: #166b53; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .detail-cell { max-width: 220px; white-space: pre-wrap; word-break: break-word; color: #33465f; font-size: 0.88rem; }
@@ -24,6 +24,21 @@
 <div class="wrap">
     @include('partials.admin-nav')
     <h1>신고 관리</h1>
+
+    @php
+        $reasonLabels = [
+            'spam' => '스팜/도배',
+            'abuse' => '욕설/비하/괴롭힌',
+            'illegal' => '불법/유해 정보',
+            'other' => '기타',
+        ];
+        $statusLabels = [
+            'pending' => '대기중',
+            'reviewed' => '검토완료',
+            'dismissed' => '반려',
+            'hidden' => '숨김처리',
+        ];
+    @endphp
 
     @if(session('status'))
         <div class="flash">{{ session('status') }}</div>
@@ -62,9 +77,9 @@
                     <td class="cb-col"><input type="checkbox" name="ids[]" value="{{ $report->id }}" class="row-cb"></td>
                     <td>{{ $report->id }}</td>
                     <td>{{ $reportTargetLabel }}#{{ $report->reportable_id }}</td>
-                    <td>{{ $report->reason }}</td>
+                    <td>{{ $reasonLabels[$report->reason] ?? $report->reason }}</td>
                     <td class="detail-cell">{{ $report->detail ?: '-' }}</td>
-                    <td>{{ $report->status }}</td>
+                    <td>{{ $statusLabels[$report->status] ?? $report->status }}</td>
                     <td>{{ $report->admin_note }}</td>
                     <td>{{ $report->created_at }}</td>
                     <td>
@@ -86,10 +101,10 @@
             <h3 style="margin:0 0 10px;">신고 상태 변경</h3>
             <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:4px;">상태
                 <select name="status" id="editStatus" required>
-                    <option value="pending">pending</option>
-                    <option value="reviewed">reviewed</option>
-                    <option value="dismissed">dismissed</option>
-                    <option value="hidden">hidden</option>
+                    <option value="pending">대기중</option>
+                    <option value="reviewed">검토완료</option>
+                    <option value="dismissed">반려</option>
+                    <option value="hidden">숨김처리</option>
                 </select>
             </label>
             <label style="display:block; font-size:0.85rem; font-weight:700; margin: 10px 0 4px;">관리 메모

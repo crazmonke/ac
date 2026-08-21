@@ -49,13 +49,27 @@
         </tr>
         </thead>
         <tbody>
+        @php
+            $reasonLabels = [
+                'spam' => '스팜/도배',
+                'abuse' => '욕설/비하/괴롭힌',
+                'illegal' => '불법/유해 정보',
+                'other' => '기타',
+            ];
+            $statusLabels = [
+                'pending' => '대기중',
+                'reviewed' => '검토완료',
+                'dismissed' => '반려',
+                'hidden' => '숨김처리',
+            ];
+        @endphp
         @forelse($latestReports as $report)
             @php($reportTargetLabel = class_basename($report->reportable_type) === 'Post' ? '게시글' : ($report->reportable?->parent_id ? '답글' : '댓글'))
             <tr>
                 <td>{{ $report->id }}</td>
                 <td>{{ $reportTargetLabel }}#{{ $report->reportable_id }}</td>
-                <td>{{ $report->reason }}</td>
-                <td>{{ $report->status }}</td>
+                <td>{{ $reasonLabels[$report->reason] ?? $report->reason }}</td>
+                <td>{{ $statusLabels[$report->status] ?? $report->status }}</td>
                 <td>{{ $report->created_at }}</td>
             </tr>
         @empty
