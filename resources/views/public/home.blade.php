@@ -39,7 +39,7 @@
         background:#fff;
     }
 
-    .shell { max-width: 1180px; margin: 0 auto; padding: 18px 16px 46px; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 32px 16px 46px; }
 
     .btn {
         border: 0;

@@ -165,6 +165,7 @@
         display: inline-flex;
     }
     .site-actions-scroll {
+        height: 55px;
         display: flex;
         flex: 1 1 auto;
         min-width: 0;
@@ -279,12 +280,10 @@
     
     .search-bar {
         position: fixed;
-        top: 84px;
         left: 0;
         right: 0;
         z-index: 35;
         background: #fff;
-        border-bottom: 1px solid #d6e0ea;
         backdrop-filter: blur(10px);
         padding: 5px 14px;
         width: 100%;
@@ -292,7 +291,6 @@
         transition: transform 0.24s ease;
         will-change: transform;
         box-sizing: border-box;
-        border-top: 1px solid #d6e0ea;
     }
     
     .search-bar.nav-hidden {
@@ -384,7 +382,6 @@
     
     @media (max-width: 640px) {
         .search-bar {
-            top: 84px;
             padding: 4px 18px;
         }
 
