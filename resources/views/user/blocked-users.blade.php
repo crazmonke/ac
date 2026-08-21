@@ -25,9 +25,13 @@
         .meta { color: var(--muted); font-size: 0.85rem; }
         .flash { background: #e8f6f1; border: 1px solid #bee6d9; color: #166b53; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 480px; }
-        th, td { border-bottom: 1px solid #edf1f7; padding: 10px 8px; text-align: left; vertical-align: middle; font-size: 0.88rem; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { border-bottom: 1px solid #edf1f7; padding: 10px 8px; text-align: left; vertical-align: middle; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         th { background: #f8fbff; }
+        .col-user { width: auto; }
+        .col-date { width: 84px; color: var(--muted); font-size: 0.8rem; }
+        .col-manage { width: 76px; text-align: right; }
+        .col-manage .btn { padding: 6px 8px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -50,22 +54,22 @@
             <table>
                 <thead>
                     <tr>
-                        <th>사용자</th>
-                        <th>차단일</th>
-                        <th>관리</th>
+                        <th class="col-user">사용자</th>
+                        <th class="col-date">차단일</th>
+                        <th class="col-manage">관리</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($blockedUsers as $blockedUser)
                         <tr>
-                            <td>{{ $blockedUser->blocked->name ?? '(탈퇴한 사용자)' }}</td>
-                            <td class="meta">{{ $blockedUser->created_at->format('Y-m-d H:i') }}</td>
-                            <td>
+                            <td class="col-user">{{ $blockedUser->blocked->name ?? '(탈퇴한 사용자)' }}</td>
+                            <td class="col-date">{{ format_relative_time($blockedUser->created_at) }}</td>
+                            <td class="col-manage">
                                 <form method="post" action="/users/{{ $blockedUser->blocked_id }}/block" onsubmit="return confirm('차단을 해제할까요?');" style="margin:0;">
                                     @csrf
                                     @method('DELETE')
                                     <input type="hidden" name="redirect" value="/blocked-users">
-                                    <button class="btn btn-danger" type="submit">차단 해제</button>
+                                    <button class="btn btn-danger" type="submit">해제</button>
                                 </form>
                             </td>
                         </tr>
