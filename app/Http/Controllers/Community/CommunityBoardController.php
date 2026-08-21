@@ -1253,7 +1253,8 @@ class CommunityBoardController extends Controller
         if ($comment->post_id !== $post->id) {
             abort(404);
         }
-
+        $rootCommentCount = $post->comments->count();
+        $replyCount = $post->comments->sum(fn ($comment) => $comment->children->count());
         $likeCount = (int) PostLike::query()->where('post_id', $post->id)->count();
         $likedByMe = (bool) PostLike::query()
             ->where('post_id', $post->id)
@@ -1283,6 +1284,8 @@ class CommunityBoardController extends Controller
             'canComment' => $this->permissionService->hasBoardPermission($user, $post->board, 'comment'),
             'isApartmentAdmin' => $this->permissionService->hasAdminRole($user, (int) $post->apartment_id),
             'currentUserId' => $user->id,
+            'totalCommentCount' => $rootCommentCount,
+            'replyCount' => $replyCount,
             'likeCount' => $likeCount,
             'likedByMe' => $likedByMe,
             'commentLikeCounts' => $commentLikeCounts,
