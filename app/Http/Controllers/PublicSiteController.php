@@ -425,7 +425,7 @@ TEXT,
 개인정보 관련 문의는 아래 담당자에게 문의하실 수 있습니다.
 
 • 담당부서 : 개인정보보호 담당
-• 이메일 : kysloving@gmail.com
+• 이메일 : apaind@apaind.cloud
 
 제10조 (방침 변경)
 

@@ -297,7 +297,7 @@ php artisan optimize:clear
 
 ```text
 Name: SUPPORT_EMAIL
-Value: kysloving@gmail.com
+Value: apaind@apaind.cloud
 ```
 
 이후 `main` 브랜치에 push하여 `Deploy to Cafe24` 워크플로우를 실행하면 운영 서버 `.env`에 `SUPPORT_EMAIL`이 반영되고, 배포 과정의 `php artisan optimize:clear` 및 `config:cache`가 설정 캐시를 갱신합니다. 운영 페이지에서 `/support`를 열어 이메일 표시를 확인하세요.
