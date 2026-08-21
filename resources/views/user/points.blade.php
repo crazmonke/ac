@@ -16,7 +16,7 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
-        .shell { max-width: 880px; margin: 0 auto; padding: 32px 16px 40px; }
+        .shell { max-width: 880px; margin: 0 auto; padding: 0px 16px 40px; }
         .page-title { margin: 0 0 14px; font-size: clamp(1.25rem, 2.6vw, 1.8rem); }
         .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
         .btn { border: 0; border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; font: inherit; color: #22344f; background: #e7edf7; }

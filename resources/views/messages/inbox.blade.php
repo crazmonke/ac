@@ -16,7 +16,7 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
-        .shell { max-width: 720px; margin: 0 auto; padding: 32px 16px 40px; }
+        .shell { max-width: 720px; margin: 0 auto; padding: 0px 16px 40px; }
         .page-title { margin: 0; font-size: clamp(1.25rem, 2.6vw, 1.6rem); }
         .top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .btn { border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; font: inherit; }

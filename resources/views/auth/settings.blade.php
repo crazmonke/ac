@@ -27,7 +27,7 @@
         .shell {
             max-width: 880px;
             margin: 0 auto;
-            padding: 32px 16px 40px;
+            padding: 0px 16px 40px;
         }
         .page-title {
             margin: 0 0 14px;
