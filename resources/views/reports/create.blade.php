@@ -36,7 +36,7 @@
                 </select>
             </label>
 
-            <label>신고 대상 ID
+            <label>신고 대상 게시글 번호
                 <input type="number" name="reportable_id" min="1" value="{{ old('reportable_id', $defaultId > 0 ? $defaultId : '') }}" required>
             </label>
 
