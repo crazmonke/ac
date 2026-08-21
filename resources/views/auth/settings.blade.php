@@ -376,6 +376,12 @@
     </section>
 
     <section class="card">
+        <h2>차단 관리</h2>
+        <p>차단한 사용자 목록을 확인하고 차단을 해제할 수 있습니다.</p>
+        <a class="btn" href="/blocked-users" style="background:#2e4fb8; color:#fff;">차단 목록 보기</a>
+    </section>
+
+    <section class="card">
         <h2>계정 탈퇴</h2>
         <p>탈퇴 요청 시 계정 접근이 비활성화되며 즉시 로그아웃됩니다.</p>
         <form method="post" action="/settings/withdraw-request" onsubmit="return confirm('탈퇴 요청을 진행할까요?');">

@@ -298,6 +298,19 @@ class CommunityBoardController extends Controller
         return redirect('/community')->with('status', $blockedUser->name.'님을 차단했습니다.');
     }
 
+    public function unblockUser(Request $request, int $id)
+    {
+        $blockedUser = User::query()->findOrFail($id);
+
+        BlockedUser::query()
+            ->where('blocker_id', $request->user()->id)
+            ->where('blocked_id', $blockedUser->id)
+            ->delete();
+
+        return redirect($request->input('redirect', '/blocked-users'))
+            ->with('status', $blockedUser->name.'님의 차단을 해제했습니다.');
+    }
+
     public function hideComment(Request $request, int $id)
     {
         $comment = Comment::query()->findOrFail($id);

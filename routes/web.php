@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ApartmentSearchController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Auth\AccountSettingsController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\BlockedUserController;
 use App\Http\Controllers\ReportWebController;
 use App\Http\Controllers\Community\CommunityBoardController;
 use App\Http\Controllers\Community\CommunityPageController;
@@ -180,6 +181,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/reports', [ReportWebController::class, 'store']);
 
     Route::get('/points', [UserPointController::class, 'index']);
+    Route::get('/blocked-users', [BlockedUserController::class, 'index']);
     Route::get('/notifications', [NotificationController::class, 'index']);
 
     Route::get('/messages', [MessageWebController::class, 'inbox']);
@@ -187,6 +189,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages/users/search', [MessageWebController::class, 'searchUsers']);
     Route::post('/admin/posts/blocked-terms', [AdminDashboardController::class, 'updateBlockedTerms'])->middleware('role:admin');
     Route::post('/users/{id}/block', [CommunityBoardController::class, 'blockUser'])->whereNumber('id');
+    Route::delete('/users/{id}/block', [CommunityBoardController::class, 'unblockUser'])->whereNumber('id');
     Route::post('/messages', [MessageWebController::class, 'store'])->middleware('throttle:60,1');
     Route::get('/messages/{peerId}', [MessageWebController::class, 'conversation'])->whereNumber('peerId');
     Route::delete('/messages/conversations/{peerId}', [MessageWebController::class, 'deleteConversation'])->whereNumber('peerId');
